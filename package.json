@@ -19,7 +19,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "deploy": "npm ci && npm run build && npm run start:prod"
+    "deploy": "npm ci && npx prisma generate && npm run build && npm run start:prod"
   },
   "dependencies": {
     "@hapi/joi": "^17.1.1",
@@ -31,7 +31,6 @@
     "@nestjs/platform-express": "9.0.7",
     "@nestjs/swagger": "6.0.4",
     "@prisma/client": "^4.3.1",
-    "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0",
     "@sentry/node": "^7.8.0",
@@ -51,7 +50,6 @@
     "prisma": "^4.3.1",
     "redux-persist": "^6.0.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.0.0",
     "slugify": "^1.6.5",
     "swagger-ui-express": "^4.4.0",
     "tslib": "^2.3.0",

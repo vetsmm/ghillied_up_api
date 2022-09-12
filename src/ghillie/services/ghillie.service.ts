@@ -1,0 +1,988 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import {
+  Action,
+  Actor,
+  AppLogger,
+  GhillieSearchCriteria,
+  RequestContext,
+} from '../../shared';
+import {
+  Ghillie,
+  GhillieRole,
+  GhillieStatus,
+  MemberStatus,
+  Topic,
+} from '@prisma/client';
+import { CreateGhillieInputDto } from '../dtos/ghillie/create-ghillie-input.dto';
+import slugify from 'slugify';
+import { plainToInstance } from 'class-transformer';
+import { GhillieDetailDto } from '../dtos/ghillie/ghillie-detail.dto';
+import { GhillieAclService } from './ghillie-acl.service';
+import { UpdateGhillieDto } from '../dtos/ghillie/update-ghillie.dto';
+
+@Injectable()
+export class GhillieService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: AppLogger,
+    private readonly ghillieAclService: GhillieAclService,
+  ) {
+    this.logger.setContext(GhillieService.name);
+  }
+
+  async createGhillie(
+    ctx: RequestContext,
+    createGhillieDto: CreateGhillieInputDto,
+  ): Promise<GhillieDetailDto> {
+    this.logger.log(ctx, `${this.createGhillie.name} was called`);
+
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.Create);
+    if (!isAllowed) {
+      throw new UnauthorizedException(
+        'You are not allowed to create a ghillie',
+      );
+    }
+
+    const ghillie = await this.prisma.$transaction(async (prisma) => {
+      let topics = [] as Array<Topic>;
+      if (createGhillieDto.topicNames) {
+        topics = await Promise.all(
+          createGhillieDto.topicNames?.map(async (topicName) => {
+            return await prisma.topic.upsert({
+              where: {
+                name: topicName,
+              },
+              update: {},
+              create: {
+                name: topicName,
+                slug: slugify(topicName, {
+                  replacement: '-',
+                  lower: true,
+                  strict: true,
+                  trim: true,
+                }),
+                createdByUserId: ctx.user.id,
+              },
+            });
+          }),
+        );
+      }
+
+      const ghillie: Ghillie = await prisma.ghillie.create({
+        data: {
+          name: createGhillieDto.name,
+          slug: slugify(createGhillieDto.name, {
+            replacement: '-',
+            lower: true,
+            strict: true,
+            trim: true,
+          }),
+          about: createGhillieDto.about,
+          createdByUserId: ctx.user.id,
+          readOnly: createGhillieDto.readOnly,
+          imageUrl: createGhillieDto.imageUrl,
+          topics: {
+            connect: topics.map((topic) => ({
+              id: topic.id,
+            })),
+          },
+        },
+        include: {
+          topics: true,
+          _count: {
+            select: {
+              members: true,
+            },
+          },
+          members: {
+            where: {
+              userId: ctx.user.id,
+            },
+          },
+        },
+      });
+
+      // Create a ghillie member for the owner
+      await prisma.ghillieMembers.create({
+        data: {
+          ghillieId: ghillie.id,
+          userId: ctx.user.id,
+          role: GhillieRole.OWNER,
+          joinDate: new Date(),
+          memberStatus: MemberStatus.ACTIVE,
+        },
+      });
+
+      return ghillie;
+    });
+
+    return plainToInstance(GhillieDetailDto, ghillie, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+  }
+
+  async getGhillie(ctx: RequestContext, id: string): Promise<GhillieDetailDto> {
+    this.logger.log(ctx, `${this.getGhillie.name} was called`);
+
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.Read);
+    if (!isAllowed) {
+      throw new UnauthorizedException('You are not allowed to view a ghillie');
+    }
+
+    const ghillie = await this.prisma.ghillie.findFirst({
+      where: {
+        AND: [{ id: id }, { status: GhillieStatus.ACTIVE }],
+      },
+      include: {
+        topics: true,
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+        members: {
+          where: {
+            userId: ctx.user.id,
+          },
+        },
+      },
+    });
+
+    if (!ghillie) {
+      throw new NotFoundException('Ghillie not found or is not active');
+    }
+
+    const totalMembers = await this.prisma.ghillieMembers.count({
+      where: {
+        ghillieId: id,
+      },
+    });
+
+    const ghillieDetail = plainToInstance(GhillieDetailDto, ghillie, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+
+    ghillieDetail.totalMembers = totalMembers;
+
+    return ghillieDetail;
+  }
+
+  async getGhillies(
+    ctx: RequestContext,
+    query: GhillieSearchCriteria,
+  ): Promise<{ ghillies: GhillieDetailDto[]; count: number }> {
+    this.logger.log(ctx, `${this.getGhillies.name} was called`);
+
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.Read);
+    if (!isAllowed) {
+      throw new UnauthorizedException('You are not allowed to view Ghillies');
+    }
+
+    const where = { AND: [] };
+    if (query.name) {
+      where.AND.push({ name: { contains: query.name, mode: 'insensitive' } });
+    }
+    if (query.readonly) {
+      where.AND.push({ readOnly: query.readonly });
+    }
+    if (query.about) {
+      where.AND.push({ about: { contains: query.about, mode: 'insensitive' } });
+    }
+    if (query.status) {
+      where.AND.push({ status: query.status });
+    }
+    if (query.topicIds) {
+      where.AND.push({
+        topics: {
+          some: {
+            id: {
+              in: query.topicIds,
+            },
+          },
+        },
+      });
+    }
+
+    const [ghillies, count] = await this.prisma.$transaction([
+      this.prisma.ghillie.findMany({
+        where: {
+          ...where,
+        },
+        take: query.limit,
+        skip: query.offset,
+        include: {
+          topics: true,
+          _count: {
+            select: {
+              members: true,
+            },
+          },
+          members: {
+            where: {
+              userId: ctx.user.id,
+            },
+          },
+        },
+      }),
+
+      this.prisma.ghillie.count({
+        where: {
+          AND: [{ status: GhillieStatus.ACTIVE }],
+        },
+      }),
+    ]);
+
+    const convertedGhillies = plainToInstance(GhillieDetailDto, ghillies, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+
+    return {
+      ghillies: convertedGhillies,
+      count: count,
+    };
+  }
+
+  async updateGhillie(
+    ctx: RequestContext,
+    id: string,
+    updateGhillieDto: UpdateGhillieDto,
+  ): Promise<GhillieDetailDto> {
+    this.logger.log(ctx, `${this.updateGhillie.name} was called`);
+
+    // get the ghillie member
+    const ghillieUser = this.prisma.ghillieMembers.findFirst({
+      where: {
+        AND: [{ ghillieId: id }, { userId: ctx.user.id }],
+      },
+    });
+
+    if (!ghillieUser) {
+      throw new UnauthorizedException(
+        'You are not allowed to update this ghillie',
+      );
+    }
+
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.Update, ghillieUser);
+    if (!isAllowed) {
+      throw new UnauthorizedException(
+        'You are not authorized to update this ghillie',
+      );
+    }
+
+    const updatedGhillie = await this.prisma.$transaction(async (prisma) => {
+      const ghillie = await prisma.ghillie.findUnique({
+        where: {
+          id: id,
+        },
+        include: {
+          topics: true,
+        },
+      });
+
+      if (!ghillie) {
+        throw new NotFoundException('Ghillie not found');
+      }
+
+      const topics = await Promise.all(
+        updateGhillieDto.topicNames?.map(async (topicName) => {
+          return await prisma.topic.upsert({
+            where: {
+              name: topicName,
+            },
+            update: {},
+            create: {
+              name: topicName,
+              slug: slugify(topicName, {
+                replacement: '-',
+                lower: true,
+                strict: true,
+                trim: true,
+              }),
+              createdByUserId: ctx.user.id,
+            },
+          });
+        }),
+      );
+
+      if (updateGhillieDto.readOnly !== undefined) {
+        ghillie.readOnly = updateGhillieDto.readOnly;
+      }
+
+      if (updateGhillieDto.name !== undefined) {
+        ghillie.name = updateGhillieDto.name;
+        ghillie.slug = slugify(updateGhillieDto.name, {
+          replacement: '-',
+          lower: true,
+          strict: true,
+          trim: true,
+        });
+      }
+
+      if (updateGhillieDto.about !== undefined) {
+        ghillie.about = updateGhillieDto.about;
+      }
+
+      if (updateGhillieDto.imageUrl !== undefined) {
+        ghillie.imageUrl = updateGhillieDto.imageUrl;
+      }
+
+      // if any topics are removed, remove them from the ghillie
+      const topicsToRemove = ghillie.topics.filter((topic) => {
+        return !updateGhillieDto.topicNames.includes(topic.name);
+      });
+
+      return await prisma.ghillie.update({
+        where: { id: id },
+        data: {
+          ...ghillie,
+          topics: {
+            connect: topics.map((topic) => ({
+              id: topic.id,
+            })),
+            disconnect: topicsToRemove.map((topic) => {
+              return { id: topic.id };
+            }),
+          },
+        },
+        include: {
+          topics: true,
+          _count: {
+            select: {
+              members: true,
+            },
+          },
+          members: {
+            where: {
+              userId: ctx.user.id,
+            },
+          },
+        },
+      });
+    });
+
+    return plainToInstance(GhillieDetailDto, updatedGhillie, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+  }
+
+  async deleteGhillie(ctx: RequestContext, id: string): Promise<void> {
+    this.logger.log(ctx, `${this.deleteGhillie.name} was called`);
+
+    // get the ghillie member
+    const ghillieUser = this.prisma.ghillieMembers.findFirst({
+      where: {
+        AND: [{ ghillieId: id }, { userId: ctx.user.id }],
+      },
+    });
+
+    if (!ghillieUser) {
+      throw new UnauthorizedException(
+        'You are not allowed to delete this ghillie',
+      );
+    }
+
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.Delete, ghillieUser);
+    if (!isAllowed) {
+      throw new UnauthorizedException(
+        'You are not authorized to delete this ghillie',
+      );
+    }
+
+    await this.prisma.ghillie.delete({
+      where: {
+        id: id,
+      },
+    });
+  }
+
+  async joinGhillie(ctx: RequestContext, id: string): Promise<void> {
+    this.logger.log(ctx, `${this.joinGhillie.name} was called`);
+
+    const ghillie = await this.prisma.ghillie.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!ghillie) {
+      throw new NotFoundException('Ghillie not found');
+    }
+    if (ghillie.status !== GhillieStatus.ACTIVE) {
+      throw new BadRequestException('Ghillie is not join-able at this time');
+    }
+
+    const ghillieMember = await this.prisma.ghillieMembers.upsert({
+      where: {
+        userId_ghillieId: {
+          userId: ctx.user.id,
+          ghillieId: id,
+        },
+      },
+      update: {},
+      create: {
+        ghillieId: id,
+        userId: ctx.user.id,
+        joinDate: new Date(),
+        memberStatus: MemberStatus.ACTIVE,
+        role: GhillieRole.MEMBER,
+      },
+    });
+
+    if (ghillieMember.memberStatus === MemberStatus.SUSPENDED) {
+      throw new UnauthorizedException(
+        'You have been suspended from this ghillie',
+      );
+    }
+    if (ghillieMember.memberStatus === MemberStatus.BANNED) {
+      throw new UnauthorizedException('You have been banned from this ghillie');
+    }
+  }
+
+  async leaveGhillie(ctx: RequestContext, id: string) {
+    this.logger.log(ctx, `${this.leaveGhillie.name} was called`);
+
+    const ghillie = await this.prisma.ghillie.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!ghillie) {
+      throw new NotFoundException('Ghillie not found');
+    }
+    if (ghillie.status !== GhillieStatus.ACTIVE) {
+      throw new BadRequestException('Ghillie is not join-able at this time');
+    }
+
+    const ghillieMember = await this.prisma.ghillieMembers.findFirst({
+      where: {
+        AND: [{ userId: ctx.user.id }, { ghillieId: id }],
+      },
+    });
+
+    if (!ghillieMember) {
+      throw new NotFoundException('You are not a member of this ghillie');
+    }
+
+    if (ghillieMember.memberStatus === MemberStatus.SUSPENDED) {
+      throw new UnauthorizedException(
+        'You have been suspended from this ghillie',
+      );
+    }
+    if (ghillieMember.memberStatus === MemberStatus.BANNED) {
+      throw new UnauthorizedException('You have been banned from this ghillie');
+    }
+    if (ghillieMember.role === GhillieRole.OWNER) {
+      throw new BadRequestException(
+        'You cannot leave a Ghillie you own. Please transfer ownership first.',
+      );
+    }
+
+    await this.prisma.ghillieMembers.delete({
+      where: {
+        userId_ghillieId: {
+          userId: ctx.user.id,
+          ghillieId: id,
+        },
+      },
+    });
+  }
+
+  async transferOwnership(
+    ctx: RequestContext,
+    id: string,
+    userId: string,
+  ): Promise<void> {
+    // Get the user from transferOwnershipDto
+    const transferToUser = await this.prisma.user.findFirst({
+      where: {
+        AND: [
+          { id: userId },
+          { activated: true }, // Must be an activated account
+        ],
+      },
+    });
+
+    if (!transferToUser) {
+      throw new NotFoundException('Invalid User Id provided');
+    }
+
+    // Get the ghillie from id
+    const ghillie = await this.prisma.ghillie.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!ghillie) {
+      throw new NotFoundException('Ghillie not found');
+    }
+
+    // Make sure the request user is the owner the ghillie
+    const ghillieMember = await this.prisma.ghillieMembers.findFirst({
+      where: {
+        AND: [{ userId: ctx.user.id }, { ghillieId: id }],
+      },
+    });
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.GhillieManage, ghillieMember);
+    if (!isAllowed) {
+      throw new UnauthorizedException(
+        "You're not allowed to transfer ownership of this ghillie",
+      );
+    }
+
+    await this.prisma.$transaction(async (prisma) => {
+      // Do the transfer to the new
+      await prisma.ghillieMembers.upsert({
+        where: {
+          userId_ghillieId: {
+            userId: userId,
+            ghillieId: id,
+          },
+        },
+        update: {
+          role: GhillieRole.OWNER,
+        },
+        create: {
+          ghillieId: id,
+          userId: userId,
+          joinDate: new Date(),
+          memberStatus: MemberStatus.ACTIVE,
+          role: GhillieRole.OWNER,
+        },
+      });
+
+      // Make existing owner a member
+      await prisma.ghillieMembers.update({
+        where: {
+          userId_ghillieId: {
+            userId: ctx.user.id,
+            ghillieId: id,
+          },
+        },
+        data: {
+          role: GhillieRole.MEMBER,
+        },
+      });
+    });
+  }
+
+  async addModerator(ctx: RequestContext, id: string, userId: string) {
+    // Get the user from transferOwnershipDto
+    const newModeratorUser = await this.prisma.user.findFirst({
+      where: {
+        AND: [
+          { id: userId },
+          { activated: true }, // Must be an activated account
+        ],
+      },
+    });
+
+    if (!newModeratorUser) {
+      throw new NotFoundException('Invalid User Id provided');
+    }
+
+    // Get the ghillie from id
+    const ghillie = await this.prisma.ghillie.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!ghillie) {
+      throw new NotFoundException('Ghillie not found');
+    }
+
+    // Make sure the request user is the owner the ghillie
+    const ghillieMember = await this.prisma.ghillieMembers.findFirst({
+      where: {
+        AND: [{ userId: ctx.user.id }, { ghillieId: id }],
+      },
+    });
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.GhillieManage, ghillieMember);
+    if (!isAllowed) {
+      throw new UnauthorizedException(
+        "You're not allowed to add moderators to this ghillie",
+      );
+    }
+
+    await this.prisma.ghillieMembers.upsert({
+      where: {
+        userId_ghillieId: {
+          userId: userId,
+          ghillieId: id,
+        },
+      },
+      update: {
+        role: GhillieRole.MODERATOR,
+      },
+      create: {
+        ghillieId: id,
+        userId: userId,
+        joinDate: new Date(),
+        memberStatus: MemberStatus.ACTIVE,
+        role: GhillieRole.MODERATOR,
+      },
+    });
+  }
+
+  async removeModerator(ctx: RequestContext, id: string, userId: string) {
+    // Get the user from transferOwnershipDto
+    const removeModeratorUser = await this.prisma.user.findFirst({
+      where: {
+        AND: [
+          { id: userId },
+          { activated: true }, // Must be an activated account
+        ],
+      },
+    });
+
+    if (!removeModeratorUser) {
+      throw new NotFoundException('Invalid User Id provided');
+    }
+
+    // Get the ghillie from id
+    const ghillie = await this.prisma.ghillie.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!ghillie) {
+      throw new NotFoundException('Ghillie not found');
+    }
+
+    // Make sure the request user is the owner the ghillie
+    const ghillieMember = await this.prisma.ghillieMembers.findFirst({
+      where: {
+        AND: [{ userId: ctx.user.id }, { ghillieId: id }],
+      },
+    });
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.GhillieManage, ghillieMember);
+    if (!isAllowed) {
+      throw new UnauthorizedException(
+        "You're not allowed to add moderators to this ghillie",
+      );
+    }
+
+    await this.prisma.ghillieMembers.update({
+      where: {
+        userId_ghillieId: {
+          userId: userId,
+          ghillieId: id,
+        },
+      },
+      data: {
+        role: GhillieRole.MEMBER,
+      },
+    });
+  }
+
+  async banUser(ctx: RequestContext, id: string, userId: string) {
+    // Get the user from transferOwnershipDto
+    const banUser = await this.prisma.user.findFirst({
+      where: {
+        AND: [
+          { id: userId },
+          { activated: true }, // Must be an activated account
+        ],
+      },
+    });
+
+    if (!banUser) {
+      throw new NotFoundException('Invalid User Id provided');
+    }
+
+    // Get the ghillie from id
+    const ghillie = await this.prisma.ghillie.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!ghillie) {
+      throw new NotFoundException('Ghillie not found');
+    }
+
+    // Make sure the request user is a moderator or owner of the ghillie
+    const ghillieMember = await this.prisma.ghillieMembers.findFirst({
+      where: {
+        AND: [{ userId: ctx.user.id }, { ghillieId: id }],
+      },
+    });
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.GhillieModerator, ghillieMember);
+    if (!isAllowed) {
+      throw new UnauthorizedException(
+        "You're not allowed to moderate users from this ghillie",
+      );
+    }
+
+    await this.prisma.ghillieMembers.update({
+      where: {
+        userId_ghillieId: {
+          userId: userId,
+          ghillieId: id,
+        },
+      },
+      data: {
+        memberStatus: MemberStatus.BANNED,
+      },
+    });
+  }
+
+  async unbanUser(ctx: RequestContext, id: string, userId: string) {
+    // Get the user from transferOwnershipDto
+    const unbanUser = await this.prisma.user.findFirst({
+      where: {
+        AND: [
+          { id: userId },
+          { activated: true }, // Must be an activated account
+        ],
+      },
+    });
+
+    if (!unbanUser) {
+      throw new NotFoundException('Invalid User Id provided');
+    }
+
+    // Get the ghillie from id
+    const ghillie = await this.prisma.ghillie.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!ghillie) {
+      throw new NotFoundException('Ghillie not found');
+    }
+
+    // Make sure the request user is a moderator or owner of the ghillie
+    const ghillieMember = await this.prisma.ghillieMembers.findFirst({
+      where: {
+        AND: [{ userId: ctx.user.id }, { ghillieId: id }],
+      },
+    });
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.GhillieModerator, ghillieMember);
+    if (!isAllowed) {
+      throw new UnauthorizedException(
+        "You're not allowed to moderate users from this ghillie",
+      );
+    }
+
+    await this.prisma.ghillieMembers.update({
+      where: {
+        userId_ghillieId: {
+          userId: userId,
+          ghillieId: id,
+        },
+      },
+      data: {
+        memberStatus: MemberStatus.ACTIVE,
+      },
+    });
+  }
+
+  async addTopics(ctx: RequestContext, id: string, topicNames: string[]) {
+    // Get the ghillie from id
+    const foundGhillie = await this.prisma.ghillie.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!foundGhillie) {
+      throw new NotFoundException('Ghillie not found');
+    }
+
+    // Make sure the request user is a moderator or owner of the ghillie
+    const ghillieMember = await this.prisma.ghillieMembers.findFirst({
+      where: {
+        AND: [{ userId: ctx.user.id }, { ghillieId: id }],
+      },
+    });
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.GhillieManage, ghillieMember);
+    if (!isAllowed) {
+      throw new UnauthorizedException(
+        "You're not allowed to add topics to this ghillie",
+      );
+    }
+
+    const ghillie = await this.prisma.$transaction(async (prisma) => {
+      const topics = await Promise.all(
+        topicNames?.map(async (topicName) => {
+          return await prisma.topic.upsert({
+            where: {
+              name: topicName,
+            },
+            update: {},
+            create: {
+              name: topicName,
+              slug: slugify(topicName, {
+                replacement: '-',
+                lower: true,
+                strict: true,
+                trim: true,
+              }),
+              createdByUserId: ctx.user.id,
+            },
+          });
+        }),
+      );
+
+      return await prisma.ghillie.update({
+        where: { id: id },
+        data: {
+          ...foundGhillie,
+          topics: {
+            connect: topics.map((topic) => ({
+              id: topic.id,
+            })),
+          },
+        },
+        include: {
+          topics: true,
+          _count: {
+            select: {
+              members: true,
+            },
+          },
+          members: {
+            where: {
+              userId: ctx.user.id,
+            },
+          },
+        },
+      });
+    });
+
+    return plainToInstance(GhillieDetailDto, ghillie, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+  }
+
+  async removeTopics(ctx: RequestContext, id: string, topicIds: string[]) {
+    // Get the ghillie from id
+    const foundGhillie = await this.prisma.ghillie.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!foundGhillie) {
+      throw new NotFoundException('Ghillie not found');
+    }
+
+    // Make sure the request user is a moderator or owner of the ghillie
+    const ghillieMember = await this.prisma.ghillieMembers.findFirst({
+      where: {
+        AND: [{ userId: ctx.user.id }, { ghillieId: id }],
+      },
+    });
+    const actor: Actor = ctx.user;
+    const isAllowed = this.ghillieAclService
+      .forActor(actor)
+      .canDoAction(Action.GhillieManage, ghillieMember);
+    if (!isAllowed) {
+      throw new UnauthorizedException(
+        "You're not allowed to add topics to this ghillie",
+      );
+    }
+
+    const ghillie = await this.prisma.ghillie.update({
+      where: { id: id },
+      data: {
+        ...foundGhillie,
+        topics: {
+          deleteMany: {
+            id: {
+              in: topicIds,
+            },
+          },
+        },
+      },
+      include: {
+        topics: true,
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+        members: {
+          where: {
+            userId: ctx.user.id,
+          },
+        },
+      },
+    });
+
+    return plainToInstance(GhillieDetailDto, ghillie, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+  }
+
+  async getGhilliesForCurrentUser(ctx: RequestContext) {
+    // Get all ghillies the user is a member of
+    const ghillies = await this.prisma.ghillie.findMany({
+      where: {
+        status: {
+          equals: GhillieStatus.ACTIVE,
+        },
+        members: {
+          some: {
+            userId: ctx.user.id,
+            memberStatus: MemberStatus.ACTIVE,
+          },
+        },
+      },
+    });
+    return plainToInstance(GhillieDetailDto, ghillies, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+  }
+}

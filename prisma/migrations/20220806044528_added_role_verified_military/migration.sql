@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "UserAuthority" ADD VALUE 'ROLE_VERIFIED_MILITARY';

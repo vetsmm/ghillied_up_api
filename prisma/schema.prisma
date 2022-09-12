@@ -1,0 +1,344 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "interactiveTransactions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CommentReaction {
+  id           String       @id @default(cuid())
+  reactionType ReactionType
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdById  String
+  postComment  PostComment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId    String
+
+  @@unique([createdById, commentId])
+  @@index([reactionType])
+}
+
+model FlagComment {
+  id              String       @id @default(cuid())
+  createdDate     DateTime     @default(now())
+  details         String?
+  postComment     PostComment  @relation(fields: [postCommentId], references: [id], onDelete: Cascade)
+  postCommentId   String
+  category        FlagCategory @default(OTHER)
+  createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUserId String
+
+  @@unique([postCommentId, createdByUserId])
+  @@index([category])
+}
+
+// based on Path Enumeration
+// https://gist.github.com/bokwoon95/4fd34a78e72b2935e78ec0f40e7e49e1
+model PostComment {
+  id              String            @id @default(cuid())
+  content         String
+  status          CommentStatus     @default(ACTIVE)
+  createdDate     DateTime          @default(now())
+  updatedDate     DateTime          @updatedAt
+  edited          Boolean           @default(false)
+  createdBy       User              @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdById     String
+  post            Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId          String
+  commentHeight   Int               @default(0) // The height of the comment in the comment tree
+  childCommentIds String[] // The ids of the child comments. The parent will always be null
+  flags           FlagComment[]
+  commentReaction CommentReaction[]
+
+  @@index([status, commentHeight])
+}
+
+model PostReaction {
+  id           String       @id @default(cuid())
+  reactionType ReactionType
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdById  String
+  post         Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId       String
+
+  @@unique([createdById, postId])
+  @@index([reactionType])
+}
+
+model PostTag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  posts     Post[]
+
+  @@index([name])
+}
+
+model FlagPost {
+  id              String       @id @default(cuid())
+  createdDate     DateTime     @default(now())
+  details         String?
+  post            Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId          String
+  category        FlagCategory @default(OTHER)
+  createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUserId String
+
+  @@unique([postId, createdByUserId])
+  @@index([category])
+}
+
+model Post {
+  id           String         @id @default(cuid())
+  uid          String         @unique
+  title        String
+  content      String
+  status       PostStatus     @default(ACTIVE)
+  ghillie      Ghillie        @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
+  ghillieId    String
+  tags         PostTag[]
+  postedBy     User           @relation(fields: [postedById], references: [id], onDelete: Cascade)
+  postedById   String
+  postComments PostComment[]
+  flagPosts    FlagPost[]
+  createdDate  DateTime       @default(now())
+  updatedDate  DateTime       @updatedAt
+  edited       Boolean        @default(false)
+  postReaction PostReaction[]
+
+  @@index([title, status, uid])
+}
+
+model FlagGhillie {
+  id              String       @id @default(cuid())
+  createdDate     DateTime     @default(now())
+  details         String?
+  ghillie         Ghillie      @relation(fields: [ghillieId], references: [id])
+  ghillieId       String
+  category        FlagCategory @default(OTHER)
+  createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUserId String
+
+  @@unique([ghillieId, createdByUserId])
+  @@index([category])
+}
+
+model GhillieMembers {
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  ghillie      Ghillie      @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
+  ghillieId    String
+  joinDate     DateTime     @default(now())
+  memberStatus MemberStatus @default(ACTIVE)
+  role         GhillieRole  @default(MEMBER)
+
+  @@id([userId, ghillieId])
+  @@index([memberStatus, role])
+}
+
+model Topic {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  slug            String    @unique
+  createdDate     DateTime  @default(now())
+  updatedDate     DateTime  @updatedAt
+  createdBy       User      @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUserId String
+  ghillies        Ghillie[]
+
+  @@index([name, slug])
+}
+
+model Ghillie {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  slug            String           @unique
+  about           String?
+  status          GhillieStatus    @default(ACTIVE)
+  createdDate     DateTime         @default(now())
+  updatedDate     DateTime         @updatedAt
+  createdBy       User             @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUserId String
+  readOnly        Boolean          @default(false)
+  imageUrl        String?
+  members         GhillieMembers[]
+  topics          Topic[]
+  posts           Post[]
+  flagGhillies    FlagGhillie[]
+
+  @@index([name, slug, status, readOnly])
+}
+
+model User {
+  id                   String            @id @default(cuid())
+  email                String            @unique
+  username             String            @unique
+  slug                 String            @unique
+  firstName            String?
+  lastName             String?
+  branch               ServiceBranch?    @default(UNKNOWN)
+  serviceStatus        ServiceStatus?    @default(UNKNOWN)
+  isVerifiedMilitary   Boolean           @default(false)
+  serviceEntryDate     DateTime?
+  serviceExitDate      DateTime?
+  activated            Boolean           @default(false)
+  activationCode       Int?              @unique
+  activationCodeSentAt DateTime?
+  resetKey             Int?              @unique
+  resetDate            DateTime?
+  lastLoginAt          DateTime?
+  imageUrl             String?
+  password             String
+  authorities          UserAuthority[]   @default([ROLE_USER])
+  createdDate          DateTime          @default(now())
+  updatedDate          DateTime          @updatedAt
+  joinedGhilliess      GhillieMembers[]
+  commentReactions     CommentReaction[]
+  flagComments         FlagComment[]
+  postComments         PostComment[]
+  postReactions        PostReaction[]
+  flagPosts            FlagPost[]
+  posts                Post[]
+  flagGhillies         FlagGhillie[]
+  topics               Topic[]
+  ghillies             Ghillie[]
+  notifications        Notification[]    @relation("notifications")
+  fromNotifications    Notification[]    @relation("fromNotifications")
+
+  @@index([email, username, slug])
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  type        NotificationType
+  message     String?
+  read        Boolean          @default(false)
+  trash       Boolean          @default(false)
+  createdDate DateTime         @default(now())
+  updatedDate DateTime         @updatedAt
+  fromUser    User?            @relation("fromNotifications", fields: [fromUserId], references: [id], onDelete: Cascade)
+  fromUserId  String?
+  toUser      User             @relation("notifications", fields: [toUserId], references: [id], onDelete: Cascade)
+  toUserId    String
+  sourceId    String
+
+  @@index([createdDate, type, read, trash])
+}
+
+enum UserAuthority {
+  ROLE_USER
+  ROLE_ADMIN
+  ROLE_MODERATOR
+  ROLE_VERIFIED_MILITARY
+}
+
+enum ServiceStatus {
+  VETERAN
+  ACTIVE_DUTY
+  RESERVE
+  UNKNOWN
+  NATIONAL_GUARD
+  CIVILIAN
+}
+
+enum ServiceBranch {
+  ARMY
+  ARMY_NATIONAL_GUARD
+  AIR_FORCE
+  AIR_NATIONAL_GUARD
+  MARINES
+  NAVY
+  SPACE_FORCE
+  UNKNOWN
+  NO_SERVICE
+}
+
+enum RankingAuthority {
+  ENLISTED
+  WARRANT_OFFICER
+  COMMISSIONED_OFFICER
+}
+
+enum MilitaryGrade {
+  E1
+  E2
+  E3
+  E4
+  E5
+  E6
+  E7
+  E8
+  E9
+  SENIOR_ENLISTED_ADVISOR
+  W1
+  W2
+  W3
+  W4
+  W5
+  O1
+  O2
+  O3
+  O4
+  O5
+  O6
+  O7
+  O8
+  O9
+  O10
+  SPECIAL
+}
+
+enum GhillieStatus {
+  ACTIVE
+  DISABLED
+  ARCHIVED
+}
+
+enum CommentStatus {
+  ACTIVE
+  ARCHIVED
+  REMOVED
+}
+
+enum PostStatus {
+  ACTIVE
+  HIDDEN
+  REMOVED
+  ARCHIVED
+}
+
+enum FlagCategory {
+  HARRASSMENT
+  RACISM
+  OPSEC
+  SPAM
+  OTHER
+}
+
+enum MemberStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum GhillieRole {
+  MEMBER
+  MODERATOR
+  OWNER
+}
+
+enum ReactionType {
+  THUMBS_UP
+  LAUGH
+  SMART
+  CURIOUS
+  ANGRY
+}
+
+enum NotificationType {
+  COMMENT
+  REPLY
+  REACTION
+}

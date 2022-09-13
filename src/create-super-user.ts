@@ -35,8 +35,16 @@ async function bootstrap() {
 
   const options = program.opts();
 
-  await prisma.user.create({
-    data: {
+  // If user exists, activate them and give them all authorities, if not, create them.
+  const user = await prisma.user.upsert({
+    where: {
+      username: options.username,
+    },
+    update: {
+      activated: true,
+      authorities: [UserAuthority.ROLE_ADMIN, UserAuthority.ROLE_USER, UserAuthority.ROLE_MODERATOR],
+    },
+    create: {
       username: options.username,
       password: await hash(options.password, 10),
       email: options.email,
@@ -50,10 +58,10 @@ async function bootstrap() {
       }),
       authorities: [UserAuthority.ROLE_ADMIN, UserAuthority.ROLE_USER, UserAuthority.ROLE_MODERATOR],
       activated: true,
-    },
-  });
+    }
+  })
 
-  console.log("Created Super User: ", options.username);
+  console.log("Created Super User: ", user.username);
 
   await app.close();
 }

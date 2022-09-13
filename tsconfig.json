@@ -1,6 +1,8 @@
 {
+  "compileOnSave": false,
   "compilerOptions": {
     "module": "commonjs",
+    "moduleResolution": "node",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -16,6 +18,10 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
-  }
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@ghillied-up/shared": ["./shared/index.ts"]
+    }
+  },
+  "typeRoots" : ["./src/types", "./node_modules/@types"]
 }

@@ -3,23 +3,33 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MailerOptions, MailerOptionsFactory } from '@vetsmm/mailer';
 import { HandlebarsAdapter } from '@vetsmm/mailer/dist/adapters/handlebars.adapter';
+import {defaultProvider} from "@aws-sdk/credential-provider-node";
+import * as aws from '@aws-sdk/client-ses';
 
 @Injectable()
 export class MailConfigService implements MailerOptionsFactory {
   constructor(private configService: ConfigService) {}
 
   createMailerOptions(): MailerOptions {
+    const ses = new aws.SES({
+      apiVersion: "2010-12-01",
+      region: "us-east-1",
+      credentialDefaultProvider: defaultProvider,
+    });
+
     return {
+      // defaults for ses
       transport: {
-        host: this.configService.get('mail.host'),
-        port: this.configService.get('mail.port'),
-        ignoreTLS: this.configService.get('mail.ignoreTLS'),
-        secure: this.configService.get('mail.secure'),
-        requireTLS: this.configService.get('mail.requireTLS'),
-        auth: {
-          user: this.configService.get('mail.user'),
-          pass: this.configService.get('mail.password'),
-        },
+        SES: { ses, aws },
+        // host: this.configService.get('mail.host'),
+        // port: this.configService.get('mail.port'),
+        // ignoreTLS: this.configService.get('mail.ignoreTLS'),
+        // secure: this.configService.get('mail.secure'),
+        // requireTLS: this.configService.get('mail.requireTLS'),
+        // auth: {
+        //   user: this.configService.get('mail.user'),
+        //   pass: this.configService.get('mail.password'),
+        // },
       },
       defaults: {
         from: `"${this.configService.get(

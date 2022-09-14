@@ -25,6 +25,8 @@
     "csu:prod": "node dist/src/create-super-user.js"
   },
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.170.0",
+    "@aws-sdk/credential-provider-node": "^3.170.0",
     "@hapi/joi": "^17.1.1",
     "@nestjs/common": "9.0.7",
     "@nestjs/config": "^2.2.0",

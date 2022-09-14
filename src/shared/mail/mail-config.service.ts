@@ -28,7 +28,7 @@ export class MailConfigService implements MailerOptionsFactory {
       },
       template: {
         // Get the templates direction from the current directory
-        dir: path.join(__dirname, 'assets', 'mail-templates'),
+        dir: path.join(process.cwd(), 'src', 'assets', 'mail-templates'),
         adapter: new HandlebarsAdapter(),
         options: {
           strict: true,

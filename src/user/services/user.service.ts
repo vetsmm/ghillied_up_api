@@ -331,9 +331,11 @@ export class UserService {
             },
           });
         }
+        this.logger.log(ctx, `User is not activated`);
         throw new BadRequestException('User is not activated');
       })
-      .catch(() => {
+      .catch((err) => {
+        this.logger.warn(ctx, err);
         throw new NotFoundException('User not found');
       });
   }
@@ -374,12 +376,15 @@ export class UserService {
                 resetDate: null,
               },
             });
+            this.logger.log(ctx, `Reset key is expired`);
             throw new BadRequestException('Reset key is expired');
           }
         }
+        this.logger.log(ctx, `Reset key is invalid`);
         throw new BadRequestException('Reset key is invalid');
       })
-      .catch(() => {
+      .catch((err) => {
+        this.logger.log(ctx, err);
         throw new NotFoundException('Invalid Email or Reset Key Provided');
       });
   }
@@ -395,6 +400,7 @@ export class UserService {
         return !!user;
       })
       .catch(() => {
+        this.logger.log(ctx, `Error finding user`);
         return false;
       });
   }
@@ -410,6 +416,7 @@ export class UserService {
         });
       })
       .catch(() => {
+        this.logger.log(ctx, `Error finding user with email: ${email}`);
         throw new NotFoundException('User not found');
       });
   }
@@ -427,6 +434,7 @@ export class UserService {
         });
       })
       .catch(() => {
+        this.logger.log(ctx, `Error finding user with username: ${username}`);
         throw new NotFoundException('User not found');
       });
   }
@@ -440,6 +448,7 @@ export class UserService {
         return !!user;
       })
       .catch(() => {
+        this.logger.log(ctx, `Error finding user with email: ${email}`);
         return false;
       });
   }
@@ -487,12 +496,15 @@ export class UserService {
                 resetDate: null,
               },
             });
+            this.logger.log(ctx, `Reset key is expired`);
             throw new BadRequestException('Reset key is expired');
           }
         }
+        this.logger.log(ctx, `Reset key is invalid`);
         throw new BadRequestException('Reset key is invalid');
       })
-      .catch(() => {
+      .catch((err) => {
+        this.logger.log(ctx, err);
         throw new BadRequestException('Invalid Email or Reset Key Provided');
       });
   }

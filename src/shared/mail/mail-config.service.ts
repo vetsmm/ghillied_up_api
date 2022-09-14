@@ -37,3 +37,4 @@ export class MailConfigService implements MailerOptionsFactory {
     } as MailerOptions;
   }
 }
+

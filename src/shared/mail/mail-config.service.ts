@@ -11,6 +11,13 @@ export class MailConfigService implements MailerOptionsFactory {
   constructor(private configService: ConfigService) {}
 
   createMailerOptions(): MailerOptions {
+    if (this.configService.get("env") === "production") {
+      return this.createProductionMailerOptions();
+    }
+    return this.createDevelopmentMailerOptions();
+  }
+
+  createProductionMailerOptions(): MailerOptions {
     const ses = new aws.SES({
       apiVersion: "2010-12-01",
       region: "us-east-1",
@@ -18,22 +25,41 @@ export class MailConfigService implements MailerOptionsFactory {
     });
 
     return {
-      // defaults for ses
       transport: {
         SES: { ses, aws },
-        // host: this.configService.get('mail.host'),
-        // port: this.configService.get('mail.port'),
-        // ignoreTLS: this.configService.get('mail.ignoreTLS'),
-        // secure: this.configService.get('mail.secure'),
-        // requireTLS: this.configService.get('mail.requireTLS'),
-        // auth: {
-        //   user: this.configService.get('mail.user'),
-        //   pass: this.configService.get('mail.password'),
-        // },
       },
       defaults: {
         from: `"${this.configService.get(
-          'mail.defaultName',
+            'mail.defaultName',
+        )}" <${this.configService.get('mail.defaultEmail')}>`,
+      },
+      template: {
+        // Get the templates direction from the current directory
+        dir: path.join(process.cwd(), 'src', 'assets', 'mail-templates'),
+        adapter: new HandlebarsAdapter(),
+        options: {
+          strict: true,
+        },
+      },
+    } as MailerOptions;
+  }
+
+  createDevelopmentMailerOptions(): MailerOptions {
+    return {
+      transport: {
+        host: this.configService.get('mail.host'),
+        port: this.configService.get('mail.port'),
+        ignoreTLS: this.configService.get('mail.ignoreTLS'),
+        secure: this.configService.get('mail.secure'),
+        requireTLS: this.configService.get('mail.requireTLS'),
+        auth: {
+          user: this.configService.get('mail.user'),
+          pass: this.configService.get('mail.password'),
+        },
+      },
+      defaults: {
+        from: `"${this.configService.get(
+            'mail.defaultName',
         )}" <${this.configService.get('mail.defaultEmail')}>`,
       },
       template: {

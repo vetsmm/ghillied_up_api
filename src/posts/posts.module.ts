@@ -13,6 +13,7 @@ import { PostCommentController } from './controllers/post-comment.controller';
 import { PostCommentAclService } from './services/post-comment-acl.service';
 import { CommentReactionController } from './controllers/comment-reaction.controller';
 import { PostCommentReactionService } from './services/post-comment-reaction.service';
+import {QueueService} from "../queue/services/queue.service";
 
 @Module({
   providers: [
@@ -26,6 +27,7 @@ import { PostCommentReactionService } from './services/post-comment-reaction.ser
     PostCommentAclService,
     PostCommentService,
     PostCommentReactionService,
+    QueueService,
   ],
   controllers: [
     PostController,

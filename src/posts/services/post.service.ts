@@ -27,6 +27,8 @@ import { randomUUID } from 'crypto';
 import { plainToInstance } from 'class-transformer';
 import { UpdatePostInputDto } from '../dtos/update-post-input.dto';
 import { PostListingDto } from '../dtos/post-listing.dto';
+import {QueueService} from "../../queue/services/queue.service";
+import {ActivityType} from "../../shared/queue/activity-type";
 
 @Injectable()
 export class PostService {
@@ -34,6 +36,7 @@ export class PostService {
     private readonly prisma: PrismaService,
     private readonly logger: AppLogger,
     private readonly postAclService: PostAclService,
+    private readonly queueService: QueueService,
   ) {
     this.logger.setContext(PostService.name);
   }
@@ -121,6 +124,12 @@ export class PostService {
         },
       });
     });
+
+    this.queueService.publishActivity(
+        ctx,
+        ActivityType.POST,
+        post
+    )
 
     const dto = plainToInstance(PostDetailDto, post, {
       excludeExtraneousValues: true,

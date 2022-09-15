@@ -16,6 +16,7 @@ import {
   SharedModule,
 } from '../shared';
 import {QueueModule} from "../queue/queue.module";
+import {SettingsModule} from "../settings/settings.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import {QueueModule} from "../queue/queue.module";
     PostFeedModule,
     FlagsModule,
     QueueModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [

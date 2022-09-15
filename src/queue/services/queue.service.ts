@@ -3,9 +3,11 @@ import {AppLogger, RequestContext} from "../../shared";
 import {SnsService} from "@vetsmm/nestjs-sns";
 import * as snsTypes from "@vetsmm/nestjs-sns/dist/sns.types";
 import {ActivityType} from "../../shared/queue/activity-type";
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 import {ActivityMessageDto} from "../../shared/queue/activity-message.dto";
 import {ConfigService} from "@nestjs/config";
+import {PrismaService} from "../../prisma/prisma.service";
+import {DevicePushToken} from "@prisma/client";
 
 
 @Injectable()
@@ -13,6 +15,7 @@ export class QueueService {
     constructor(
         private readonly logger: AppLogger,
         private readonly snsService: SnsService,
+        private readonly prismaService: PrismaService,
         private readonly configService: ConfigService,
     ) {
         this.logger.setContext(QueueService.name);
@@ -28,6 +31,7 @@ export class QueueService {
         const message = {
             activityType: activityType,
             message: body,
+            devicePushTokens: await this.getPushTokensForUser(ctx),
         } as ActivityMessageDto<T>;
 
         const snsResponse: snsTypes.PublishResponse = await this.snsService.publish({
@@ -39,5 +43,14 @@ export class QueueService {
 
         this.logger.log(ctx,`${this.publishActivity.name} snsResponse: ${JSON.stringify(snsResponse)}`);
         return snsResponse;
+    }
+
+    private async getPushTokensForUser(ctx: RequestContext): Promise<DevicePushToken[]> {
+        this.logger.log(ctx,`${this.getPushTokensForUser.name} was called`);
+        return await this.prismaService.devicePushToken.findMany({
+            where: {
+                userId: ctx.user.id,
+            }
+        });
     }
 }

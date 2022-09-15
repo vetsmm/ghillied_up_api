@@ -5,6 +5,12 @@ export default (): any => ({
     frontendDomain: process.env.FRONTEND_DOMAIN,
     backendDomain: process.env.BACKEND_DOMAIN,
   },
+  aws: {
+    region: process.env.AWS_REGION,
+    sns: {
+        activityArn: process.env.AWS_SNS_ACTIVITY_ARN,
+    }
+  },
   sentryDsn:
     process.env.SENTRY_DSN ??
     'https://324fb0002f5b4cde8686245e89346503@o228030.ingest.sentry.io/6615762',

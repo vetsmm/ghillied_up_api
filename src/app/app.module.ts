@@ -15,6 +15,7 @@ import {
   LoggingInterceptor,
   SharedModule,
 } from '../shared';
+import {QueueModule} from "../queue/queue.module";
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import {
     PostsModule,
     PostFeedModule,
     FlagsModule,
+    QueueModule,
   ],
   controllers: [AppController],
   providers: [

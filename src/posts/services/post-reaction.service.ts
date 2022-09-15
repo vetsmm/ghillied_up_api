@@ -11,9 +11,11 @@ import {
   PostDetailDto,
 } from '../../shared';
 import { PostAclService } from './post-acl.service';
-import { MemberStatus } from '@prisma/client';
+import { MemberStatus, PostReaction } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { PostService } from './post.service';
+import {QueueService} from "../../queue/services/queue.service";
+import {ActivityType} from "../../shared/queue/activity-type";
 
 @Injectable()
 export class PostReactionService {
@@ -22,6 +24,7 @@ export class PostReactionService {
     private readonly logger: AppLogger,
     private readonly postAclService: PostAclService,
     private readonly postService: PostService,
+    private readonly queueService: QueueService,
   ) {
     this.logger.setContext(PostReactionService.name);
   }
@@ -60,7 +63,7 @@ export class PostReactionService {
 
     // Update the post with the new reaction if exists, if not create, if reaction is null, then delete
     if (reactionInput.reactionType) {
-      await this.prisma.postReaction.upsert({
+      const reaction = await this.prisma.postReaction.upsert({
         where: {
           createdById_postId: {
             postId: reactionInput.postId,
@@ -76,6 +79,11 @@ export class PostReactionService {
           reactionType: reactionInput.reactionType,
         },
       });
+      this.queueService.publishActivity<PostReaction>(
+          ctx,
+          ActivityType.POST_REACTION,
+          reaction
+      );
     } else {
       // check if the user has reacted to the post
       const reaction = await this.prisma.postReaction.findFirst({

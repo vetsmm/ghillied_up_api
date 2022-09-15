@@ -206,6 +206,7 @@ model User {
   ghillies             Ghillie[]
   notifications        Notification[]    @relation("notifications")
   fromNotifications    Notification[]    @relation("fromNotifications")
+  pushTokens           DevicePushToken[]
 
   @@index([email, username, slug])
 }
@@ -225,6 +226,22 @@ model Notification {
   sourceId    String
 
   @@index([createdDate, type, read, trash])
+}
+
+model DevicePushToken {
+  id            String   @id @default(cuid())
+  token         String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  createdDate   DateTime @default(now())
+  platform      PhonePlatform
+
+  @@index([token])
+}
+
+enum PhonePlatform {
+  ANDROID
+  IOS
 }
 
 enum UserAuthority {

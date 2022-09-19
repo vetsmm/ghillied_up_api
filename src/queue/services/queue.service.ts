@@ -25,6 +25,7 @@ export class QueueService {
         ctx: RequestContext,
         activityType: ActivityType,
         body: T,
+        deduplicationId?: string,
     ): Promise<snsTypes.PublishResponse> {
         this.logger.log(ctx,`${this.publishActivity.name} was called`);
 
@@ -35,7 +36,7 @@ export class QueueService {
         } as ActivityMessageDto<T>;
 
         const snsResponse: snsTypes.PublishResponse = await this.snsService.publish({
-            MessageGroupId: `${activityType}-${uuidv4()}`,
+            MessageGroupId: deduplicationId ? deduplicationId : `${activityType}-${uuidv4()}`,
             MessageDeduplicationId: uuidv4(),
             Message: JSON.stringify(message),
             TopicArn: this.configService.get<string>("aws.sns.activityArn"),

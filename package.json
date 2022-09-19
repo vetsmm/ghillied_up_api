@@ -20,7 +20,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:migrate:deploy": "npx prisma migrate deploy",
-    "deploy": "npm install node-gyp -g && npm run prisma:migrate:deploy && npm run start:prod",
+    "deploy": "sudo npm install node-gyp -g && npm run prisma:migrate:deploy && npm run start:prod",
     "deployX": "npm ci && npm run prisma:migrate:deploy && npm run build && npm run start:prod",
     "csu:dev": "npx ts-node -r tsconfig-paths/register src/create-super-user.ts ",
     "csu:prod": "node dist/src/create-super-user.js"

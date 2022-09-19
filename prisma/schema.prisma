@@ -225,6 +225,7 @@ model Notification {
   toUserId    String
   sourceId    String
 
+  @@unique([type, sourceId, fromUserId]) // To ensure we don't have duplicate notifications of the same type by the same user
   @@index([createdDate, type, read, trash])
 }
 

@@ -16,7 +16,7 @@ import {
 } from '@nestjs/common';
 import {
     AppLogger,
-    BaseApiErrorResponse, PostReactionSubsetDto,
+    BaseApiErrorResponse, BaseApiResponse, PostReactionSubsetDto,
     ReqContext,
     RequestContext,
     SwaggerBaseApiResponse,
@@ -114,9 +114,12 @@ export class NotificationController {
     @Authorities(UserAuthority.ROLE_USER)
     async getUserNotificationCount(
         @ReqContext() ctx: RequestContext,
-    ): Promise<UnreadNotificationsDto> {
+    ): Promise<BaseApiResponse<UnreadNotificationsDto>> {
         this.logger.log(ctx, `${this.getUserNotificationCount.name} was called`);
 
-        return await this.notificationService.getUserNotificationCount(ctx);
+        return {
+            data: await this.notificationService.getUserNotificationCount(ctx),
+            meta: {}
+        };
     }
 }

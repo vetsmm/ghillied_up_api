@@ -7,6 +7,7 @@ export const configModuleOptions: ConfigModuleOptions = {
     isGlobal: true,
     load: [configuration],
     validationSchema: Joi.object({
+        DATABASE_URL: Joi.string().required(),
         JWT_PUBLIC_KEY_BASE64: Joi.string().required(),
         JWT_PRIVATE_KEY_BASE64: Joi.string().required(),
         JWT_ACCESS_TOKEN_EXP_IN_SEC: Joi.number().required(),

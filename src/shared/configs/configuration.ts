@@ -1,5 +1,6 @@
 export default (): any => ({
   env: process.env.NODE_ENV || 'development',
+  databaseUrl: process.env.DATABASE_URL,
   app: {
     name: 'ghillied-up',
     frontendDomain: process.env.FRONTEND_DOMAIN,

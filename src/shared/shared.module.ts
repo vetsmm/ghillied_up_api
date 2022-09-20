@@ -5,6 +5,8 @@ import { AppLoggerModule } from './logger/logger.module';
 import { MailConfigService, MailModule } from './mail';
 import { MailerModule } from '@vetsmm/mailer';
 import {SnsModule} from "@vetsmm/nestjs-sns";
+import {NestPgpromiseModule} from "nestjs-pgpromise";
+import {PgPromiseConfigService} from "./database/pgpromise-config.service";
 
 @Module({
   imports: [
@@ -13,6 +15,9 @@ import {SnsModule} from "@vetsmm/nestjs-sns";
     MailModule,
     MailerModule.forRootAsync({
       useClass: MailConfigService,
+    }),
+    NestPgpromiseModule.registerAsync({
+      useClass: PgPromiseConfigService
     }),
     SnsModule.registerAsync({
       imports: [ConfigModule],

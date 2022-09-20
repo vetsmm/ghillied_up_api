@@ -356,7 +356,8 @@ enum ReactionType {
 }
 
 enum NotificationType {
-  COMMENT
-  REPLY
-  REACTION
+  POST_COMMENT
+  POST
+  POST_REACTION
+  POST_COMMENT_REACTION
 }

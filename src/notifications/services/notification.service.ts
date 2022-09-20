@@ -4,6 +4,7 @@ import {NotificationInputDto} from "../dtos/notification-input.dto";
 import {NotificationDto} from "../dtos/notification.dto";
 import {plainToInstance} from "class-transformer";
 import {PrismaService} from "../../prisma/prisma.service";
+import {UnreadNotificationsDto} from "../dtos/unread-notifications.dto";
 
 @Injectable()
 export class NotificationService {
@@ -66,5 +67,23 @@ export class NotificationService {
                 updatedDate: new Date()
             }
         });
+    }
+
+    async getUserNotificationCount(ctx: RequestContext): Promise<UnreadNotificationsDto> {
+        this.logger.log(ctx, `${this.getUserNotificationCount.name} was called`);
+
+        const count = await this.prisma.notification.count({
+            where: {
+                AND: [
+                    {toUserId: ctx.user.id},
+                    {read: false},
+                    {trash: false},
+                ]
+            }
+        });
+
+        return {
+            unreadCount: count
+        } as UnreadNotificationsDto;
     }
 }

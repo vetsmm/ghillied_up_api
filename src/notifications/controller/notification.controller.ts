@@ -7,7 +7,7 @@ import {
 import {
     Body,
     ClassSerializerInterceptor,
-    Controller,
+    Controller, Get,
     HttpCode,
     HttpStatus,
     Post,
@@ -16,7 +16,7 @@ import {
 } from '@nestjs/common';
 import {
     AppLogger,
-    BaseApiErrorResponse,
+    BaseApiErrorResponse, PostReactionSubsetDto,
     ReqContext,
     RequestContext,
     SwaggerBaseApiResponse,
@@ -29,6 +29,7 @@ import {NotificationDto} from "../dtos/notification.dto";
 import {NotificationInputDto} from "../dtos/notification-input.dto";
 import {NotificationService} from "../services/notification.service";
 import {ReadNotificationsInputDto} from "../dtos/read-notifications-input.dto";
+import {UnreadNotificationsDto} from "../dtos/unread-notifications.dto";
 
 @ApiTags('notifications')
 @Controller('notifications')
@@ -93,5 +94,29 @@ export class NotificationController {
         this.logger.log(ctx, `${this.markNotificationAsRead.name} was called`);
 
         await this.notificationService.markNotificationAsRead(ctx, body.notificationIds);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Get('unread-count')
+    @ApiOperation({
+        summary: 'Get the total count of unread notifications',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: SwaggerBaseApiResponse(UnreadNotificationsDto),
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_USER)
+    async getUserNotificationCount(
+        @ReqContext() ctx: RequestContext,
+    ): Promise<UnreadNotificationsDto> {
+        this.logger.log(ctx, `${this.getUserNotificationCount.name} was called`);
+
+        return await this.notificationService.getUserNotificationCount(ctx);
     }
 }

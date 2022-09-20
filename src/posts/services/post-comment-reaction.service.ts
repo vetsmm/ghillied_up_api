@@ -9,7 +9,7 @@ import {
     CommentReactionDetailsDto,
     CommentReactionSubsetDto,
 } from '../../shared';
-import {MemberStatus, Post} from '@prisma/client';
+import {CommentReaction, MemberStatus, Post} from '@prisma/client';
 import {plainToInstance} from 'class-transformer';
 import {QueueService} from "../../queue/services/queue.service";
 import {ActivityType} from "../../shared/queue/activity-type";
@@ -65,7 +65,7 @@ export class PostCommentReactionService {
 
         // Update the post with the new reaction if exists, if not create, if reaction is null, then delete
         if (commentReactionDto.reactionType) {
-            await this.prisma.commentReaction.upsert({
+            const cr = await this.prisma.commentReaction.upsert({
                 where: {
                     createdById_commentId: {
                         commentId: commentReactionDto.commentId,
@@ -81,10 +81,10 @@ export class PostCommentReactionService {
                     reactionType: commentReactionDto.reactionType,
                 },
             });
-            this.queueService.publishActivity<Post>(
+            this.queueService.publishActivity<CommentReaction>(
                 ctx,
                 ActivityType.POST_COMMENT_REACTION,
-                comment.post
+                cr
             )
         } else {
             // check if the user has reacted to the comment

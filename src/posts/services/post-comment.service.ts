@@ -12,7 +12,7 @@ import {
     UpdateCommentDto,
     CommentIdsInputDto,
 } from '../../shared';
-import {CommentStatus, MemberStatus} from '@prisma/client';
+import {CommentStatus, MemberStatus, PostComment} from '@prisma/client';
 import {plainToInstance} from 'class-transformer';
 import {PostCommentAclService} from './post-comment-acl.service';
 import {QueueService} from "../../queue/services/queue.service";
@@ -73,7 +73,7 @@ export class PostCommentService {
             comment = await this.createParentComment(ctx, createPostCommentInput);
         }
 
-        this.queueService.publishActivity(
+        this.queueService.publishActivity<PostComment>(
             ctx,
             ActivityType.POST_COMMENT,
             comment

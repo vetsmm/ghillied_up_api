@@ -1,0 +1,5 @@
+export const HYDRATE_POST_COMMENTS = 'SELECT pc.id as "sourceId",pc.content as "commentContent",u.username,g.name as "ghillieName",g."imageUrl" as "ghillieImageUrl",p.id as "postId" FROM "PostComment" pc JOIN "User" u ON pc."createdById" = u.id JOIN "Post" p ON pc."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId"WHERE pc.id IN ($1:csv)';
+
+export const HYDRATE_POST_COMMENT_REACTIONS = 'SELECT cr.id as "sourceId", cr."reactionType", u.username, g.name as "ghillieName", g."imageUrl" as "ghillieImageUrl", p.id as "postId" FROM "CommentReaction" cr JOIN "User" u ON cr."createdById" = u.id JOIN "PostComment" pc ON cr."commentId" = pc.id JOIN "Post" p ON pc."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId" WHERE cr.id IN ($1:csv)';
+
+export const HYDRATE_POST_REACTIONS = 'SELECT pr.id as "sourceId", pr."reactionType", u.username, g.name as "ghillieName", g."imageUrl" as "ghillieImageUrl", p.id as "postId" FROM "PostReaction" pr JOIN "User" u ON pr."createdById" = u.id JOIN "Post" p ON pr."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId" WHERE pr.id IN ($1:csv)';

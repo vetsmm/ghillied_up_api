@@ -26,13 +26,16 @@ export class QueueService {
         activityType: ActivityType,
         body: T,
         deduplicationId?: string,
+        toUserId?: string,
     ): Promise<snsTypes.PublishResponse> {
         this.logger.log(ctx,`${this.publishActivity.name} was called`);
 
         const message = {
             activityType: activityType,
             message: body,
-            devicePushTokens: await this.getPushTokensForUser(ctx),
+            devicePushTokens: await this.getPushTokensForUser(ctx, toUserId),
+            requestId: ctx.requestID,
+            userId: ctx.user.id,
         } as ActivityMessageDto<T>;
 
         const snsResponse: snsTypes.PublishResponse = await this.snsService.publish({
@@ -46,11 +49,16 @@ export class QueueService {
         return snsResponse;
     }
 
-    private async getPushTokensForUser(ctx: RequestContext): Promise<DevicePushToken[]> {
+    private async getPushTokensForUser(ctx: RequestContext, toUserId?: string): Promise<DevicePushToken[]> {
         this.logger.log(ctx,`${this.getPushTokensForUser.name} was called`);
+
+        if (!toUserId) {
+            this.logger.log(ctx,`${this.getPushTokensForUser.name} toUserId is null, not sending push notification`);
+            return [];
+        }
         return await this.prismaService.devicePushToken.findMany({
             where: {
-                userId: ctx.user.id,
+                userId: toUserId,
             }
         });
     }

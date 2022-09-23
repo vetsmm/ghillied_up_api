@@ -116,7 +116,7 @@ export class UserService {
       throw new ForbiddenException('User is not activated');
 
     const match = await compare(pass, user.password);
-    if (!match) throw new UnauthorizedException();
+    if (!match) throw new UnauthorizedException("Invalid username or password");
 
     return plainToInstance(UserOutput, user, {
       excludeExtraneousValues: true,
@@ -301,7 +301,7 @@ export class UserService {
     });
   }
 
-  updateLastLogin(ctx: RequestContext, id: string) {
+  async updateLastLogin(ctx: RequestContext, id: string): Promise<User> {
     this.logger.log(ctx, `${this.updateLastLogin.name} was called`);
 
     return this.prisma.user.update({

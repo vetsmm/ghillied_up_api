@@ -11,7 +11,11 @@ export class PgPromiseConfigService implements NestPgpromiseOptionsFactory {
     createNestPgpromiseOptions(): NestPgpromiseOptions {
         const DATABASE_URL = this.configService.get("databaseUrl");
         return {
-            connection: DATABASE_URL
+            connection: {
+                connectionString: DATABASE_URL,
+                connectionTimeoutMillis: 5000,
+                idleTimeoutMillis: 10000,
+            }
         }
     }
 }

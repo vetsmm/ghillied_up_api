@@ -78,11 +78,20 @@ export class PostReactionService {
         update: {
           reactionType: reactionInput.reactionType,
         },
+        include: {
+          post: {
+            include: {
+              postedBy: true,
+            }
+          }
+        }
       });
       this.queueService.publishActivity<PostReaction>(
           ctx,
           ActivityType.POST_REACTION,
-          reaction
+          reaction,
+          undefined,
+          reaction.post.postedBy.id
       );
     } else {
       // check if the user has reacted to the post

@@ -56,7 +56,7 @@ export class AuthService {
     return user;
   }
 
-  login(ctx: RequestContext): AuthTokenOutput {
+  async login(ctx: RequestContext): Promise<AuthTokenOutput> {
     this.logger.log(ctx, `${this.login.name} was called`);
 
     return this.getAuthToken(ctx, ctx.user);
@@ -114,10 +114,10 @@ export class AuthService {
     return this.getAuthToken(ctx, user);
   }
 
-  getAuthToken(
+  async getAuthToken(
     ctx: RequestContext,
     user: UserAccessTokenClaims | UserOutput,
-  ): AuthTokenOutput {
+  ): Promise<AuthTokenOutput> {
     this.logger.log(ctx, `${this.getAuthToken.name} was called`);
 
     const subject = { sub: user.id };

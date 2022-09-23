@@ -5,4 +5,6 @@ export interface ActivityMessageDto<T> {
     activityType: ActivityType;
     message: T;
     devicePushTokens?: DevicePushToken[];
+    requestId?: string;
+    userId?: string;
 }

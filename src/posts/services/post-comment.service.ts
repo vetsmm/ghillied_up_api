@@ -73,16 +73,33 @@ export class PostCommentService {
             comment = await this.createParentComment(ctx, createPostCommentInput);
         }
 
+        // Send notification to post owner
+        const postOwnerId = await this.getPostOwnerId(ctx, createPostCommentInput.postId);
         this.queueService.publishActivity<PostComment>(
             ctx,
             ActivityType.POST_COMMENT,
-            comment
+            comment,
+            undefined,
+            postOwnerId
         );
 
         return plainToInstance(CommentDetailDto, comment, {
             excludeExtraneousValues: true,
             enableImplicitConversion: true,
         });
+    }
+
+    async getPostOwnerId(ctx: RequestContext, postId: string): Promise<string> {
+        const post = await this.prisma.post.findFirst({
+            where: {
+                id: postId,
+            },
+            include: {
+                postedBy: true,
+            }
+        });
+
+        return post.postedBy.id;
     }
 
     async getTopLevelPostComments(
@@ -283,6 +300,11 @@ export class PostCommentService {
                         createdById: ctx.user.id,
                     },
                 },
+                post: {
+                    include: {
+                        postedBy: true,
+                    }
+                }
             },
         });
     }
@@ -325,6 +347,12 @@ export class PostCommentService {
                             createdById: ctx.user.id,
                         },
                     },
+                    post: {
+                        include: {
+                            postedBy: true,
+                        }
+                    },
+
                 },
             });
 

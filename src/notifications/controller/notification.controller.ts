@@ -51,7 +51,7 @@ export class NotificationController {
     })
     @ApiResponse({
         status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse([NotificationDto]),
+        type: SwaggerBaseApiResponse([]),
     })
     @ApiResponse({
         status: HttpStatus.NOT_FOUND,
@@ -94,6 +94,31 @@ export class NotificationController {
         this.logger.log(ctx, `${this.markNotificationAsRead.name} was called`);
 
         await this.notificationService.markNotificationAsRead(ctx, body.notificationIds);
+    }
+
+    // create post
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Post("mark-all-as-read")
+    @ApiOperation({
+        summary: 'Marks all notifications as read',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        type: BaseApiErrorResponse,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_USER)
+    async markAllNotificationsAsRead(
+        @ReqContext() ctx: RequestContext,
+    ): Promise<void> {
+        this.logger.log(ctx, `${this.markAllNotificationsAsRead.name} was called`);
+
+        await this.notificationService.markAllNotificationsAsRead(ctx);
     }
 
     @UseGuards(JwtAuthGuard, AuthoritiesGuard)

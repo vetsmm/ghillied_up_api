@@ -80,11 +80,21 @@ export class PostCommentReactionService {
                 update: {
                     reactionType: commentReactionDto.reactionType,
                 },
+                include: {
+                    postComment: {
+                        include: {
+                            createdBy: true,
+                            post: true
+                        }
+                    },
+                }
             });
             this.queueService.publishActivity<CommentReaction>(
                 ctx,
                 ActivityType.POST_COMMENT_REACTION,
-                cr
+                cr,
+                undefined,
+                cr.postComment.createdBy.id
             )
         } else {
             // check if the user has reacted to the comment

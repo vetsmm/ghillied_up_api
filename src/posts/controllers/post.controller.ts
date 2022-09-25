@@ -190,6 +190,46 @@ export class PostController {
   @UseGuards(JwtAuthGuard, AuthoritiesGuard)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
+  @Get('my/all')
+  @ApiQuery({
+    name: 'cursor',
+    type: String,
+    description: 'Paging Cursor',
+    required: false,
+  })
+  @ApiOperation({
+    summary: 'Gets all Posts for a the current user',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: SwaggerBaseApiResponse([PostListingDto]),
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+  })
+  @HttpCode(HttpStatus.OK)
+  @Authorities(UserAuthority.ROLE_USER, UserAuthority.ROLE_VERIFIED_MILITARY)
+  async getPostsForCurrentUser(
+    @ReqContext() ctx: RequestContext,
+    @Query('take', ParseIntPipe) take: number,
+    @Query('cursor') cursor?: string,
+  ): Promise<{ data: Array<PostListingDto>; meta: PageInfo }> {
+    this.logger.log(ctx, `${this.getPostsForGhillie.name} was called`);
+    const { posts, pageInfo } = await this.postService.getPostsForCurrentUser(
+      ctx,
+      take,
+      cursor,
+    );
+    return {
+      data: posts,
+      meta: pageInfo,
+    };
+  }
+
+  // get all posts
+  @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(ClassSerializerInterceptor)
   @Post('all')
   @ApiOperation({
     summary: 'Gets all Posts',

@@ -1,6 +1,6 @@
 import {Inject, Injectable, InternalServerErrorException} from "@nestjs/common";
 import {AppLogger, PageInfo, parsePaginationArgs, RequestContext} from "../../shared";
-import {NotificationInputDto} from "../dtos/notification-input.dto";
+import {NotificationInputDto} from '../dtos/notification-input.dto';
 import {
     BaseNotificationDto,
     PostCommentNotificationDto,
@@ -131,7 +131,7 @@ export class NotificationService {
                 [reactionIds]
             ) : [];
 
-            return [... await postCommentReactionsHydrated, ... await postCommentsHydrated, ... await postReactionsHydrated];
+            return [...await postCommentReactionsHydrated, ...await postCommentsHydrated, ...await postReactionsHydrated];
         })
             .then(data => {
                 return data.map(hydratedData => {

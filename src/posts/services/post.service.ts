@@ -27,8 +27,8 @@ import { randomUUID } from 'crypto';
 import { plainToInstance } from 'class-transformer';
 import { UpdatePostInputDto } from '../dtos/update-post-input.dto';
 import { PostListingDto } from '../dtos/post-listing.dto';
-import {QueueService} from "../../queue/services/queue.service";
-import {ActivityType} from "../../shared/queue/activity-type";
+import { QueueService } from '../../queue/services/queue.service';
+import { ActivityType } from '../../shared/queue/activity-type';
 
 @Injectable()
 export class PostService {
@@ -125,11 +125,7 @@ export class PostService {
       });
     });
 
-    this.queueService.publishActivity(
-        ctx,
-        ActivityType.POST,
-        post
-    )
+    this.queueService.publishActivity(ctx, ActivityType.POST, post);
 
     const dto = plainToInstance(PostDetailDto, post, {
       excludeExtraneousValues: true,
@@ -460,6 +456,62 @@ export class PostService {
         excludeExtraneousValues: true,
         enableImplicitConversion: true,
       }),
+      pageInfo: toConnection(posts).pageInfo,
+    };
+  }
+
+  async getPostsForCurrentUser(
+    ctx: RequestContext,
+    take: number,
+    cursor: string,
+  ) {
+    this.logger.log(ctx, `${this.getPostsForCurrentUser.name} was called`);
+
+    const { findManyArgs, toConnection, toResponse } = parsePaginationArgs({
+      first: take - 1,
+      after: cursor ? cursor : undefined,
+    });
+
+    const posts = await this.prisma.post.findMany({
+      ...findManyArgs,
+      where: {
+        AND: [{ status: PostStatus.ACTIVE }, { postedById: ctx.user.id }],
+      },
+      orderBy: {
+        createdDate: 'desc',
+      },
+      include: {
+        tags: true,
+        postedBy: true,
+        ghillie: true,
+        _count: {
+          select: {
+            postComments: true,
+            postReaction: true,
+          },
+        },
+        postReaction: {
+          where: {
+            createdById: ctx.user.id,
+          },
+        },
+      },
+    });
+
+    if (posts.length === 0) {
+      return {
+        posts: [] as Array<PostListingDto>,
+        pageInfo: toConnection(posts).pageInfo,
+      };
+    }
+
+    return {
+      posts: toResponse(
+        plainToInstance(PostListingDto, posts, {
+          excludeExtraneousValues: true,
+          enableImplicitConversion: true,
+        }),
+      ),
       pageInfo: toConnection(posts).pageInfo,
     };
   }

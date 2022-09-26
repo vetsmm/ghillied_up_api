@@ -42,26 +42,47 @@ export class UserService {
     this.logger.log(ctx, `${this.createUser.name} was called`);
 
     this.logger.log(ctx, `Saving User ${input.username}`);
-    const user = await this.prisma.user.create({
-      data: {
-        username: input.username,
-        password: await hash(input.password, 10),
-        email: input.email,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        serviceStatus: input.serviceStatus,
-        branch: input.branch,
-        serviceEntryDate: input.serviceEntryDate,
-        serviceExitDate: input.serviceExitDate,
-        slug: slugify(input.username, {
-          replacement: '-',
-          lower: false,
-          strict: true,
-          trim: true,
-        }),
-        activationCode: await this.generateCode(),
-        activationCodeSentAt: new Date(),
-      },
+
+    const user = await this.prisma.$transaction(async (prisma) => {
+      const user = await prisma.user.create({
+        data: {
+          username: input.username,
+          password: await hash(input.password, 10),
+          email: input.email,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          serviceStatus: input.serviceStatus,
+          branch: input.branch,
+          serviceEntryDate: input.serviceEntryDate,
+          serviceExitDate: input.serviceExitDate,
+          slug: slugify(input.username, {
+            replacement: '-',
+            lower: false,
+            strict: true,
+            trim: true,
+          }),
+          activationCode: await this.generateCode(),
+          activationCodeSentAt: new Date(),
+        },
+      });
+
+      await prisma.pushNotificationSettings.create({
+        data: {
+          user: {
+            connect: {
+              id: user.id,
+            },
+          },
+          createdDate: new Date(),
+          updatedDate: new Date(),
+          postReactions: true,
+          postComments: true,
+          commentReactions: true,
+          postActivity: true,
+        },
+      });
+
+      return user;
     });
 
     const output = plainToInstance(UserOutput, user, {
@@ -116,7 +137,7 @@ export class UserService {
       throw new ForbiddenException('User is not activated');
 
     const match = await compare(pass, user.password);
-    if (!match) throw new UnauthorizedException("Invalid username or password");
+    if (!match) throw new UnauthorizedException('Invalid username or password');
 
     return plainToInstance(UserOutput, user, {
       excludeExtraneousValues: true,

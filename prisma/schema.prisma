@@ -172,41 +172,42 @@ model Ghillie {
 }
 
 model User {
-  id                   String            @id @default(cuid())
-  email                String            @unique
-  username             String            @unique
-  slug                 String            @unique
-  firstName            String?
-  lastName             String?
-  branch               ServiceBranch?    @default(UNKNOWN)
-  serviceStatus        ServiceStatus?    @default(UNKNOWN)
-  isVerifiedMilitary   Boolean           @default(false)
-  serviceEntryDate     DateTime?
-  serviceExitDate      DateTime?
-  activated            Boolean           @default(false)
-  activationCode       Int?              @unique
-  activationCodeSentAt DateTime?
-  resetKey             Int?              @unique
-  resetDate            DateTime?
-  lastLoginAt          DateTime?
-  imageUrl             String?
-  password             String
-  authorities          UserAuthority[]   @default([ROLE_USER])
-  createdDate          DateTime          @default(now())
-  updatedDate          DateTime          @updatedAt
-  joinedGhilliess      GhillieMembers[]
-  commentReactions     CommentReaction[]
-  flagComments         FlagComment[]
-  postComments         PostComment[]
-  postReactions        PostReaction[]
-  flagPosts            FlagPost[]
-  posts                Post[]
-  flagGhillies         FlagGhillie[]
-  topics               Topic[]
-  ghillies             Ghillie[]
-  notifications        Notification[]    @relation("notifications")
-  fromNotifications    Notification[]    @relation("fromNotifications")
-  pushTokens           DevicePushToken[]
+  id                       String                    @id @default(cuid())
+  email                    String                    @unique
+  username                 String                    @unique
+  slug                     String                    @unique
+  firstName                String?
+  lastName                 String?
+  branch                   ServiceBranch?            @default(UNKNOWN)
+  serviceStatus            ServiceStatus?            @default(UNKNOWN)
+  isVerifiedMilitary       Boolean                   @default(false)
+  serviceEntryDate         DateTime?
+  serviceExitDate          DateTime?
+  activated                Boolean                   @default(false)
+  activationCode           Int?                      @unique
+  activationCodeSentAt     DateTime?
+  resetKey                 Int?                      @unique
+  resetDate                DateTime?
+  lastLoginAt              DateTime?
+  imageUrl                 String?
+  password                 String
+  authorities              UserAuthority[]           @default([ROLE_USER])
+  createdDate              DateTime                  @default(now())
+  updatedDate              DateTime                  @updatedAt
+  joinedGhilliess          GhillieMembers[]
+  commentReactions         CommentReaction[]
+  flagComments             FlagComment[]
+  postComments             PostComment[]
+  postReactions            PostReaction[]
+  flagPosts                FlagPost[]
+  posts                    Post[]
+  flagGhillies             FlagGhillie[]
+  topics                   Topic[]
+  ghillies                 Ghillie[]
+  notifications            Notification[]            @relation("notifications")
+  fromNotifications        Notification[]            @relation("fromNotifications")
+  pushTokens               DevicePushToken[]
+  PushNotificationSettings PushNotificationSettings?
 
   @@index([email, username, slug])
 }
@@ -229,13 +230,27 @@ model Notification {
   @@index([createdDate, type, read, trash])
 }
 
+model PushNotificationSettings {
+  id               String   @id @default(cuid())
+  createdDate      DateTime @default(now())
+  updatedDate      DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String
+  postReactions    Boolean  @default(true)
+  postComments     Boolean  @default(true)
+  commentReactions Boolean  @default(true)
+  postActivity     Boolean  @default(true)
+
+  @@unique([userId])
+}
+
 model DevicePushToken {
-  id            String   @id @default(cuid())
-  token         String   @unique
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        String
-  createdDate   DateTime @default(now())
-  platform      PhonePlatform
+  id          String        @id @default(cuid())
+  token       String        @unique
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  createdDate DateTime      @default(now())
+  platform    PhonePlatform
 
   @@index([token])
 }

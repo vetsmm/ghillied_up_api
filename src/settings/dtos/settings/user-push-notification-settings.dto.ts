@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { UserOutput } from '../public/user-output.dto';
+import { UserOutput } from '../../../user/dtos/public/user-output.dto';
 
 export class UserPushNotificationSettingsDto {
   @Expose()

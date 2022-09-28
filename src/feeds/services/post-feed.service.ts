@@ -11,18 +11,20 @@ import { PostFeedAclService } from './post-feed-acl.service';
 import { PostListingDto } from '../../posts/dtos/post-listing.dto';
 import { plainToInstance } from 'class-transformer';
 import { MemberStatus } from '@prisma/client';
+import { GetStreamService } from '../../shared/getsream/getstream.service';
 
-// TODO: we are coming in this with the naive solution first
-// of having no caching or any performance improvements
 @Injectable()
 export class PostFeedService {
   constructor(
     readonly prisma: PrismaService,
     private readonly logger: AppLogger,
     private readonly feedAclService: PostFeedAclService,
+    private readonly streamService: GetStreamService,
   ) {
     this.logger.setContext(PostFeedService.name);
   }
+
+  async updateFeed(ctx: RequestContext, body: FeedInputDto): Promise<void> {}
 
   async getFeed(
     ctx: RequestContext,

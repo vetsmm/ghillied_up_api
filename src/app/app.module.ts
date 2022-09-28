@@ -8,7 +8,7 @@ import {PrismaModule} from '../prisma/prisma.module';
 import {APP_FILTER, APP_INTERCEPTOR} from '@nestjs/core';
 import {GhillieModule} from '../ghillie/ghillies.module';
 import {PostsModule} from '../posts/posts.module';
-import {PostFeedModule} from '../post-feed/post-feed.module';
+import {FeedsModule} from '../feeds/feeds.module';
 import {FlagsModule} from '../flags/flags.module';
 import {
     AllExceptionsFilter,
@@ -27,7 +27,7 @@ import {NotificationModule} from "../notifications/notification.module";
         SharedModule,
         GhillieModule,
         PostsModule,
-        PostFeedModule,
+        FeedsModule,
         FlagsModule,
         QueueModule,
         SettingsModule,

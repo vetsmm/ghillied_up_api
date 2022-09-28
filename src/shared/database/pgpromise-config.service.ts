@@ -1,21 +1,20 @@
-import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { NestPgpromiseOptionsFactory } from "nestjs-pgpromise/dist/interfaces/nest-pgpromise-options-factory.interface";
-import { NestPgpromiseOptions } from "nestjs-pgpromise/dist/interfaces/nest-pgpromise-options.interface";
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { NestPgpromiseOptionsFactory } from 'nestjs-pgpromise/dist/interfaces/nest-pgpromise-options-factory.interface';
+import { NestPgpromiseOptions } from 'nestjs-pgpromise/dist/interfaces/nest-pgpromise-options.interface';
 
 @Injectable()
 export class PgPromiseConfigService implements NestPgpromiseOptionsFactory {
-    constructor(private configService: ConfigService) {
-    }
+  constructor(private configService: ConfigService) {}
 
-    createNestPgpromiseOptions(): NestPgpromiseOptions {
-        const DATABASE_URL = this.configService.get("databaseUrl");
-        return {
-            connection: {
-                connectionString: DATABASE_URL,
-                connectionTimeoutMillis: 5000,
-                idleTimeoutMillis: 10000,
-            }
-        }
-    }
+  createNestPgpromiseOptions(): NestPgpromiseOptions {
+    const DATABASE_URL = this.configService.get('databaseUrl');
+    return {
+      connection: {
+        connectionString: DATABASE_URL,
+        connectionTimeoutMillis: 5000,
+        idleTimeoutMillis: 10000,
+      },
+    };
+  }
 }

@@ -6,6 +6,7 @@ import { PostFeedAclService } from './services/post-feed-acl.service';
 import { PostFeedController } from './controllers/post-feed.controller';
 import { PostFeedService } from './services/post-feed.service';
 import { PostAclService } from '../posts/services/post-acl.service';
+import { GetStreamService } from '../shared/getsream/getstream.service';
 
 @Module({
   providers: [
@@ -19,4 +20,4 @@ import { PostAclService } from '../posts/services/post-acl.service';
   controllers: [PostFeedController],
   exports: [PostFeedService],
 })
-export class PostFeedModule {}
+export class FeedsModule {}

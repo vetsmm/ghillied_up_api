@@ -30,8 +30,8 @@ import { Authorities } from '../../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
 import { PostListingDto } from '../../posts/dtos/post-listing.dto';
 
-@ApiTags('post-feed')
-@Controller('post-feed')
+@ApiTags('feeds')
+@Controller('feeds')
 export class PostFeedController {
   constructor(
     private readonly logger: AppLogger,

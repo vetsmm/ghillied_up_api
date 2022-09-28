@@ -6,11 +6,16 @@ export default (): any => ({
     frontendDomain: process.env.FRONTEND_DOMAIN,
     backendDomain: process.env.BACKEND_DOMAIN,
   },
+  stream: {
+    apiKey: process.env.STREAM_API_KEY,
+    apiSecret: process.env.STREAM_API_SECRET,
+    appId: process.env.STREAM_APP_ID,
+  },
   aws: {
     region: process.env.AWS_REGION,
     sns: {
-        activityArn: process.env.AWS_SNS_ACTIVITY_ARN,
-    }
+      activityArn: process.env.AWS_SNS_ACTIVITY_ARN,
+    },
   },
   sentryDsn:
     process.env.SENTRY_DSN ??

@@ -1,5 +1,5 @@
-import {Injectable} from '@nestjs/common';
-import {PrismaService} from '../../prisma/prisma.service';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
     AppLogger,
     PageInfo,
@@ -9,10 +9,11 @@ import {
     CommentReactionDetailsDto,
     CommentReactionSubsetDto,
 } from '../../shared';
-import {CommentReaction, MemberStatus, Post} from '@prisma/client';
-import {plainToInstance} from 'class-transformer';
-import {QueueService} from "../../queue/services/queue.service";
-import {ActivityType} from "../../shared/queue/activity-type";
+import { CommentReaction, MemberStatus } from '@prisma/client';
+import { plainToInstance } from 'class-transformer';
+import { QueueService } from '../../queue/services/queue.service';
+import { ActivityType } from '../../shared/queue/activity-type';
+import { GetStreamService } from '../../shared/getsream/getstream.service';
 
 @Injectable()
 export class PostCommentReactionService {
@@ -20,6 +21,7 @@ export class PostCommentReactionService {
         private readonly prisma: PrismaService,
         private readonly logger: AppLogger,
         private readonly queueService: QueueService,
+        private readonly streamService: GetStreamService,
     ) {
         this.logger.setContext(PostCommentReactionService.name);
     }
@@ -60,7 +62,9 @@ export class PostCommentReactionService {
         });
 
         if (!member) {
-            throw new Error(`You do not have access to to react to this comment.`);
+            throw new Error(
+                `You do not have access to to react to this comment.`,
+            );
         }
 
         // Update the post with the new reaction if exists, if not create, if reaction is null, then delete
@@ -84,18 +88,52 @@ export class PostCommentReactionService {
                     postComment: {
                         include: {
                             createdBy: true,
-                            post: true
-                        }
+                            post: true,
+                        },
                     },
-                }
+                },
             });
             this.queueService.publishActivity<CommentReaction>(
                 ctx,
                 ActivityType.POST_COMMENT_REACTION,
                 cr,
                 undefined,
-                cr.postComment.createdBy.id
-            )
+                cr.postComment.createdBy.id,
+            );
+            this.streamService
+                .addPostCommentReaction({
+                    kind: 'POST_COMMENT_REACTION',
+                    commentActivityId: comment.activityId,
+                    data: {
+                        commentId: comment.id,
+                        reactionId: cr.id,
+                        commentOwnerId: comment.createdById,
+                        reactingUserId: cr.createdById,
+                        time: new Date().toISOString(),
+                        postId: comment.postId,
+                        reactionType: cr.reactionType,
+                    },
+                    reactionAddOptions: {
+                        userId: cr.createdById,
+                    },
+                })
+                .then(async (res) => {
+                    this.logger.log(ctx, `Added reaction: ${cr.id} to stream`);
+                    await this.prisma.commentReaction.update({
+                        where: {
+                            id: cr.id,
+                        },
+                        data: {
+                            activityId: res.id,
+                        },
+                    });
+                })
+                .catch((err) => {
+                    this.logger.error(
+                        ctx,
+                        `Error adding reaction: ${cr.id} to stream: ${err}`,
+                    );
+                });
         } else {
             // check if the user has reacted to the comment
             const reaction = await this.prisma.commentReaction.findFirst({
@@ -117,6 +155,8 @@ export class PostCommentReactionService {
                     },
                 },
             });
+
+            // TODO: remove the activity from the stream
         }
     }
 
@@ -131,7 +171,7 @@ export class PostCommentReactionService {
     }> {
         this.logger.log(ctx, `${this.getAllCommentReactions.name} was called`);
 
-        const {findManyArgs, toConnection, toResponse} = parsePaginationArgs({
+        const { findManyArgs, toConnection, toResponse } = parsePaginationArgs({
             first: take - 1,
             after: cursor ? cursor : undefined,
         });
@@ -187,7 +227,7 @@ export class PostCommentReactionService {
     }> {
         this.logger.log(ctx, `${this.getCurrentUserReactions.name} was called`);
 
-        const {findManyArgs, toConnection} = parsePaginationArgs({
+        const { findManyArgs, toConnection } = parsePaginationArgs({
             first: take - 1,
             after: cursor ? cursor : undefined,
         });
@@ -269,7 +309,7 @@ export class PostCommentReactionService {
             .map((reaction) => reaction._count)
             .reduce((a, b) => a + b, 0);
         const reactions = reactionCounts.map((reaction) => {
-            return {[reaction.reactionType]: reaction._count};
+            return { [reaction.reactionType]: reaction._count };
         });
 
         return {

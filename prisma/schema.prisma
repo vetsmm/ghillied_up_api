@@ -15,6 +15,7 @@ model CommentReaction {
   createdById  String
   postComment  PostComment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
   commentId    String
+  activityId   String?     @unique
 
   @@unique([createdById, commentId])
   @@index([reactionType])
@@ -51,6 +52,7 @@ model PostComment {
   childCommentIds String[] // The ids of the child comments. The parent will always be null
   flags           FlagComment[]
   commentReaction CommentReaction[]
+  activityId      String?           @unique
 
   @@index([status, commentHeight])
 }
@@ -62,6 +64,7 @@ model PostReaction {
   createdById  String
   post         Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
   postId       String
+  activityId   String?     @unique
 
   @@unique([createdById, postId])
   @@index([reactionType])
@@ -107,6 +110,7 @@ model Post {
   updatedDate  DateTime       @updatedAt
   edited       Boolean        @default(false)
   postReaction PostReaction[]
+  activityId   String?        @unique
 
   @@index([title, status, uid])
 }

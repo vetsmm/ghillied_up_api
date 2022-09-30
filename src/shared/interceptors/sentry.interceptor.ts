@@ -26,7 +26,6 @@ export class SentryInterceptor implements NestInterceptor {
     context: ExecutionContext,
     next: CallHandler<any>,
   ): Observable<any> | Promise<Observable<any>> {
-    console.log('SentryInterceptor', this.env == 'production');
     if (this.env == 'production')
       return next.handle().pipe(catchError(enableSentry));
     else return next.handle().pipe(catchError((err) => throwError(err)));

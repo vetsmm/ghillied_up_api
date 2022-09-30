@@ -1,5 +1,5 @@
-import {Injectable, UnauthorizedException} from '@nestjs/common';
-import {PrismaService} from '../../prisma/prisma.service';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
     Action,
     Actor,
@@ -12,11 +12,12 @@ import {
     UpdateCommentDto,
     CommentIdsInputDto,
 } from '../../shared';
-import {CommentStatus, MemberStatus, PostComment} from '@prisma/client';
-import {plainToInstance} from 'class-transformer';
-import {PostCommentAclService} from './post-comment-acl.service';
-import {QueueService} from "../../queue/services/queue.service";
-import {ActivityType} from "../../shared/queue/activity-type";
+import { CommentStatus, MemberStatus, PostComment } from '@prisma/client';
+import { plainToInstance } from 'class-transformer';
+import { PostCommentAclService } from './post-comment-acl.service';
+import { QueueService } from '../../queue/services/queue.service';
+import { ActivityType } from '../../shared/queue/activity-type';
+import { GetStreamService } from '../../shared/getsream/getstream.service';
 
 @Injectable()
 export class PostCommentService {
@@ -25,6 +26,7 @@ export class PostCommentService {
         private readonly logger: AppLogger,
         private readonly aclService: PostCommentAclService,
         private readonly queueService: QueueService,
+        private readonly streamService: GetStreamService,
     ) {
         this.logger.setContext(PostCommentService.name);
     }
@@ -68,25 +70,74 @@ export class PostCommentService {
 
         let comment;
         if (createPostCommentInput.parentCommentId) {
-            comment = await this.createChildComment(ctx, createPostCommentInput);
+            comment = await this.createChildComment(
+                ctx,
+                createPostCommentInput,
+            );
         } else {
-            comment = await this.createParentComment(ctx, createPostCommentInput);
+            comment = await this.createParentComment(
+                ctx,
+                createPostCommentInput,
+            );
         }
 
         // Send notification to post owner
-        const postOwnerId = await this.getPostOwnerId(ctx, createPostCommentInput.postId);
-        this.queueService.publishActivity<PostComment>(
+        const postOwnerId = await this.getPostOwnerId(
+            ctx,
+            createPostCommentInput.postId,
+        );
+        this.queueService.publishActivity(
             ctx,
             ActivityType.POST_COMMENT,
             comment,
             undefined,
-            postOwnerId
+            postOwnerId,
         );
+        this.syncPostComment(ctx, comment);
 
         return plainToInstance(CommentDetailDto, comment, {
             excludeExtraneousValues: true,
             enableImplicitConversion: true,
         });
+    }
+
+    // Todo: Update PostComment
+    // We need to update the comment in the feed when necessary
+
+    syncPostComment(ctx: RequestContext, comment: any) {
+        this.streamService
+            .addPostComment({
+                kind: 'POST_COMMENT',
+                // The ID of the activity (post) the reaction refers to
+                postActivityId: comment.post.activityId,
+                data: {
+                    postOwnerId: comment.post.postedById,
+                    commentingUserId: comment.createdById,
+                    time: new Date().toISOString(),
+                    commentId: comment.id,
+                    reactionCount: 0,
+                    postId: comment.postId,
+                },
+                reactionAddOptions: {
+                    userId: comment.createdById,
+                },
+            })
+            .then(async (res) => {
+                await this.prisma.postComment.update({
+                    where: {
+                        id: comment.id,
+                    },
+                    data: {
+                        activityId: res.id,
+                    },
+                });
+            })
+            .catch((err) => {
+                this.logger.error(
+                    ctx,
+                    `Error while sending comment: ${comment.id} to stream: ${err}`,
+                );
+            });
     }
 
     async getPostOwnerId(ctx: RequestContext, postId: string): Promise<string> {
@@ -96,7 +147,7 @@ export class PostCommentService {
             },
             include: {
                 postedBy: true,
-            }
+            },
         });
 
         return post.postedBy.id;
@@ -114,9 +165,13 @@ export class PostCommentService {
         this.logger.log(ctx, `${this.getTopLevelPostComments.name} was called`);
 
         const actor: Actor = ctx.user;
-        const isAllowed = this.aclService.forActor(actor).canDoAction(Action.Read);
+        const isAllowed = this.aclService
+            .forActor(actor)
+            .canDoAction(Action.Read);
         if (!isAllowed) {
-            throw new UnauthorizedException('You are not allowed to view comments');
+            throw new UnauthorizedException(
+                'You are not allowed to view comments',
+            );
         }
 
         // Check if user is member of the ghillie, from which the comment belongs
@@ -138,7 +193,7 @@ export class PostCommentService {
             );
         }
 
-        const {findManyArgs, toConnection, toResponse} = parsePaginationArgs({
+        const { findManyArgs, toConnection, toResponse } = parsePaginationArgs({
             first: take - 1,
             after: cursor ? cursor : null,
         });
@@ -147,9 +202,9 @@ export class PostCommentService {
             ...findManyArgs,
             where: {
                 AND: [
-                    {postId},
-                    {status: CommentStatus.ACTIVE},
-                    {commentHeight: 0},
+                    { postId },
+                    { status: CommentStatus.ACTIVE },
+                    { commentHeight: 0 },
                 ],
             },
             orderBy: {
@@ -172,10 +227,14 @@ export class PostCommentService {
         });
 
         return {
-            comments: plainToInstance(CommentDetailDto, toResponse(postComments), {
-                excludeExtraneousValues: true,
-                enableImplicitConversion: true,
-            }),
+            comments: plainToInstance(
+                CommentDetailDto,
+                toResponse(postComments),
+                {
+                    excludeExtraneousValues: true,
+                    enableImplicitConversion: true,
+                },
+            ),
             pageInfo: toConnection(postComments).pageInfo,
         };
     }
@@ -190,9 +249,13 @@ export class PostCommentService {
         );
 
         const actor: Actor = ctx.user;
-        const isAllowed = this.aclService.forActor(actor).canDoAction(Action.Read);
+        const isAllowed = this.aclService
+            .forActor(actor)
+            .canDoAction(Action.Read);
         if (!isAllowed) {
-            throw new UnauthorizedException('You are not allowed to view comments');
+            throw new UnauthorizedException(
+                'You are not allowed to view comments',
+            );
         }
 
         const postComments = await this.prisma.postComment.findMany({
@@ -274,6 +337,8 @@ export class PostCommentService {
             },
         });
 
+        // TODO: Update the postcomment activity in the stream
+
         return plainToInstance(CommentDetailDto, updatedComment, {
             excludeExtraneousValues: true,
             enableImplicitConversion: true,
@@ -283,7 +348,7 @@ export class PostCommentService {
     private async createParentComment(
         ctx: RequestContext,
         createPostCommentInput: CreateCommentDto,
-    ) {
+    ): Promise<PostComment> {
         this.logger.log(ctx, `${this.createParentComment.name} was called`);
 
         return this.prisma.postComment.create({
@@ -303,8 +368,8 @@ export class PostCommentService {
                 post: {
                     include: {
                         postedBy: true,
-                    }
-                }
+                    },
+                },
             },
         });
     }
@@ -350,9 +415,8 @@ export class PostCommentService {
                     post: {
                         include: {
                             postedBy: true,
-                        }
+                        },
                     },
-
                 },
             });
 
@@ -413,15 +477,25 @@ export class PostCommentService {
                 },
             });
         });
+
+        // TODO: Delete Comment from the feed
     }
 
-    async getAllChildrenByLevel(ctx: RequestContext, id: string, level: number) {
+    async getAllChildrenByLevel(
+        ctx: RequestContext,
+        id: string,
+        level: number,
+    ) {
         this.logger.log(ctx, `${this.createChildComment.name} was called`);
 
         const actor: Actor = ctx.user;
-        const isAllowed = this.aclService.forActor(actor).canDoAction(Action.Read);
+        const isAllowed = this.aclService
+            .forActor(actor)
+            .canDoAction(Action.Read);
         if (!isAllowed) {
-            throw new UnauthorizedException('You are not allowed to view comments');
+            throw new UnauthorizedException(
+                'You are not allowed to view comments',
+            );
         }
 
         if (level >= 2) {

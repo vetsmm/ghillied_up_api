@@ -14,7 +14,6 @@ export class AuthoritiesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    console.log('context', context);
     const requiredAuthorities = this.reflector.getAllAndOverride<
       UserAuthority[]
     >(AUTHORITIES_KEY, [context.getHandler(), context.getClass()]);

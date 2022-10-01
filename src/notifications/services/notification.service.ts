@@ -1,141 +1,153 @@
-import {Inject, Injectable, InternalServerErrorException} from "@nestjs/common";
-import {AppLogger, PageInfo, parsePaginationArgs, RequestContext} from "../../shared";
-import {NotificationInputDto} from '../dtos/notification-input.dto';
 import {
-    BaseNotificationDto,
+    Inject,
+    Injectable,
+    InternalServerErrorException,
+} from '@nestjs/common';
+import { AppLogger, RequestContext } from '../../shared';
+import {
     PostCommentNotificationDto,
-    PostCommentReactionNotificationDto, PostReactionNotificationDto
-} from "../dtos/notification.dto";
-import {PrismaService} from "../../prisma/prisma.service";
-import {UnreadNotificationsDto} from "../dtos/unread-notifications.dto";
-import {NEST_PGPROMISE_CONNECTION} from "nestjs-pgpromise";
-import {IDatabase} from "pg-promise";
-import Immutable from "immutable";
-import {NotificationType} from "@prisma/client";
-
+    PostCommentReactionNotificationDto,
+    PostReactionNotificationDto,
+} from '../dtos/notification.dto';
+import { UnreadNotificationsDto } from '../dtos/unread-notifications.dto';
+import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
+import { IDatabase } from 'pg-promise';
+import Immutable from 'immutable';
+import { NotificationType, Notification } from '@prisma/client';
+import { GetStreamService } from '../../shared/getsream/getstream.service';
+import { NotificationActivity } from 'getstream/lib/feed';
+import * as cuid from 'cuid';
+import { ReadNotificationsInputDto } from '../dtos/read-notifications-input.dto';
 
 @Injectable()
 export class NotificationService {
     constructor(
         private readonly logger: AppLogger,
-        private readonly prisma: PrismaService,
-        @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>
+        private readonly streamService: GetStreamService,
+        @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(NotificationService.name);
     }
 
-    async getNotifications(ctx: RequestContext, body: NotificationInputDto): Promise<{
-        notifications: BaseNotificationDto[],
-        pageInfo: PageInfo
-    }> {
-        this.logger.log(ctx, `${this.getNotifications.name} was called`);
-
-        const {findManyArgs, toConnection, toResponse} = parsePaginationArgs({
-            first: body.take - 1,
-            after: body.cursor ? body.cursor : null,
+    async getNotificationFeed(ctx: RequestContext, page = 1, perPage = 25) {
+        this.logger.log(ctx, `${this.getNotificationFeed.name} was called`);
+        const { user } = ctx;
+        const feed = await this.streamService.getNotificationFeed(user.id, {
+            limit: perPage,
+            offset: (page - 1) * perPage,
         });
-
-        const notifications: any = await this.prisma.notification.findMany({
-            ...findManyArgs,
-            where: {
-                AND: [
-                    {toUserId: ctx.user.id},
-                    {read: body.read},
-                    {trash: body.trash},
-                    {type: body.type},
-
-                ]
-            },
-            orderBy: [
-                {createdDate: "desc"},
-                {read: "asc"}
-            ]
-        });
-
-        const hydratedNotifications: any[] = (await this.hydrateNotifications(
+        return this.hydrateNotifications(
             ctx,
-            notifications
-        ));
-
-        // sort hydrated notifications by createdDate
-        hydratedNotifications.sort((a, b) => {
-            return b.createdDate.getTime() - a.createdDate.getTime();
-        });
-
-        return {
-            notifications: toResponse(hydratedNotifications),
-            pageInfo: toConnection(notifications).pageInfo,
-        };
+            feed.results as NotificationActivity[],
+        );
     }
 
-    async markNotificationAsRead(ctx: RequestContext, notificationIds: string[]) {
-        this.logger.log(ctx, `${this.markNotificationAsRead.name} was called`);
-
-        await this.prisma.notification.updateMany({
-            where: {
-                AND: [
-                    {toUserId: ctx.user.id},
-                    {id: {in: notificationIds}},
-                ]
-            },
-            data: {
-                read: true,
-                updatedDate: new Date()
-            }
-        });
-    }
-
-    async getUserNotificationCount(ctx: RequestContext): Promise<UnreadNotificationsDto> {
-        this.logger.log(ctx, `${this.getUserNotificationCount.name} was called`);
-
-        const count = await this.prisma.notification.count({
-            where: {
-                AND: [
-                    {toUserId: ctx.user.id},
-                    {read: false},
-                    {trash: false},
-                ]
-            }
-        });
-        return {
-            unreadCount: count
-        } as UnreadNotificationsDto;
-    }
-
-    private async hydrateNotifications(ctx: RequestContext, notifications: any[]): Promise<any[]> {
+    private async hydrateNotifications(
+        ctx: RequestContext,
+        notificationActivities: NotificationActivity[],
+    ): Promise<any[]> {
         this.logger.log(ctx, `${this.hydrateNotifications.name} was called`);
 
-        const notificationsByType = Immutable.Map<NotificationType, string[]>().withMutations(map => {
-            notifications.forEach(notification => {
-                const ids = map.get(notification.type) || [];
-                ids.push(notification.sourceId);
-                map.set(notification.type, ids);
+        const activityNotifications: {
+            type: NotificationType;
+            sourceId: string;
+            to: string;
+            from: string;
+            activityId: string;
+            notificationId: string;
+            read: boolean;
+        }[] = [];
+
+        const notificationsByType = Immutable.Map<
+            NotificationType,
+            string[]
+        >().withMutations((map) => {
+            const outerActivities = [];
+            notificationActivities.forEach((activity) => {
+                const { activities, is_read, id } = activity;
+                return outerActivities.push(
+                    ...activities.map((a) => ({
+                        ...a,
+                        is_read,
+                        activityId: id,
+                    })),
+                );
+            });
+
+            outerActivities.forEach((innerActivity) => {
+                try {
+                    const notificationDetails: any =
+                        innerActivity[`notification:${ctx.user.id}`];
+                    if (notificationDetails) {
+                        if (notificationDetails.from === ctx.user.id) {
+                            // ignore if we sent to ourselves
+                            return;
+                        }
+                        const ids = map.get(notificationDetails.type) || [];
+                        ids.push(notificationDetails.sourceId);
+                        map.set(notificationDetails.type, ids);
+                        activityNotifications.push({
+                            type: notificationDetails.type,
+                            sourceId: notificationDetails.sourceId,
+                            to: notificationDetails.to,
+                            from: notificationDetails.from,
+                            notificationId: notificationDetails.notificationId,
+                            activityId: innerActivity.activityId,
+                            read: innerActivity.is_read,
+                        });
+                    }
+                } catch (e) {
+                    this.logger.warn(ctx, `Unable to parse notification: ${e}`);
+                }
             });
         });
 
-        return this.pg.task(async t => {
-            const reactionIds = notificationsByType.get(NotificationType.POST_REACTION) || [];
-            const commentIds = notificationsByType.get(NotificationType.POST_COMMENT) || [];
-            const commentReactionIds = notificationsByType.get(NotificationType.POST_COMMENT_REACTION) || [];
+        return this.pg
+            .task(async (t) => {
+                const reactionIds =
+                    notificationsByType.get(NotificationType.POST_REACTION) ||
+                    [];
+                const commentIds =
+                    notificationsByType.get(NotificationType.POST_COMMENT) ||
+                    [];
+                const commentReactionIds =
+                    notificationsByType.get(
+                        NotificationType.POST_COMMENT_REACTION,
+                    ) || [];
 
-            const postCommentsHydrated = commentIds.length > 0 ? t.query(
-                'SELECT pc.id as "sourceId", pc.content as "commentContent", u.username, g.id as "ghillieId", g.name as "ghillieName", g."imageUrl" as "ghillieImageUrl",p.id as "postId" FROM "PostComment" pc JOIN "User" u ON pc."createdById" = u.id JOIN "Post" p ON pc."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId"WHERE pc.id IN ($1:list)',
-                [commentIds]
-            ) : [];
-            const postCommentReactionsHydrated = commentReactionIds.length > 0 ? t.query(
-                'SELECT cr.id as "sourceId", cr."reactionType", u.username, g.id as "ghillieId", g.name as "ghillieName", g."imageUrl" as "ghillieImageUrl", p.id as "postId" FROM "CommentReaction" cr JOIN "User" u ON cr."createdById" = u.id JOIN "PostComment" pc ON cr."commentId" = pc.id JOIN "Post" p ON pc."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId" WHERE cr.id IN ($1:list)',
-                [commentReactionIds]
-            ) : [];
-            const postReactionsHydrated = reactionIds.length > 0 ? t.query(
-                'SELECT pr.id as "sourceId", pr."reactionType", u.username, g.id as "ghillieId", g.name as "ghillieName", g."imageUrl" as "ghillieImageUrl", p.id as "postId" FROM "PostReaction" pr JOIN "User" u ON pr."createdById" = u.id JOIN "Post" p ON pr."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId" WHERE pr.id IN ($1:list)',
-                [reactionIds]
-            ) : [];
+                const postCommentsHydrated =
+                    commentIds.length > 0
+                        ? t.query(
+                              'SELECT pc.id as "sourceId", pc."createdDate", pc.content as "commentContent", u.username, g.id as "ghillieId", g.name as "ghillieName", g."imageUrl" as "ghillieImageUrl",p.id as "postId" FROM "PostComment" pc JOIN "User" u ON pc."createdById" = u.id JOIN "Post" p ON pc."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId"WHERE pc.id IN ($1:list)',
+                              [commentIds],
+                          )
+                        : [];
+                const postCommentReactionsHydrated =
+                    commentReactionIds.length > 0
+                        ? t.query(
+                              'SELECT cr.id as "sourceId", cr."createdDate", cr."reactionType", u.username, g.id as "ghillieId", g.name as "ghillieName", g."imageUrl" as "ghillieImageUrl", p.id as "postId" FROM "CommentReaction" cr JOIN "User" u ON cr."createdById" = u.id JOIN "PostComment" pc ON cr."commentId" = pc.id JOIN "Post" p ON pc."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId" WHERE cr.id IN ($1:list)',
+                              [commentReactionIds],
+                          )
+                        : [];
+                const postReactionsHydrated =
+                    reactionIds.length > 0
+                        ? t.query(
+                              'SELECT pr.id as "sourceId", pr."createdDate", pr."reactionType", u.username, g.id as "ghillieId", g.name as "ghillieName", g."imageUrl" as "ghillieImageUrl", p.id as "postId" FROM "PostReaction" pr JOIN "User" u ON pr."createdById" = u.id JOIN "Post" p ON pr."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId" WHERE pr.id IN ($1:list)',
+                              [reactionIds],
+                          )
+                        : [];
 
-            return [...await postCommentReactionsHydrated, ...await postCommentsHydrated, ...await postReactionsHydrated];
-        })
-            .then(data => {
-                return data.map(hydratedData => {
-                    const notification = notifications.find(d => d.sourceId === hydratedData.sourceId);
+                return [
+                    ...(await postCommentReactionsHydrated),
+                    ...(await postCommentsHydrated),
+                    ...(await postReactionsHydrated),
+                ];
+            })
+            .then((data) => {
+                return data.map((hydratedData) => {
+                    const notification = activityNotifications.find(
+                        (d) => d.sourceId === hydratedData.sourceId,
+                    );
                     if (notification) {
                         switch (notification.type) {
                             case NotificationType.POST_COMMENT:
@@ -160,36 +172,142 @@ export class NotificationService {
                     return hydratedData;
                 });
             })
-            .catch(err => {
-                this.logger.error(ctx, err);
-                throw new InternalServerErrorException("Error retrieving notifications");
+            .catch((err) => {
+                this.logger.error(ctx, `Error hydrating notifications: ${err}`);
+                throw new InternalServerErrorException(
+                    'Error retrieving notifications',
+                );
             });
     }
 
     async markAllNotificationsAsRead(ctx: RequestContext): Promise<void> {
-        this.logger.log(ctx, `${this.markAllNotificationsAsRead.name} was called`);
+        this.logger.log(
+            ctx,
+            `${this.markAllNotificationsAsRead.name} was called`,
+        );
 
         await this.pg.none(
             'UPDATE "Notification" SET "read" = true, "updatedDate" = $1 WHERE "toUserId" = $2 AND "read" = false AND "trash" = false',
-            [new Date(), ctx.user.id]
+            [new Date(), ctx.user.id],
         );
+
+        await this.streamService.markAllAsRead(ctx.user.id);
     }
 
-    async markNotificationAsTrash(ctx: RequestContext, notificationIds: string[]): Promise<void> {
-        this.logger.log(ctx, `${this.markNotificationAsTrash.name} was called`);
-
-        await this.pg.none(
-            'UPDATE "Notification" SET "trash" = true, "updatedDate" = $1 WHERE "toUserId" = $2 AND "id" IN ($3:list)',
-            [new Date(), ctx.user.id, notificationIds]
-        );
+    markNotificationsAsRead(
+        ctx: RequestContext,
+        notificationIds: ReadNotificationsInputDto,
+    ) {
+        this.logger.log(ctx, `${this.markNotificationsAsRead.name} was called`);
+        this.pg
+            .any(
+                'UPDATE "Notification" SET "read" = true, "updatedDate" = $1 WHERE "toUserId" = $2 AND "id" IN ($3:csv)',
+                [
+                    new Date(),
+                    ctx.user.id,
+                    notificationIds.ids.map((nId) => nId.id),
+                ],
+            )
+            .then(async (res) => {
+                this.streamService
+                    .markAsRead(
+                        ctx.user.id,
+                        notificationIds.ids.map((nId) => nId.activityId),
+                    )
+                    .catch((err) => {
+                        this.logger.error(
+                            ctx,
+                            `Error marking notifications as read in stream: ${err}`,
+                        );
+                    });
+            })
+            .catch((err) => {
+                this.logger.error(
+                    ctx,
+                    `Error marking notifications as read: ${err}`,
+                );
+                throw new InternalServerErrorException(
+                    'Error marking notifications as read',
+                );
+            });
     }
 
-    async markAllNotificationsAsTrash(ctx: RequestContext): Promise<void> {
-        this.logger.log(ctx, `${this.markAllNotificationsAsTrash.name} was called`);
-
-        await this.pg.none(
-            'UPDATE "Notification" SET "trash" = true, "updatedDate" = $1 WHERE "toUserId" = $2 AND "trash" = false',
-            [new Date(), ctx.user.id]
+    async getUserNotificationCount(
+        ctx: RequestContext,
+    ): Promise<UnreadNotificationsDto> {
+        this.logger.log(
+            ctx,
+            `${this.getUserNotificationCount.name} was called`,
         );
+
+        const count = await this.pg.query(
+            'SELECT COUNT(*) FROM "Notification" WHERE "toUserId" = $1 AND "read" = false',
+            [ctx.user.id],
+        );
+        return {
+            unreadCount: count,
+        } as UnreadNotificationsDto;
+    }
+
+    async createNotification(
+        ctx: RequestContext,
+        {
+            type,
+            fromUserId,
+            toUserId,
+            sourceId,
+            message,
+        }: {
+            type: NotificationType;
+            fromUserId: string;
+            toUserId: string;
+            sourceId: string;
+            message: string;
+        },
+    ) {
+        if (fromUserId === toUserId) {
+            // Don't notify self
+            return;
+        }
+
+        const notification = {
+            type: type,
+            message: message,
+            read: false,
+            trash: false,
+            createdDate: new Date(),
+            updatedDate: new Date(),
+            fromUserId: fromUserId,
+            toUserId: toUserId,
+            sourceId: sourceId,
+        } as Notification;
+
+        const sql = `
+        INSERT INTO "Notification" ("id",
+                                    "type",
+                                    "message",
+                                    "read",
+                                    "trash",
+                                    "createdDate",
+                                    "updatedDate",
+                                    "fromUserId",
+                                    "toUserId",
+                                    "sourceId")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ON CONFLICT DO NOTHING
+        RETURNING *
+    `;
+        return await this.pg.one(sql, [
+            cuid(),
+            notification.type,
+            notification.message,
+            notification.read,
+            notification.trash,
+            notification.createdDate,
+            notification.updatedDate,
+            notification.fromUserId,
+            notification.toUserId,
+            notification.sourceId,
+        ]);
     }
 }

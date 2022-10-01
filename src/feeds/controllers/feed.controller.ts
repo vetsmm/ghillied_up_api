@@ -5,12 +5,12 @@ import {
     ApiTags,
 } from '@nestjs/swagger';
 import {
-    Body,
     ClassSerializerInterceptor,
     Controller,
+    Get,
     HttpCode,
     HttpStatus,
-    Post,
+    Query,
     UseGuards,
     UseInterceptors,
 } from '@nestjs/common';
@@ -21,36 +21,34 @@ import {
     ReqContext,
     RequestContext,
     SwaggerBaseApiResponse,
-    FeedInputDto,
 } from '../../shared';
 import { PostFeedService } from '../services/post-feed.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AuthoritiesGuard } from '../../auth/guards/authorities.guard';
 import { Authorities } from '../../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
-import { PostListingDto } from '../../posts/dtos/post-listing.dto';
+import { PostFeedDto } from '../dtos/post-feed.dto';
 
 @ApiTags('feeds')
 @Controller('feeds')
-export class PostFeedController {
+export class FeedController {
     constructor(
         private readonly logger: AppLogger,
         private readonly postFeedService: PostFeedService,
     ) {
-        this.logger.setContext(PostFeedController.name);
+        this.logger.setContext(FeedController.name);
     }
 
-    // create post
     @UseGuards(JwtAuthGuard, AuthoritiesGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
-    @Post()
+    @Get('user')
     @ApiOperation({
         summary: 'Retrieves the current users feed of posts',
     })
     @ApiResponse({
         status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse([PostListingDto]),
+        type: SwaggerBaseApiResponse([PostFeedDto]),
     })
     @ApiResponse({
         status: HttpStatus.NOT_FOUND,
@@ -58,17 +56,15 @@ export class PostFeedController {
     })
     @HttpCode(HttpStatus.OK)
     @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_USER)
-    async getFeed(
+    async getUserFeed(
         @ReqContext() ctx: RequestContext,
-        @Body() body: FeedInputDto,
-    ): Promise<BaseApiResponse<PostListingDto[]>> {
-        const { posts, pageInfo } = await this.postFeedService.getFeed(
-            ctx,
-            body,
-        );
+        @Query('page') page?: number,
+        @Query('take') take?: number,
+    ): Promise<BaseApiResponse<PostFeedDto[]>> {
+        const results = await this.postFeedService.getUserFeed(ctx, page, take);
         return {
-            data: posts,
-            meta: pageInfo,
+            data: results,
+            meta: {},
         };
     }
 }

@@ -12,12 +12,19 @@ import {
     UpdateCommentDto,
     CommentIdsInputDto,
 } from '../../shared';
-import { CommentStatus, MemberStatus, PostComment } from '@prisma/client';
+import {
+    CommentStatus,
+    MemberStatus,
+    NotificationType,
+    PostComment,
+} from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { PostCommentAclService } from './post-comment-acl.service';
 import { QueueService } from '../../queue/services/queue.service';
 import { ActivityType } from '../../shared/queue/activity-type';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
+import { NotificationService } from '../../notifications/services/notification.service';
+import { ReactionAPIResponse } from 'getstream';
 
 @Injectable()
 export class PostCommentService {
@@ -27,6 +34,7 @@ export class PostCommentService {
         private readonly aclService: PostCommentAclService,
         private readonly queueService: QueueService,
         private readonly streamService: GetStreamService,
+        private readonly notificationService: NotificationService,
     ) {
         this.logger.setContext(PostCommentService.name);
     }
@@ -93,7 +101,23 @@ export class PostCommentService {
             undefined,
             postOwnerId,
         );
-        this.syncPostComment(ctx, comment);
+
+        try {
+            const notification =
+                await this.notificationService.createNotification(ctx, {
+                    type: NotificationType.POST_COMMENT,
+                    sourceId: comment.id,
+                    fromUserId: ctx.user.id,
+                    toUserId: postOwnerId,
+                    message: `${ctx.user.username} commented on your post`,
+                });
+            await this.syncPostComment(ctx, comment, notification.id);
+        } catch (err) {
+            this.logger.warn(
+                ctx,
+                `Error while sending comment: ${comment.id} to stream or saving to notification table: ${err}`,
+            );
+        }
 
         return plainToInstance(CommentDetailDto, comment, {
             excludeExtraneousValues: true,
@@ -101,28 +125,41 @@ export class PostCommentService {
         });
     }
 
-    // Todo: Update PostComment
-    // We need to update the comment in the feed when necessary
-
-    syncPostComment(ctx: RequestContext, comment: any) {
-        this.streamService
+    async syncPostComment(
+        ctx: RequestContext,
+        comment: any,
+        notificationId: string,
+    ) {
+        await this.streamService
             .addPostComment({
                 kind: 'POST_COMMENT',
                 // The ID of the activity (post) the reaction refers to
                 postActivityId: comment.post.activityId,
                 data: {
+                    sourceId: comment.id,
                     postOwnerId: comment.post.postedById,
                     commentingUserId: comment.createdById,
                     time: new Date().toISOString(),
                     commentId: comment.id,
                     reactionCount: 0,
                     postId: comment.postId,
+                    content: comment.content,
+                    status: comment.status,
                 },
                 reactionAddOptions: {
                     userId: comment.createdById,
+                    targetFeedsExtraData: {
+                        [`notification:${comment.post.postedById}`]: {
+                            sourceId: comment.id,
+                            type: 'POST_COMMENT',
+                            from: ctx.user.id,
+                            to: comment.post.postedById,
+                            notificationId: notificationId,
+                        },
+                    },
                 },
             })
-            .then(async (res) => {
+            .then(async (res: ReactionAPIResponse) => {
                 await this.prisma.postComment.update({
                     where: {
                         id: comment.id,
@@ -131,12 +168,6 @@ export class PostCommentService {
                         activityId: res.id,
                     },
                 });
-            })
-            .catch((err) => {
-                this.logger.error(
-                    ctx,
-                    `Error while sending comment: ${comment.id} to stream: ${err}`,
-                );
             });
     }
 
@@ -337,7 +368,18 @@ export class PostCommentService {
             },
         });
 
-        // TODO: Update the postcomment activity in the stream
+        try {
+            await this.streamService.updatePostComment(
+                comment.activityId,
+                updatePostCommentInput.content,
+                updatePostCommentInput.status,
+            );
+        } catch (error) {
+            this.logger.error(
+                ctx,
+                `Error updating post comment in stream: ${error}`,
+            );
+        }
 
         return plainToInstance(CommentDetailDto, updatedComment, {
             excludeExtraneousValues: true,
@@ -478,7 +520,14 @@ export class PostCommentService {
             });
         });
 
-        // TODO: Delete Comment from the feed
+        try {
+            await this.streamService.deletePostComment(comment.activityId);
+        } catch (error) {
+            this.logger.error(
+                ctx,
+                `Failed to delete comment from feed - ${error.message}`,
+            );
+        }
     }
 
     async getAllChildrenByLevel(

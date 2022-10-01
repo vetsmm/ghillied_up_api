@@ -13,28 +13,30 @@ import { PostCommentController } from './controllers/post-comment.controller';
 import { PostCommentAclService } from './services/post-comment-acl.service';
 import { CommentReactionController } from './controllers/comment-reaction.controller';
 import { PostCommentReactionService } from './services/post-comment-reaction.service';
-import {QueueService} from "../queue/services/queue.service";
+import { QueueService } from '../queue/services/queue.service';
+import { NotificationService } from '../notifications/services/notification.service';
 
 @Module({
-  providers: [
-    JwtAuthStrategy,
-    PrismaService,
-    AppLogger,
-    PostAclService,
-    PostService,
-    PostReactionService,
-    PostReactionAclService,
-    PostCommentAclService,
-    PostCommentService,
-    PostCommentReactionService,
-    QueueService,
-  ],
-  controllers: [
-    PostController,
-    PostReactionController,
-    PostCommentController,
-    CommentReactionController,
-  ],
-  exports: [PostService, PostReactionService, PostCommentService],
+    providers: [
+        JwtAuthStrategy,
+        PrismaService,
+        AppLogger,
+        PostAclService,
+        PostService,
+        PostReactionService,
+        PostReactionAclService,
+        PostCommentAclService,
+        PostCommentService,
+        PostCommentReactionService,
+        QueueService,
+        NotificationService,
+    ],
+    controllers: [
+        PostController,
+        PostReactionController,
+        PostCommentController,
+        CommentReactionController,
+    ],
+    exports: [PostService, PostReactionService, PostCommentService],
 })
 export class PostsModule {}

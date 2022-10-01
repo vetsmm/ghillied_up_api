@@ -12,16 +12,16 @@ import {
 } from '../../shared';
 import { PostAclService } from './post-acl.service';
 import {
-    CommentReaction,
     MemberStatus,
+    NotificationType,
     PostReaction,
-    ReactionType,
 } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { PostService } from './post.service';
 import { QueueService } from '../../queue/services/queue.service';
 import { ActivityType } from '../../shared/queue/activity-type';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
+import { NotificationService } from '../../notifications/services/notification.service';
 
 @Injectable()
 export class PostReactionService {
@@ -32,6 +32,7 @@ export class PostReactionService {
         private readonly postService: PostService,
         private readonly queueService: QueueService,
         private readonly streamService: GetStreamService,
+        private readonly notificationService: NotificationService,
     ) {
         this.logger.setContext(PostReactionService.name);
     }
@@ -100,43 +101,24 @@ export class PostReactionService {
                 undefined,
                 reaction.post.postedBy.id,
             );
-            // TODO need to handle updates
-            this.streamService
-                .addPostReaction({
-                    kind: 'POST_REACTION',
-                    postActivityId: post.activityId,
-                    data: {
-                        postOwnerId: post.postedById,
-                        reactingUserId: reaction.createdById,
-                        time: new Date().toISOString(),
-                        postId: post.id,
-                        reactionId: reaction.id,
-                        reactionType: reaction.reactionType,
-                    },
-                    reactionAddOptions: {
-                        userId: reaction.createdById,
-                    },
-                })
-                .then(async (res) => {
-                    this.logger.log(
-                        ctx,
-                        `Added reaction: ${reaction.id} to stream`,
-                    );
-                    await this.prisma.postReaction.update({
-                        where: {
-                            id: reaction.id,
-                        },
-                        data: {
-                            activityId: res.id,
-                        },
+            try {
+                const notification =
+                    await this.notificationService.createNotification(ctx, {
+                        type: NotificationType.POST_COMMENT,
+                        sourceId: reaction.id,
+                        fromUserId: ctx.user.id,
+                        toUserId: post.postedById,
+                        message: `${ctx.user.username} reacted to your post`,
                     });
-                })
-                .catch((err) => {
-                    this.logger.error(
-                        ctx,
-                        `Error adding reaction: ${reaction.id} to stream: ${err}`,
-                    );
-                });
+                await this.syncPostReaction(
+                    ctx,
+                    post,
+                    reaction,
+                    notification.id,
+                );
+            } catch (e) {
+                this.logger.warn(ctx, '');
+            }
         } else {
             // check if the user has reacted to the post
             const reaction = await this.prisma.postReaction.findFirst({
@@ -159,10 +141,82 @@ export class PostReactionService {
                 },
             });
 
-            // delete the reaction from the stream
+            await this.streamService
+                .deletePostReaction(reaction.activityId)
+                .catch((e) => {
+                    this.logger.warn(
+                        ctx,
+                        `Error deleting reaction from stream: ${e}`,
+                    );
+                });
         }
 
         return this.postService.getPostById(ctx, reactionInput.postId);
+    }
+
+    async syncPostReaction(
+        ctx: RequestContext,
+        post: any,
+        reaction: PostReaction,
+        notificationId: string,
+    ): Promise<void> {
+        if (reaction.activityId) {
+            this.streamService
+                .updatePostReaction(reaction.activityId, reaction.reactionType)
+                .catch((e) => {
+                    this.logger.warn(
+                        ctx,
+                        `Error updating reaction in stream: ${e}`,
+                    );
+                });
+            return;
+        }
+        this.streamService
+            .addPostReaction({
+                kind: 'POST_REACTION',
+                postActivityId: post.activityId,
+                data: {
+                    sourceId: reaction.id,
+                    postOwnerId: post.postedById,
+                    reactingUserId: reaction.createdById,
+                    time: new Date().toISOString(),
+                    postId: post.id,
+                    reactionId: reaction.id,
+                    reactionType: reaction.reactionType,
+                },
+                reactionAddOptions: {
+                    userId: reaction.createdById,
+                    targetFeedsExtraData: {
+                        [`notification:${post.postedById}`]: {
+                            sourceId: reaction.id,
+                            type: 'POST_REACTION',
+                            from: ctx.user.id,
+                            to: post.postedById,
+                            notificationId: notificationId,
+                        },
+                    },
+                },
+            })
+            .then(async (res) => {
+                this.logger.log(
+                    ctx,
+                    `Added reaction: ${reaction.id} to stream`,
+                );
+                await this.prisma.postReaction.update({
+                    where: {
+                        id: reaction.id,
+                    },
+                    data: {
+                        activityId: res.id,
+                    },
+                });
+            })
+            .catch((err) => {
+                this.logger.error(
+                    ctx,
+                    `Error adding reaction: ${reaction.id} to stream: ${err}`,
+                );
+            });
     }
 
     async getAllPostReactions(

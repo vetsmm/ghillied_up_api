@@ -1,6 +1,6 @@
 import { NewActivity } from 'getstream/src/feed';
 import { ReactionAddOptions } from 'getstream/lib/reaction';
-import { ReactionType } from '@prisma/client';
+import { CommentStatus, PostStatus, ReactionType } from '@prisma/client';
 
 export interface TagMeta {
     id: string;
@@ -50,6 +50,8 @@ export type NewPostActivity = NewActivity & {
         [key: string]: number;
     };
 
+    status: PostStatus;
+
     // The other streams that should be notified of this activity
     to?: string[];
 };
@@ -59,12 +61,15 @@ export type NewCommentActivity = {
     // The ID of the activity (post) the reaction refers to
     postActivityId: string;
     data: {
+        sourceId: string;
         postOwnerId: string;
         commentingUserId: string;
         time: string;
         commentId: string;
         reactionCount?: number;
         postId: string;
+        content: string;
+        status: CommentStatus;
     };
     reactionAddOptions: ReactionAddOptions;
 };
@@ -73,6 +78,7 @@ export type NewPostReaction = {
     kind: 'POST_REACTION';
     postActivityId: string;
     data: {
+        sourceId: string;
         postOwnerId: string;
         reactingUserId: string;
         time: string;
@@ -87,6 +93,7 @@ export type NewPostCommentReaction = {
     kind: 'POST_COMMENT_REACTION';
     commentActivityId: string;
     data: {
+        sourceId: string;
         commentId: string;
         reactionId: string;
         commentOwnerId: string;

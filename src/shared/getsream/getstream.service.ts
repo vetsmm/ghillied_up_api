@@ -12,7 +12,11 @@ import {
     ReactionAPIResponse,
     StreamClient,
     Activity,
+    GetFeedOptions,
+    FeedAPIResponse,
+    DefaultGenerics,
 } from 'getstream';
+import { CommentStatus, ReactionType } from '@prisma/client';
 
 @Injectable()
 export class GetStreamService {
@@ -85,8 +89,19 @@ export class GetStreamService {
         return response;
     }
 
-    async updatePostComment() {
-        // TODO: Update the comment, status, reaction count, etc.
+    async updatePostComment(
+        reactionId: string,
+        content?: string,
+        status?: CommentStatus,
+    ) {
+        return this.stream.reactions.update(reactionId, {
+            content,
+            status,
+        });
+    }
+
+    async deletePostComment(reactionId: string) {
+        return this.stream.reactions.update(reactionId);
     }
 
     async addPostReaction(
@@ -104,12 +119,14 @@ export class GetStreamService {
                 targetFeeds: [`notification:${reaction.data.postOwnerId}`],
             },
         );
-
-        // TODO: Add the reaction to the post activity
     }
 
-    async updatePostReaction() {
-        // TODO: Update the reaction, status, reaction count, etc.
+    async updatePostReaction(reactionId: string, reactionType: ReactionType) {
+        return this.stream.reactions.update(reactionId, { reactionType });
+    }
+
+    async deletePostReaction(reactionId: string) {
+        return this.stream.reactions.delete(reactionId);
     }
 
     async addPostCommentReaction(
@@ -131,7 +148,51 @@ export class GetStreamService {
         // TODO: Add the reaction to the comment activity
     }
 
-    async updatePostCommentReaction() {
-        // TODO: Update the reaction, status, reaction count, etc.
+    async updatePostCommentReaction(
+        reactionId: string,
+        reactionType: ReactionType,
+    ) {
+        return this.stream.reactions.update(reactionId, { reactionType });
+    }
+
+    async deletePostCommentReaction(reactionId: string) {
+        return this.stream.reactions.delete(reactionId);
+    }
+
+    /**
+     * Feeds Reading
+     */
+    async getFeed(
+        userId: string,
+        options: GetFeedOptions = {},
+    ): Promise<FeedAPIResponse> {
+        const feed = this.stream.feed('user', userId);
+
+        return feed.get(options);
+    }
+
+    async getNotificationFeed(
+        userId: string,
+        options: GetFeedOptions = {},
+    ): Promise<FeedAPIResponse> {
+        const feed = this.stream.feed('notification', userId);
+
+        return feed.get({
+            ...options,
+            mark_seen: true,
+            enrich: true,
+        });
+    }
+
+    async markAsRead(userId: string, activityIds: string[]) {
+        return this.stream
+            .feed('notification', userId)
+            .get({ mark_read: activityIds });
+    }
+
+    async markAllAsRead(userId: string) {
+        return this.stream
+            .feed('notification', userId)
+            .get({ mark_read: true });
     }
 }

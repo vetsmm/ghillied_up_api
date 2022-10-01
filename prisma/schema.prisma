@@ -16,6 +16,7 @@ model CommentReaction {
   postComment  PostComment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
   commentId    String
   activityId   String?     @unique
+  createdDate  DateTime    @default(now())
 
   @@unique([createdById, commentId])
   @@index([reactionType])
@@ -65,6 +66,7 @@ model PostReaction {
   post         Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
   postId       String
   activityId   String?     @unique
+  createdDate  DateTime    @default(now())
 
   @@unique([createdById, postId])
   @@index([reactionType])
@@ -229,6 +231,7 @@ model Notification {
   toUser      User             @relation("notifications", fields: [toUserId], references: [id], onDelete: Cascade)
   toUserId    String
   sourceId    String
+  activityId  String?          @unique
 
   @@unique([type, sourceId, fromUserId]) // To ensure we don't have duplicate notifications of the same type by the same user
   @@index([createdDate, type, read, trash])

@@ -174,6 +174,7 @@ export class PostService {
                 })),
                 commentCount: post._count.postComments,
                 reactionCount: post._count.postReaction,
+                status: post.status,
             })
             .then(async (res) => {
                 this.logger.log(ctx, `Activity added to feed: ${res}`);

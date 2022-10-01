@@ -1,8 +1,16 @@
-import {ApiProperty} from "@nestjs/swagger";
-import {IsArray} from "class-validator";
+import { ApiProperty } from '@nestjs/swagger';
+import { IsArray } from 'class-validator';
+
+export class NotificationIdsDto {
+    @ApiProperty()
+    activityId: string;
+
+    @ApiProperty()
+    id: string;
+}
 
 export class ReadNotificationsInputDto {
     @ApiProperty()
     @IsArray()
-    notificationIds: string[];
+    ids: NotificationIdsDto[];
 }

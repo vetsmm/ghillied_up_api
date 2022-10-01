@@ -4,39 +4,39 @@ import { Expose } from 'class-transformer';
 import { BaseUserOutputDto } from '../base-user-output.dto';
 
 export class UserOutput extends BaseUserOutputDto {
-  @Expose()
-  @ApiProperty()
-  id: string;
+    @Expose()
+    @ApiProperty()
+    id: string;
 
-  @Expose()
-  @ApiProperty()
-  username: string;
+    @Expose()
+    @ApiProperty()
+    username: string;
 
-  @Expose()
-  @ApiProperty()
-  firstName: string;
+    @Expose()
+    @ApiProperty()
+    firstName: string;
 
-  @Expose()
-  @ApiProperty()
-  lastName: string;
+    @Expose()
+    @ApiProperty()
+    lastName: string;
 
-  @Expose()
-  @ApiProperty({ example: [UserAuthority.ROLE_USER] })
-  authorities: UserAuthority[];
+    @Expose()
+    @ApiProperty({ example: [UserAuthority.ROLE_USER] })
+    authorities: UserAuthority[];
 
-  @Expose()
-  @ApiProperty()
-  email: string;
+    @Expose()
+    @ApiProperty()
+    email: string;
 
-  @Expose()
-  @ApiProperty()
-  activated: boolean;
+    @Expose()
+    @ApiProperty()
+    activated: boolean;
 
-  @Expose()
-  @ApiProperty()
-  createdDate: string;
+    @Expose()
+    @ApiProperty()
+    createdDate: string;
 
-  @Expose()
-  @ApiProperty()
-  updatedDate: string;
+    @Expose()
+    @ApiProperty()
+    updatedDate: string;
 }

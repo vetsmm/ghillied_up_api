@@ -14,7 +14,6 @@ import {
     Activity,
     GetFeedOptions,
     FeedAPIResponse,
-    DefaultGenerics,
 } from 'getstream';
 import { CommentStatus, ReactionType } from '@prisma/client';
 

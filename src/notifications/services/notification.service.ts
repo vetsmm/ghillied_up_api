@@ -9,7 +9,6 @@ import {
     PostCommentReactionNotificationDto,
     PostReactionNotificationDto,
 } from '../dtos/notification.dto';
-import { PrismaService } from '../../prisma/prisma.service';
 import { UnreadNotificationsDto } from '../dtos/unread-notifications.dto';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
@@ -24,7 +23,6 @@ import { ReadNotificationsInputDto } from '../dtos/read-notifications-input.dto'
 export class NotificationService {
     constructor(
         private readonly logger: AppLogger,
-        private readonly prisma: PrismaService,
         private readonly streamService: GetStreamService,
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
@@ -196,33 +194,6 @@ export class NotificationService {
         await this.streamService.markAllAsRead(ctx.user.id);
     }
 
-    async markNotificationAsTrash(
-        ctx: RequestContext,
-        notificationIds: string[],
-    ): Promise<void> {
-        this.logger.log(ctx, `${this.markNotificationAsTrash.name} was called`);
-
-        await this.pg.none(
-            'UPDATE "Notification" SET "trash" = true, "updatedDate" = $1 WHERE "toUserId" = $2 AND "id" IN ($3:list)',
-            [new Date(), ctx.user.id, notificationIds],
-        );
-    }
-
-    async markAllNotificationsAsTrash(ctx: RequestContext): Promise<void> {
-        this.logger.log(
-            ctx,
-            `${this.markAllNotificationsAsTrash.name} was called`,
-        );
-
-        // TODO: Eliminate DB call
-        await this.pg.none(
-            'UPDATE "Notification" SET "trash" = true, "updatedDate" = $1 WHERE "toUserId" = $2 AND "trash" = false',
-            [new Date(), ctx.user.id],
-        );
-
-        await this.streamService.markAllAsRead(ctx.user.id);
-    }
-
     markNotificationsAsRead(
         ctx: RequestContext,
         notificationIds: ReadNotificationsInputDto,
@@ -269,15 +240,10 @@ export class NotificationService {
             `${this.getUserNotificationCount.name} was called`,
         );
 
-        const count = await this.prisma.notification.count({
-            where: {
-                AND: [
-                    { toUserId: ctx.user.id },
-                    { read: false },
-                    { trash: false },
-                ],
-            },
-        });
+        const count = await this.pg.query(
+            'SELECT COUNT(*) FROM "Notification" WHERE "toUserId" = $1 AND "read" = false',
+            [ctx.user.id],
+        );
         return {
             unreadCount: count,
         } as UnreadNotificationsDto;
@@ -299,6 +265,11 @@ export class NotificationService {
             message: string;
         },
     ) {
+        if (fromUserId === toUserId) {
+            // Don't notify self
+            return;
+        }
+
         const notification = {
             type: type,
             message: message,

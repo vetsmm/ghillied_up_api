@@ -12,6 +12,7 @@ import {
     HttpCode,
     HttpStatus,
     Post,
+    Query,
     UseGuards,
     UseInterceptors,
 } from '@nestjs/common';
@@ -61,11 +62,17 @@ export class NotificationController {
     @Authorities(UserAuthority.ROLE_USER)
     async getNotificationFeed(
         @ReqContext() ctx: RequestContext,
+        @Query('limit') limit = 25,
+        @Query('page') page = 1,
     ): Promise<BaseApiResponse<NotificationDto[]>> {
         this.logger.log(ctx, `${this.getNotificationFeed.name} was called`);
 
         return {
-            data: await this.notificationService.getNotificationFeed(ctx),
+            data: await this.notificationService.getNotificationFeed(
+                ctx,
+                page,
+                limit,
+            ),
             meta: {},
         };
     }

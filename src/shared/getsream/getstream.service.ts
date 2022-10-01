@@ -14,8 +14,11 @@ import {
     Activity,
     GetFeedOptions,
     FeedAPIResponse,
+    StreamUser,
+    DefaultGenerics,
 } from 'getstream';
-import { CommentStatus, ReactionType } from '@prisma/client';
+import { CommentStatus, ReactionType, User } from '@prisma/client';
+import { StreamUserDto } from '../../user/dtos/stream-user.dto';
 
 @Injectable()
 export class GetStreamService {
@@ -34,6 +37,26 @@ export class GetStreamService {
 
     createAccessToken(userId: string): string {
         return this.stream.createUserToken(userId);
+    }
+
+    async getUser(userId: string): Promise<StreamUser> {
+        return this.stream.user(userId).get();
+    }
+
+    async createUser(user: StreamUserDto): Promise<StreamUser> {
+        return this.stream.user(user.id).create({
+            ...user,
+        });
+    }
+
+    async updateUser(user: StreamUserDto): Promise<StreamUser> {
+        return this.stream.user(user.id).update({
+            ...user,
+        });
+    }
+
+    async deleteUser(userId: string) {
+        return this.stream.user(userId).delete();
     }
 
     async followGhillie(ghillieId: string, userId: string) {

@@ -9,15 +9,15 @@ import { UserAclService } from './services/user-acl.service';
 import { AnonymousUserController } from './controllers/anonymous-user.controller';
 
 @Module({
-  providers: [
-    UserService,
-    JwtAuthStrategy,
-    PrismaService,
-    AppLogger,
-    ConfigService,
-    UserAclService,
-  ],
-  controllers: [UserController, AnonymousUserController],
-  exports: [UserService],
+    providers: [
+        UserService,
+        JwtAuthStrategy,
+        PrismaService,
+        AppLogger,
+        ConfigService,
+        UserAclService,
+    ],
+    controllers: [UserController, AnonymousUserController],
+    exports: [UserService],
 })
 export class UserModule {}

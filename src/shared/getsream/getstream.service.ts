@@ -15,9 +15,8 @@ import {
     GetFeedOptions,
     FeedAPIResponse,
     StreamUser,
-    DefaultGenerics,
 } from 'getstream';
-import { CommentStatus, ReactionType, User } from '@prisma/client';
+import { CommentStatus, ReactionType } from '@prisma/client';
 import { StreamUserDto } from '../../user/dtos/stream-user.dto';
 
 @Injectable()
@@ -61,18 +60,18 @@ export class GetStreamService {
 
     async followGhillie(ghillieId: string, userId: string) {
         // This is the feed group
-        const ghillieFeed = this.stream.feed('user', userId);
+        const userFeed = this.stream.feed('user', userId);
 
         // Now we want to follow the ghillie's feed
-        return ghillieFeed.follow('ghillie', ghillieId);
+        return userFeed.follow('ghillie', ghillieId);
     }
 
     async unfollowGhillie(ghillieId: string, userId: string) {
         // This is the feed group
-        const ghillieFeed = this.stream.feed('user', userId);
+        const userFeed = this.stream.feed('user', userId);
 
         // Now we want to unfollow the ghillie's feed
-        return ghillieFeed.unfollow('ghillie', ghillieId);
+        return userFeed.unfollow('ghillie', ghillieId);
     }
 
     async addPostActivity(post: NewPostActivity): Promise<Activity> {
@@ -179,6 +178,13 @@ export class GetStreamService {
 
     async deletePostCommentReaction(reactionId: string) {
         return this.stream.reactions.delete(reactionId);
+    }
+
+    async getGhillieFeed(
+        ghillieId: string,
+        options: GetFeedOptions,
+    ): Promise<FeedAPIResponse<any>> {
+        return this.stream.feed('ghillie', ghillieId).get(options);
     }
 
     /**

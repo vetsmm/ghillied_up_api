@@ -1,16 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-    AppLogger,
-    FeedInputDto,
-    PageInfo,
-    parsePaginationArgs,
-    RequestContext,
-} from '../../shared';
+import { AppLogger, RequestContext } from '../../shared';
 import { PostFeedAclService } from './post-feed-acl.service';
-import { PostListingDto } from '../../posts/dtos/post-listing.dto';
-import { plainToInstance } from 'class-transformer';
-import { MemberStatus } from '@prisma/client';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
@@ -29,87 +20,6 @@ export class PostFeedService {
         this.logger.setContext(PostFeedService.name);
     }
 
-    async getFeed(
-        ctx: RequestContext,
-        body: FeedInputDto,
-    ): Promise<{
-        posts: Array<PostListingDto>;
-        pageInfo: PageInfo;
-    }> {
-        this.logger.log(ctx, `${this.getFeed.name} was called`);
-
-        const where = this.generatePrismaWhereQuery(body.filters);
-
-        const { findManyArgs, toConnection } = parsePaginationArgs({
-            first: body.take - 1,
-            after: body.cursor ? body.cursor : undefined,
-        });
-
-        console.log('Executing QUery');
-        const posts = await this.prisma.post.findMany({
-            ...findManyArgs,
-            ...where,
-            orderBy: {
-                createdDate: body.orderBy,
-            },
-            include: {
-                tags: true,
-                postedBy: true,
-                // only posts in ghillies user is a member of
-                ghillie: {
-                    include: {
-                        members: {
-                            where: {
-                                userId: ctx.user.id,
-                                memberStatus: MemberStatus.ACTIVE,
-                            },
-                        },
-                    },
-                },
-                _count: {
-                    select: {
-                        postComments: true,
-                        postReaction: true,
-                    },
-                },
-                postReaction: {
-                    where: {
-                        createdById: ctx.user.id,
-                    },
-                },
-            },
-        });
-
-        if (posts.length === 0) {
-            return {
-                posts: [] as Array<PostListingDto>,
-                pageInfo: toConnection(posts).pageInfo,
-            };
-        }
-
-        return {
-            posts: plainToInstance(PostListingDto, posts, {
-                excludeExtraneousValues: true,
-                enableImplicitConversion: true,
-            }),
-            pageInfo: toConnection(posts).pageInfo,
-        };
-    }
-
-    private generatePrismaWhereQuery(query: object): object | null {
-        // Take all the keys in the object, and generate a where clause with AND for each key
-        // e.g. { id: { equals: 1 } } => { where: { id: { equals: 1 } } }
-        if (query === undefined || Object.keys(query).length === 0) {
-            return null;
-        }
-        const where = { AND: [] };
-        Object.keys(query).forEach((key) => {
-            where.AND.push({ [key]: query[key] });
-        });
-
-        return { where };
-    }
-
     async getUserFeed(
         ctx: RequestContext,
         page = 1,
@@ -117,15 +27,51 @@ export class PostFeedService {
     ): Promise<PostFeedDto[]> {
         this.logger.log(ctx, `${this.getUserFeed.name} was called`);
 
-        const activities = await this.streamService.getFeed(ctx.user.id, {
-            limit: perPage,
-            offset: (page - 1) * perPage,
-        });
+        try {
+            const activities = await this.streamService.getFeed(ctx.user.id, {
+                limit: perPage,
+                offset: (page - 1) * perPage,
+            });
 
-        return this.hydratePosts(
-            ctx,
-            activities.results as Array<FlatActivity>,
-        );
+            return this.hydratePosts(
+                ctx,
+                activities.results as Array<FlatActivity>,
+            );
+        } catch (err) {
+            this.logger.error(ctx, `${this.getUserFeed.name} failed`, err);
+            return [];
+        }
+    }
+
+    async getGhilliePostFeed(
+        ctx: RequestContext,
+        ghillieId: string,
+        page = 1,
+        perPage = 25,
+    ) {
+        this.logger.log(ctx, `${this.getGhilliePostFeed.name} was called`);
+
+        try {
+            const activities = await this.streamService.getGhillieFeed(
+                ghillieId,
+                {
+                    limit: perPage,
+                    offset: (page - 1) * perPage,
+                },
+            );
+
+            return this.hydratePosts(
+                ctx,
+                activities.results as Array<FlatActivity>,
+            );
+        } catch (err) {
+            this.logger.error(
+                ctx,
+                `${this.getGhilliePostFeed.name} failed`,
+                err,
+            );
+            return [];
+        }
     }
 
     // Enriches the feed with the post data
@@ -134,6 +80,10 @@ export class PostFeedService {
         activities: FlatActivity[],
     ): Promise<PostFeedDto[]> {
         this.logger.log(ctx, `${this.hydratePosts.name} was called`);
+
+        if (activities.length === 0) {
+            return [];
+        }
 
         return await this.pg.many(
             `SELECT "p"."id",

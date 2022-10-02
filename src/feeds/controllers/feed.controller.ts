@@ -72,6 +72,40 @@ export class FeedController {
     @UseGuards(JwtAuthGuard, AuthoritiesGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
+    @Get('user/personal')
+    @ApiOperation({
+        summary:
+            'Retrieves the current users posts that they have made across ghillies',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: SwaggerBaseApiResponse([PostFeedDto]),
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        type: BaseApiErrorResponse,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_USER)
+    async getUsersPersonalFeed(
+        @ReqContext() ctx: RequestContext,
+        @Query('page') page?: number,
+        @Query('take') take?: number,
+    ): Promise<BaseApiResponse<PostFeedDto[]>> {
+        const results = await this.postFeedService.getUsersPersonalFeed(
+            ctx,
+            page,
+            take,
+        );
+        return {
+            data: results,
+            meta: {},
+        };
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
     @Get('ghillie/:ghillieId')
     @ApiOperation({
         summary: 'Retrieves the post feed of a ghillie',

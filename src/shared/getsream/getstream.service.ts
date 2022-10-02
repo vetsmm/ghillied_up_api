@@ -43,6 +43,7 @@ export class GetStreamService {
     }
 
     async createUser(user: StreamUserDto): Promise<StreamUser> {
+        await this.stream.feed('user', user.id).follow(`user_post`, user.id);
         return this.stream.user(user.id).create({
             ...user,
         });
@@ -55,6 +56,7 @@ export class GetStreamService {
     }
 
     async deleteUser(userId: string) {
+        await this.stream.feed('user', userId).unfollow(`user_post`, userId);
         return this.stream.user(userId).delete();
     }
 
@@ -81,7 +83,7 @@ export class GetStreamService {
         // Add the activity to the user's feed and send it to the ghillie's feed
         return feed.addActivity({
             ...post,
-            to: [`ghillie:${post.targetId}`],
+            to: [`ghillie:${post.ghillieId}`, `user_post:${post.actor}`],
         });
     }
 
@@ -197,6 +199,14 @@ export class GetStreamService {
         const feed = this.stream.feed('user', userId);
 
         return feed.get(options);
+    }
+
+    async getUsersPersonalFeed(
+        userId: string,
+        options: GetFeedOptions = {},
+    ): Promise<FeedAPIResponse> {
+        // Get the feed of activities made by the user
+        return this.stream.feed('user_post', userId).get(options);
     }
 
     async getNotificationFeed(

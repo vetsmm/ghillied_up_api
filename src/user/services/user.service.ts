@@ -94,6 +94,9 @@ export class UserService {
                     excludeExtraneousValues: true,
                 }),
             )
+            .then((res) => {
+                this.logger.log(ctx, `Stream User Created ${res}`);
+            })
             .catch((e) => {
                 this.logger.error(ctx, 'Error creating user in stream', e);
             });

@@ -43,6 +43,36 @@ export class PostFeedService {
         }
     }
 
+    async getUsersPersonalFeed(
+        ctx: RequestContext,
+        page = 1,
+        perPage = 25,
+    ): Promise<PostFeedDto[]> {
+        this.logger.log(ctx, `${this.getUsersPersonalFeed.name} was called`);
+
+        try {
+            const activities = await this.streamService.getUsersPersonalFeed(
+                ctx.user.id,
+                {
+                    limit: perPage,
+                    offset: (page - 1) * perPage,
+                },
+            );
+
+            return this.hydratePosts(
+                ctx,
+                activities.results as Array<FlatActivity>,
+            );
+        } catch (err) {
+            this.logger.error(
+                ctx,
+                `${this.getUsersPersonalFeed.name} failed`,
+                err,
+            );
+            return [];
+        }
+    }
+
     async getGhilliePostFeed(
         ctx: RequestContext,
         ghillieId: string,

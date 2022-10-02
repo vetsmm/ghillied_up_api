@@ -177,7 +177,10 @@ export class PostService {
                 status: post.status,
             })
             .then(async (res) => {
-                this.logger.log(ctx, `Activity added to feed: ${res}`);
+                this.logger.log(
+                    ctx,
+                    `Activity added to feed with ID: ${res.id}`,
+                );
                 await this.prisma.post.update({
                     where: {
                         id: post.id,

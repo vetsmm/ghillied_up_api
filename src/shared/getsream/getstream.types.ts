@@ -6,7 +6,7 @@ import {
     FlatActivityEnriched,
     NotificationActivity,
     NotificationActivityEnriched,
-} from 'getstream/lib/feed';
+} from 'getstream';
 
 export type Activity = Stream.Activity<any>;
 export type Reaction = Stream.Reaction;

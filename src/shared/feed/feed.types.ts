@@ -1,6 +1,5 @@
-import { NewActivity } from 'getstream/src/feed';
-import { ReactionAddOptions } from 'getstream/lib/reaction';
-import {CommentStatus, PostStatus, ReactionType, ServiceBranch, ServiceStatus} from '@prisma/client';
+import { ReactionAddOptions, NewActivity } from 'getstream';
+import { CommentStatus, PostStatus, ReactionType } from '@prisma/client';
 
 export interface TagMeta {
     id: string;

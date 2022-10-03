@@ -1,6 +1,6 @@
 import { NewActivity } from 'getstream/src/feed';
 import { ReactionAddOptions } from 'getstream/lib/reaction';
-import { CommentStatus, PostStatus, ReactionType } from '@prisma/client';
+import {CommentStatus, PostStatus, ReactionType, ServiceBranch, ServiceStatus} from '@prisma/client';
 
 export interface TagMeta {
     id: string;
@@ -12,6 +12,28 @@ export enum PostFeedVerb {
     COMMENT = 'COMMENT',
 }
 
+export interface PostFeedCreateActivityData {
+    id: string;
+    uid: string;
+    title: string;
+    content: string;
+    status: PostStatus;
+    createdDate: Date;
+    updatedDate: Date;
+    edited: boolean;
+    tags?: { id: string; name: string }[];
+    ghillieId: string;
+    postedById: string;
+}
+
+export interface PostFeedUpdateActivityData {
+    title?: string;
+    content?: string;
+    status?: PostStatus;
+    updatedDate: Date;
+    edited?: boolean;
+    tags?: { id: string; name: string }[];
+}
 /**
  * This tells the story of a person performing an action on or with an object (post).
  * Ex: "MarkTripoli made a new post in the ghillie 'Ghillie 1'"
@@ -21,37 +43,16 @@ export enum PostFeedVerb {
 export type NewPostActivity = NewActivity & {
     // The person who performed the action
     actor: string;
-
     // The action performed
     verb: PostFeedVerb.POST;
-
     object: PostFeedVerb.POST;
-
     // This is the ID of the post .
     foreign_id: string;
-
     time: string;
-
     // This is the ghillie that the post was made in
     targetId: string;
-
     published: string;
-
-    //This is the ID of the ghillie where the activity was made.
-    ghillieId: string;
-
-    tags?: TagMeta[];
-
-    commentCount?: number;
-
-    reactionCount?: number;
-
-    aggregateReactionTypeCounts?: {
-        [key: string]: number;
-    };
-
-    status: PostStatus;
-
+    data: PostFeedCreateActivityData;
     // The other streams that should be notified of this activity
     to?: string[];
 };

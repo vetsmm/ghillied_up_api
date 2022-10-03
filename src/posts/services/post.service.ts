@@ -153,7 +153,7 @@ export class PostService {
                 aggregateReactionTypeCounts: {},
             })
             .then((res) => {
-                this.logger.log(ctx, `Activity published to queue`);
+                this.logger.log(ctx, `Activity published to queue: ${res}`);
             })
             .catch((err) => {
                 this.logger.error(ctx, err.message);
@@ -167,14 +167,22 @@ export class PostService {
                 time: new Date().toISOString(),
                 targetId: post.ghillieId,
                 published: post.createdDate.toISOString(),
-                ghillieId: post.ghillieId,
-                tags: post.tags.map((tag: PostTag) => ({
-                    name: tag.name,
-                    id: tag.id,
-                })),
-                commentCount: post._count.postComments,
-                reactionCount: post._count.postReaction,
-                status: post.status,
+                data: {
+                    ghillieId: post.ghillieId,
+                    postedById: post.postedById,
+                    tags: post.tags.map((tag: PostTag) => ({
+                        name: tag.name,
+                        id: tag.id,
+                    })),
+                    status: post.status,
+                    id: post.id,
+                    uid: post.uid,
+                    title: post.title,
+                    content: post.content,
+                    createdDate: post.createdDate,
+                    updatedDate: post.updatedDate,
+                    edited: post.edited,
+                },
             })
             .then(async (res) => {
                 this.logger.log(
@@ -285,6 +293,30 @@ export class PostService {
                 },
             });
         });
+
+        this.streamService
+            .updatePostActivity(
+                ctx.user.id,
+                updatedPost.activityId,
+                updatedPost.ghillieId,
+                {
+                    title: updatedPost.title,
+                    content: updatedPost.content,
+                    status: updatedPost.status,
+                    updatedDate: updatedPost.updatedDate,
+                    edited: true,
+                    tags: updatedPost.tags.map((tag) => ({
+                        name: tag.name,
+                        id: tag.id,
+                    })),
+                },
+            )
+            .then((res) => {
+                this.logger.log(ctx, `Activity updated with ID: ${res.id}`);
+            })
+            .catch((err) => {
+                this.logger.error(ctx, `Error updating activity: ${err}`);
+            });
 
         const dto = plainToInstance(PostDetailDto, updatedPost, {
             excludeExtraneousValues: true,

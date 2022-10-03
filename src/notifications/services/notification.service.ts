@@ -282,22 +282,22 @@ export class NotificationService {
             sourceId: sourceId,
         } as Notification;
 
-        const sql = `
-        INSERT INTO "Notification" ("id",
-                                    "type",
-                                    "message",
-                                    "read",
-                                    "trash",
-                                    "createdDate",
-                                    "updatedDate",
-                                    "fromUserId",
-                                    "toUserId",
-                                    "sourceId")
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        ON CONFLICT DO NOTHING
-        RETURNING *
-    `;
-        return await this.pg.one(sql, [
+        const sql = `INSERT INTO "Notification" ("id",
+                                                 "type",
+                                                 "message",
+                                                 "read",
+                                                 "trash",
+                                                 "createdDate",
+                                                 "updatedDate",
+                                                 "fromUserId",
+                                                 "toUserId",
+                                                 "sourceId")
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                     ON CONFLICT DO NOTHING
+                     RETURNING "Notification".id
+        `;
+
+        const response = await this.pg.oneOrNone(sql, [
             cuid(),
             notification.type,
             notification.message,
@@ -309,5 +309,15 @@ export class NotificationService {
             notification.toUserId,
             notification.sourceId,
         ]);
+
+        if (response) {
+            return response;
+        }
+
+        // get the existing notification id
+        return await this.pg.oneOrNone(
+            'SELECT "id" FROM "Notification" WHERE "fromUserId" = $1 AND "toUserId" = $2 AND "sourceId" = $3 AND "type" = $4',
+            [fromUserId, toUserId, sourceId, type],
+        );
     }
 }

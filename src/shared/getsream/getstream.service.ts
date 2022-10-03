@@ -6,6 +6,7 @@ import {
     NewPostActivity,
     NewPostCommentReaction,
     NewPostReaction,
+    PostFeedUpdateActivityData,
 } from '../feed/feed.types';
 import {
     connect,
@@ -15,8 +16,10 @@ import {
     GetFeedOptions,
     FeedAPIResponse,
     StreamUser,
+    GetActivitiesAPIResponse,
+    DefaultGenerics,
 } from 'getstream';
-import { CommentStatus, ReactionType } from '@prisma/client';
+import { CommentStatus, Post, ReactionType } from '@prisma/client';
 import { StreamUserDto } from '../../user/dtos/stream-user.dto';
 
 @Injectable()
@@ -83,7 +86,32 @@ export class GetStreamService {
         // Add the activity to the user's feed and send it to the ghillie's feed
         return feed.addActivity({
             ...post,
-            to: [`ghillie:${post.ghillieId}`, `user_post:${post.actor}`],
+            to: [`ghillie:${post.data.ghillieId}`, `user_post:${post.actor}`],
+        });
+    }
+
+    async getPostActivities(
+        activityIds: Array<string>,
+    ): Promise<GetActivitiesAPIResponse> {
+        return this.stream.getActivities({
+            ids: activityIds,
+        });
+    }
+
+    async updatePostActivity(
+        actorId: string,
+        ghillieId: string,
+        postId: string,
+        updatedFields: PostFeedUpdateActivityData,
+    ) {
+        return this.stream.activityPartialUpdate({
+            foreign_id: `post:${postId}`,
+            set: {
+                data: {
+                    ...updatedFields,
+                },
+            },
+            time: new Date(),
         });
     }
 
@@ -196,9 +224,7 @@ export class GetStreamService {
         userId: string,
         options: GetFeedOptions = {},
     ): Promise<FeedAPIResponse> {
-        const feed = this.stream.feed('user', userId);
-
-        return feed.get(options);
+        return this.stream.feed('user', userId).get(options);
     }
 
     async getUsersPersonalFeed(

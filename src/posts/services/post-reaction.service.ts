@@ -11,11 +11,7 @@ import {
     PostDetailDto,
 } from '../../shared';
 import { PostAclService } from './post-acl.service';
-import {
-    MemberStatus,
-    NotificationType,
-    PostReaction,
-} from '@prisma/client';
+import { MemberStatus, NotificationType, PostReaction } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { PostService } from './post.service';
 import { QueueService } from '../../queue/services/queue.service';
@@ -110,12 +106,7 @@ export class PostReactionService {
                         toUserId: post.postedById,
                         message: `${ctx.user.username} reacted to your post`,
                     });
-                await this.syncPostReaction(
-                    ctx,
-                    post,
-                    reaction,
-                    notification.id,
-                );
+                this.syncPostReaction(ctx, post, reaction, notification.id);
             } catch (e) {
                 this.logger.warn(ctx, '');
             }
@@ -154,12 +145,12 @@ export class PostReactionService {
         return this.postService.getPostById(ctx, reactionInput.postId);
     }
 
-    async syncPostReaction(
+    syncPostReaction(
         ctx: RequestContext,
         post: any,
         reaction: PostReaction,
         notificationId: string,
-    ): Promise<void> {
+    ): void {
         if (reaction.activityId) {
             this.streamService
                 .updatePostReaction(reaction.activityId, reaction.reactionType)

@@ -17,9 +17,8 @@ import {
     FeedAPIResponse,
     StreamUser,
     GetActivitiesAPIResponse,
-    DefaultGenerics,
 } from 'getstream';
-import { CommentStatus, Post, ReactionType } from '@prisma/client';
+import { CommentStatus, ReactionType } from '@prisma/client';
 import { StreamUserDto } from '../../user/dtos/stream-user.dto';
 
 @Injectable()

@@ -15,7 +15,7 @@ import { IDatabase } from 'pg-promise';
 import Immutable from 'immutable';
 import { NotificationType, Notification } from '@prisma/client';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
-import { NotificationActivity } from 'getstream/lib/feed';
+import { NotificationActivity } from 'getstream';
 import * as cuid from 'cuid';
 import { ReadNotificationsInputDto } from '../dtos/read-notifications-input.dto';
 

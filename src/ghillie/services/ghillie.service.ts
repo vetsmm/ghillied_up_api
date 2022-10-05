@@ -1,6 +1,8 @@
 import {
     BadRequestException,
+    Inject,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
@@ -10,6 +12,8 @@ import {
     Actor,
     AppLogger,
     GhillieSearchCriteria,
+    PageInfo,
+    parsePaginationArgs,
     RequestContext,
 } from '../../shared';
 import {
@@ -26,6 +30,8 @@ import { GhillieDetailDto } from '../dtos/ghillie/ghillie-detail.dto';
 import { GhillieAclService } from './ghillie-acl.service';
 import { UpdateGhillieDto } from '../dtos/ghillie/update-ghillie.dto';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
+import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
+import { IDatabase } from 'pg-promise';
 
 @Injectable()
 export class GhillieService {
@@ -34,6 +40,7 @@ export class GhillieService {
         private readonly logger: AppLogger,
         private readonly ghillieAclService: GhillieAclService,
         private readonly streamService: GetStreamService,
+        @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(GhillieService.name);
     }
@@ -206,7 +213,10 @@ export class GhillieService {
     async getGhillies(
         ctx: RequestContext,
         query: GhillieSearchCriteria,
-    ): Promise<{ ghillies: GhillieDetailDto[]; count: number }> {
+    ): Promise<{
+        ghillies: GhillieDetailDto[];
+        pageInfo: PageInfo;
+    }> {
         this.logger.log(ctx, `${this.getGhillies.name} was called`);
 
         const actor: Actor = ctx.user;
@@ -228,14 +238,6 @@ export class GhillieService {
         if (query.readonly) {
             where.AND.push({ readOnly: query.readonly });
         }
-        if (query.about) {
-            where.AND.push({
-                about: { contains: query.about, mode: 'insensitive' },
-            });
-        }
-        if (query.status) {
-            where.AND.push({ status: query.status });
-        }
         if (query.topicIds) {
             where.AND.push({
                 topics: {
@@ -248,13 +250,18 @@ export class GhillieService {
             });
         }
 
-        const [ghillies, count] = await this.prisma.$transaction([
-            this.prisma.ghillie.findMany({
+        const { findManyArgs, toConnection, toResponse } = parsePaginationArgs({
+            first: query.take - 1,
+            after: query.cursor ? query.cursor : undefined,
+        });
+
+        try {
+            const ghillies = await this.prisma.ghillie.findMany({
+                ...findManyArgs,
                 where: {
                     ...where,
+                    status: GhillieStatus.ACTIVE,
                 },
-                take: query.limit,
-                skip: query.offset,
                 include: {
                     topics: true,
                     _count: {
@@ -268,24 +275,32 @@ export class GhillieService {
                         },
                     },
                 },
-            }),
+            });
 
-            this.prisma.ghillie.count({
-                where: {
-                    AND: [{ status: GhillieStatus.ACTIVE }],
+            if (ghillies.length === 0) {
+                return {
+                    ghillies: [],
+                    pageInfo: toConnection(ghillies).pageInfo,
+                };
+            }
+
+            const convertedGhillies = plainToInstance(
+                GhillieDetailDto,
+                toResponse(ghillies),
+                {
+                    excludeExtraneousValues: true,
+                    enableImplicitConversion: true,
                 },
-            }),
-        ]);
+            );
 
-        const convertedGhillies = plainToInstance(GhillieDetailDto, ghillies, {
-            excludeExtraneousValues: true,
-            enableImplicitConversion: true,
-        });
-
-        return {
-            ghillies: convertedGhillies,
-            count: count,
-        };
+            return {
+                ghillies: convertedGhillies,
+                pageInfo: toConnection(ghillies).pageInfo,
+            };
+        } catch (err) {
+            this.logger.error(ctx, err);
+            throw new InternalServerErrorException(err);
+        }
     }
 
     async updateGhillie(
@@ -1011,24 +1026,55 @@ export class GhillieService {
         });
     }
 
-    async getGhilliesForCurrentUser(ctx: RequestContext) {
-        // Get all ghillies the user is a member of
-        const ghillies = await this.prisma.ghillie.findMany({
-            where: {
-                status: {
-                    equals: GhillieStatus.ACTIVE,
-                },
-                members: {
-                    some: {
-                        userId: ctx.user.id,
-                        memberStatus: MemberStatus.ACTIVE,
+    async getGhilliesForCurrentUser(
+        ctx: RequestContext,
+        take: number,
+        cursor?: string,
+    ): Promise<{
+        ghillies: GhillieDetailDto[];
+        pageInfo: PageInfo;
+    }> {
+        this.logger.log(
+            ctx,
+            `${this.getGhilliesForCurrentUser.name} was called`,
+        );
+
+        const { findManyArgs, toConnection, toResponse } = parsePaginationArgs({
+            first: take - 1,
+            after: cursor ? cursor : undefined,
+        });
+
+        try {
+            // Get all ghillies the user is a member of
+            const ghillies = await this.prisma.ghillie.findMany({
+                ...findManyArgs,
+                where: {
+                    status: {
+                        equals: GhillieStatus.ACTIVE,
+                    },
+                    members: {
+                        some: {
+                            userId: ctx.user.id,
+                            memberStatus: MemberStatus.ACTIVE,
+                        },
                     },
                 },
-            },
-        });
-        return plainToInstance(GhillieDetailDto, ghillies, {
-            excludeExtraneousValues: true,
-            enableImplicitConversion: true,
-        });
+            });
+
+            return {
+                ghillies: plainToInstance(
+                    GhillieDetailDto,
+                    toResponse(ghillies),
+                    {
+                        excludeExtraneousValues: true,
+                        enableImplicitConversion: true,
+                    },
+                ),
+                pageInfo: toConnection(ghillies).pageInfo,
+            };
+        } catch (error) {
+            this.logger.error(ctx, error);
+            throw new InternalServerErrorException();
+        }
     }
 }

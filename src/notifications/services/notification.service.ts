@@ -240,10 +240,12 @@ export class NotificationService {
             `${this.getUserNotificationCount.name} was called`,
         );
 
-        const count = await this.pg.query(
-            'SELECT COUNT(*) FROM "Notification" WHERE "toUserId" = $1 AND "read" = false',
-            [ctx.user.id],
-        );
+        const count = await this.pg
+            .one(
+                'SELECT COUNT(*) FROM "Notification" WHERE "toUserId" = $1 AND "read" = false',
+                [ctx.user.id],
+            )
+            .then((res) => Number.parseInt(res.count));
         return {
             unreadCount: count,
         } as UnreadNotificationsDto;

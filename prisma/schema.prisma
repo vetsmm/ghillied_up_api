@@ -95,6 +95,18 @@ model FlagPost {
   @@index([category])
 }
 
+model PostBookmark {
+    id              String       @id @default(cuid())
+    createdDate     DateTime     @default(now())
+    post            Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+    postId          String
+    user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId          String
+    activityId      String?      @unique
+
+    @@unique([postId, userId])
+}
+
 model Post {
   id           String         @id @default(cuid())
   uid          String         @unique
@@ -113,6 +125,7 @@ model Post {
   edited       Boolean        @default(false)
   postReaction PostReaction[]
   activityId   String?        @unique
+  postBookmarks PostBookmark[]
 
   @@index([title, status, uid])
 }
@@ -214,6 +227,7 @@ model User {
   fromNotifications        Notification[]            @relation("fromNotifications")
   pushTokens               DevicePushToken[]
   PushNotificationSettings PushNotificationSettings?
+  postBookmarks            PostBookmark[]
 
   @@index([email, username, slug])
 }

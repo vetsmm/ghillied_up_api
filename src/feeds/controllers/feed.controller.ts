@@ -29,6 +29,8 @@ import { AuthoritiesGuard } from '../../auth/guards/authorities.guard';
 import { Authorities } from '../../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
 import { PostFeedDto } from '../dtos/post-feed.dto';
+import { BookmarkPostFeedDto } from '../dtos/bookmark-post-feed.dto';
+import { BookmarkPostFeedService } from '../services/bookmark-post-feed.service';
 
 @ApiTags('feeds')
 @Controller('feeds')
@@ -36,6 +38,7 @@ export class FeedController {
     constructor(
         private readonly logger: AppLogger,
         private readonly postFeedService: PostFeedService,
+        private readonly bookmarkPostFeedService: BookmarkPostFeedService,
     ) {
         this.logger.setContext(FeedController.name);
     }
@@ -97,6 +100,40 @@ export class FeedController {
             page,
             take,
         );
+        return {
+            data: results,
+            meta: {},
+        };
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Get('user/bookmarks')
+    @ApiOperation({
+        summary: 'Retrieves the current users bookmarked posts',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: SwaggerBaseApiResponse([BookmarkPostFeedDto]),
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        type: BaseApiErrorResponse,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_USER)
+    async getUsersBookmarkedPostFeed(
+        @ReqContext() ctx: RequestContext,
+        @Query('page') page?: number,
+        @Query('take') take?: number,
+    ): Promise<BaseApiResponse<BookmarkPostFeedDto[]>> {
+        const results =
+            await this.bookmarkPostFeedService.getUsersBookmarkedPostFeed(
+                ctx,
+                page,
+                take,
+            );
         return {
             data: results,
             meta: {},

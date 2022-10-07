@@ -9,6 +9,7 @@ export enum PostFeedVerb {
     POST = 'POST',
     REACTION = 'REACTION',
     COMMENT = 'COMMENT',
+    BOOKMARK = 'BOOKMARK',
 }
 
 export interface PostFeedCreateActivityData {
@@ -21,6 +22,17 @@ export interface PostFeedCreateActivityData {
     updatedDate: Date;
     edited: boolean;
     tags?: { id: string; name: string }[];
+    ghillieId: string;
+    postedById: string;
+}
+
+export interface PostBookmarkCreateActivityData {
+    id: string;
+    postId: string;
+    title: string;
+    content: string;
+    status: PostStatus;
+    createdDate: Date;
     ghillieId: string;
     postedById: string;
 }
@@ -54,6 +66,21 @@ export type NewPostActivity = NewActivity & {
     data: PostFeedCreateActivityData;
     // The other streams that should be notified of this activity
     to?: string[];
+};
+
+export type NewPostBookmarkActivity = NewActivity & {
+    // The person who performed the action
+    actor: string;
+    // The action performed
+    verb: PostFeedVerb.BOOKMARK;
+    object: PostFeedVerb.BOOKMARK;
+    // This is the ID of the postbookmark .
+    foreign_id: string;
+    time: string;
+    // This is the post that was bookmarked
+    targetId: string;
+    published: string;
+    data: PostBookmarkCreateActivityData;
 };
 
 export type NewCommentActivity = {

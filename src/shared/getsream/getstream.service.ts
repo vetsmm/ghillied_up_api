@@ -4,6 +4,7 @@ import { GetStreamOptions } from './interfaces';
 import {
     NewCommentActivity,
     NewPostActivity,
+    NewPostBookmarkActivity,
     NewPostCommentReaction,
     NewPostReaction,
     PostFeedUpdateActivityData,
@@ -80,13 +81,24 @@ export class GetStreamService {
 
     async addPostActivity(post: NewPostActivity): Promise<Activity> {
         // Get the user's feed
-        const feed = this.stream.feed('user', post.actor);
-
-        // Add the activity to the user's feed and send it to the ghillie's feed
-        return feed.addActivity({
+        return this.stream.feed('user', post.actor).addActivity({
             ...post,
             to: [`ghillie:${post.data.ghillieId}`, `user_post:${post.actor}`],
         });
+    }
+
+    async bookmarkPost(bookmark: NewPostBookmarkActivity): Promise<Activity> {
+        return this.stream
+            .feed('user_post_bookmark', bookmark.actor)
+            .addActivity({
+                ...bookmark,
+            });
+    }
+
+    async unbookmarkPost(userId: string, activityId: string) {
+        return this.stream
+            .feed('user_post_bookmark', userId)
+            .removeActivity(activityId);
     }
 
     async getPostActivities(
@@ -232,6 +244,13 @@ export class GetStreamService {
     ): Promise<FeedAPIResponse> {
         // Get the feed of activities made by the user
         return this.stream.feed('user_post', userId).get(options);
+    }
+
+    async getBookmarkPostFeed(
+        userId: string,
+        options: GetFeedOptions = {},
+    ): Promise<FeedAPIResponse> {
+        return this.stream.feed('user_post_bookmark', userId).get(options);
     }
 
     async getNotificationFeed(

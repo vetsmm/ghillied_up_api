@@ -15,6 +15,7 @@ import { CommentReactionController } from './controllers/comment-reaction.contro
 import { PostCommentReactionService } from './services/post-comment-reaction.service';
 import { QueueService } from '../queue/services/queue.service';
 import { NotificationService } from '../notifications/services/notification.service';
+import { PostBookmarkService } from './services/post-bookmark.service';
 
 @Module({
     providers: [
@@ -30,6 +31,7 @@ import { NotificationService } from '../notifications/services/notification.serv
         PostCommentReactionService,
         QueueService,
         NotificationService,
+        PostBookmarkService,
     ],
     controllers: [
         PostController,
@@ -37,6 +39,11 @@ import { NotificationService } from '../notifications/services/notification.serv
         PostCommentController,
         CommentReactionController,
     ],
-    exports: [PostService, PostReactionService, PostCommentService],
+    exports: [
+        PostService,
+        PostReactionService,
+        PostCommentService,
+        PostBookmarkService,
+    ],
 })
 export class PostsModule {}

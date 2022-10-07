@@ -1,59 +1,60 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsDate,
-  IsEmail,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Length,
-  MaxLength,
+    IsDate,
+    IsEmail,
+    IsEnum,
+    IsOptional,
+    IsString,
+    Length,
+    MaxLength,
 } from 'class-validator';
 import { ServiceBranch, ServiceStatus } from '@prisma/client';
+import { Type } from 'class-transformer';
 
 export class UpdateUserInput {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNotEmpty()
-  @MaxLength(100)
-  @IsString()
-  firstName: string;
+    @ApiPropertyOptional()
+    @IsOptional()
+    @MaxLength(100)
+    @IsString()
+    firstName?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNotEmpty()
-  @MaxLength(100)
-  @IsString()
-  lastName: string;
+    @ApiPropertyOptional()
+    @IsOptional()
+    @MaxLength(100)
+    @IsString()
+    lastName?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNotEmpty()
-  @Length(6, 100)
-  @IsString()
-  password: string;
+    @ApiPropertyOptional()
+    @IsOptional()
+    @Length(6, 100)
+    @IsString()
+    password?: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsEmail()
-  @MaxLength(100)
-  email: string;
+    @ApiProperty()
+    @IsEmail()
+    @IsOptional()
+    @MaxLength(100)
+    email?: string;
 
-  @ApiProperty()
-  @IsOptional()
-  @IsDate()
-  serviceEntryDate: Date;
+    @ApiProperty()
+    @IsOptional()
+    @IsDate()
+    @Type(() => Date)
+    serviceEntryDate?: Date;
 
-  @ApiProperty()
-  @IsOptional()
-  @IsDate()
-  serviceExitDate: Date;
+    @ApiProperty()
+    @IsOptional()
+    @IsDate()
+    @Type(() => Date)
+    serviceExitDate?: Date;
 
-  @ApiProperty()
-  @IsEnum(ServiceBranch)
-  branch: ServiceBranch;
+    @ApiProperty()
+    @IsOptional()
+    @IsEnum(ServiceBranch)
+    branch?: ServiceBranch;
 
-  @ApiProperty()
-  @IsEnum(ServiceStatus)
-  serviceStatus: ServiceStatus;
+    @ApiProperty()
+    @IsEnum(ServiceStatus)
+    @IsOptional()
+    serviceStatus?: ServiceStatus;
 }

@@ -6,6 +6,7 @@ import { PostFeedAclService } from './services/post-feed-acl.service';
 import { FeedController } from './controllers/feed.controller';
 import { PostFeedService } from './services/post-feed.service';
 import { PostAclService } from '../posts/services/post-acl.service';
+import { BookmarkPostFeedService } from './services/bookmark-post-feed.service';
 
 @Module({
     providers: [
@@ -15,8 +16,9 @@ import { PostAclService } from '../posts/services/post-acl.service';
         PostFeedAclService,
         PostAclService,
         PostFeedService,
+        BookmarkPostFeedService,
     ],
     controllers: [FeedController],
-    exports: [PostFeedService],
+    exports: [PostFeedService, BookmarkPostFeedService],
 })
 export class FeedsModule {}

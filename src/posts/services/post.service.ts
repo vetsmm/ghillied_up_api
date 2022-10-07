@@ -19,7 +19,6 @@ import { PostDetailDto } from '../dtos/post-detail.dto';
 import {
     GhillieRole,
     MemberStatus,
-    PostReaction,
     PostStatus,
     PostTag,
     Prisma,
@@ -31,7 +30,7 @@ import { PostListingDto } from '../dtos/post-listing.dto';
 import { QueueService } from '../../queue/services/queue.service';
 import { ActivityType } from '../../shared/queue/activity-type';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
-import { PostFeedVerb, TagMeta } from '../../shared/feed/feed.types';
+import { PostFeedVerb } from '../../shared/feed/feed.types';
 
 @Injectable()
 export class PostService {

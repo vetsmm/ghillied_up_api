@@ -11,25 +11,36 @@ import { JwtAuthStrategy } from './strategies/jwt-auth.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { SharedModule } from '../shared';
+import { HttpModule } from '@nestjs/axios';
+import { AuthIdMeController } from './controllers/id-me.controller';
+import { AuthIdMeService } from './services/id-me.service';
 
 @Module({
-  imports: [
-    SharedModule,
-    PassportModule.register({ defaultStrategy: STRATEGY_JWT_AUTH }),
-    JwtModule.registerAsync({
-      imports: [SharedModule],
-      useFactory: async (configService: ConfigService) => ({
-        publicKey: configService.get<string>('jwt.publicKey'),
-        privateKey: configService.get<string>('jwt.privateKey'),
-        signOptions: {
-          algorithm: 'RS256',
-        },
-      }),
-      inject: [ConfigService],
-    }),
-    UserModule,
-  ],
-  controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtAuthStrategy, JwtRefreshStrategy],
+    imports: [
+        SharedModule,
+        PassportModule.register({ defaultStrategy: STRATEGY_JWT_AUTH }),
+        JwtModule.registerAsync({
+            imports: [SharedModule],
+            useFactory: async (configService: ConfigService) => ({
+                publicKey: configService.get<string>('jwt.publicKey'),
+                privateKey: configService.get<string>('jwt.privateKey'),
+                signOptions: {
+                    algorithm: 'RS256',
+                },
+            }),
+            inject: [ConfigService],
+        }),
+        UserModule,
+        AuthModule,
+        HttpModule,
+    ],
+    controllers: [AuthController, AuthIdMeController],
+    providers: [
+        AuthService,
+        LocalStrategy,
+        JwtAuthStrategy,
+        JwtRefreshStrategy,
+        AuthIdMeService,
+    ],
 })
 export class AuthModule {}

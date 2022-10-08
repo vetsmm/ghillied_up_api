@@ -28,6 +28,7 @@
     "@aws-sdk/client-ses": "^3.170.0",
     "@aws-sdk/credential-provider-node": "^3.170.0",
     "@hapi/joi": "^17.1.1",
+    "@nestjs/axios": "^0.1.0",
     "@nestjs/common": "9.0.11",
     "@nestjs/config": "^2.2.0",
     "@nestjs/core": "9.0.11",

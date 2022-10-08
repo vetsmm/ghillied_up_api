@@ -26,6 +26,7 @@ import { ConfigService } from '@nestjs/config';
 import { User } from '@prisma/client';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { StreamUserDto } from '../dtos/stream-user.dto';
+import { SocialInterface } from '../../auth/interfaces/social.interface';
 
 @Injectable()
 export class UserService {
@@ -603,5 +604,28 @@ export class UserService {
     private isExpired(sentDate: Date, configKey: string): boolean {
         const expiryMs = this.configService.get(configKey);
         return sentDate.getTime() + expiryMs < new Date().getTime();
+    }
+
+    async addMilitaryVerification(
+        ctx: RequestContext,
+        input: SocialInterface,
+    ): Promise<void> {
+        this.logger.log(ctx, `${this.addMilitaryVerification.name} was called`);
+
+        // Update the user with the role ROLE_VERIFIED_MILITARY, Service Branch, and Service Status
+        await this.prisma.user.update({
+            where: { id: ctx.user.id },
+            data: {
+                authorities: {
+                    push: 'ROLE_VERIFIED_MILITARY',
+                },
+                branch: input.serviceBranch,
+                serviceStatus: input.serviceStatus,
+                isVerifiedMilitary: true,
+                idMeId: input.id,
+                firstName: input.firstName,
+                lastName: input.lastName,
+            },
+        });
     }
 }

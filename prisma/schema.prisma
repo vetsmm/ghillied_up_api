@@ -207,6 +207,7 @@ model User {
   activationCodeSentAt     DateTime?
   resetKey                 Int?                      @unique
   resetDate                DateTime?
+  idMeId                   String?                   @unique
   lastLoginAt              DateTime?
   imageUrl                 String?
   password                 String

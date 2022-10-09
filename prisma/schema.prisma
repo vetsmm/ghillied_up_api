@@ -268,13 +268,13 @@ model PushNotificationSettings {
 
 model DevicePushToken {
   id          String        @id @default(cuid())
-  token       String        @unique
+  token       String
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String
   createdDate DateTime      @default(now())
   platform    PhonePlatform
 
-  @@index([token])
+  @@unique([token, userId])
 }
 
 enum PhonePlatform {

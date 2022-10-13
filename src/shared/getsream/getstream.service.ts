@@ -3,6 +3,7 @@ import { GET_STREAM_OPTIONS } from './getstream.constants';
 import { GetStreamOptions } from './interfaces';
 import {
     NewCommentActivity,
+    NewFlagActivity,
     NewPostActivity,
     NewPostBookmarkActivity,
     NewPostCommentReaction,
@@ -83,7 +84,21 @@ export class GetStreamService {
         // Get the user's feed
         return this.stream.feed('user', post.actor).addActivity({
             ...post,
-            to: [`ghillie:${post.data.ghillieId}`, `user_post:${post.actor}`],
+            to: [
+                `ghillie:${post.data.ghillieId}`,
+                `user_post:${post.actor}`,
+                'post_admin:ALL',
+            ],
+        });
+    }
+
+    async addFlagActivity(
+        feedGroup: 'flag_post' | 'flag_ghillie' | 'flag_comment',
+        flag: NewFlagActivity,
+    ): Promise<Activity> {
+        return this.stream.feed(feedGroup, flag.actor).addActivity({
+            ...flag,
+            to: [`${feedGroup}:ALL`],
         });
     }
 

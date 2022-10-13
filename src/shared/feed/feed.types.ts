@@ -1,5 +1,12 @@
 import { ReactionAddOptions, NewActivity } from 'getstream';
-import { CommentStatus, PostStatus, ReactionType } from '@prisma/client';
+import {
+    CommentStatus,
+    FlagComment,
+    FlagGhillie,
+    FlagPost,
+    PostStatus,
+    ReactionType,
+} from '@prisma/client';
 
 export interface TagMeta {
     id: string;
@@ -10,6 +17,12 @@ export enum PostFeedVerb {
     REACTION = 'REACTION',
     COMMENT = 'COMMENT',
     BOOKMARK = 'BOOKMARK',
+}
+
+export enum FlagFeedVerb {
+    POST = 'POST',
+    COMMENT = 'COMMENT',
+    GHILLIE = 'GHILLIE',
 }
 
 export interface PostFeedCreateActivityData {
@@ -64,6 +77,22 @@ export type NewPostActivity = NewActivity & {
     targetId: string;
     published: string;
     data: PostFeedCreateActivityData;
+    // The other streams that should be notified of this activity
+    to?: string[];
+};
+
+export type NewFlagActivity = NewActivity & {
+    // The person who performed the action
+    actor: string;
+    // The action performed
+    verb: FlagFeedVerb;
+    object: FlagFeedVerb;
+    // This is the ID of the flag .
+    foreign_id: string;
+    time: string;
+    targetId: string;
+    published: string;
+    data: FlagPost | FlagGhillie | FlagComment;
     // The other streams that should be notified of this activity
     to?: string[];
 };

@@ -31,6 +31,7 @@ model FlagComment {
   category        FlagCategory @default(OTHER)
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
   createdByUserId String
+  activityId      String?      @unique
 
   @@unique([postCommentId, createdByUserId])
   @@index([category])
@@ -90,6 +91,7 @@ model FlagPost {
   category        FlagCategory @default(OTHER)
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
   createdByUserId String
+  activityId      String?      @unique
 
   @@unique([postId, createdByUserId])
   @@index([category])
@@ -139,6 +141,7 @@ model FlagGhillie {
   category        FlagCategory @default(OTHER)
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
   createdByUserId String
+  activityId      String?      @unique
 
   @@unique([ghillieId, createdByUserId])
   @@index([category])

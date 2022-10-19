@@ -10,31 +10,33 @@ datasource db {
 
 model CommentReaction {
   id           String       @id @default(cuid())
-  reactionType ReactionType
+  reactionType ReactionType @map("reaction_type")
   createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  createdById  String
+  createdById  String       @map("created_by_id")
   postComment  PostComment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  commentId    String
-  activityId   String?     @unique
-  createdDate  DateTime    @default(now())
+  commentId    String       @map("comment_id")
+  activityId   String?      @unique @map("activity_id")
+  createdDate  DateTime     @default(now()) @map("created_date")
 
   @@unique([createdById, commentId])
   @@index([reactionType])
+  @@map("comment_reaction")
 }
 
 model FlagComment {
   id              String       @id @default(cuid())
-  createdDate     DateTime     @default(now())
+  createdDate     DateTime     @default(now()) @map("created_date")
   details         String?
   postComment     PostComment  @relation(fields: [postCommentId], references: [id], onDelete: Cascade)
-  postCommentId   String
+  postCommentId   String       @map("post_comment_id")
   category        FlagCategory @default(OTHER)
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  createdByUserId String
-  activityId      String?      @unique
+  createdByUserId String       @map("created_by_user_id")
+  activityId      String?      @unique @map("activity_id")
 
   @@unique([postCommentId, createdByUserId])
   @@index([category])
+  @@map("flag_comment")
 }
 
 // based on Path Enumeration
@@ -43,70 +45,75 @@ model PostComment {
   id              String            @id @default(cuid())
   content         String
   status          CommentStatus     @default(ACTIVE)
-  createdDate     DateTime          @default(now())
-  updatedDate     DateTime          @updatedAt
+  createdDate     DateTime          @default(now()) @map("created_date")
+  updatedDate     DateTime          @updatedAt @map("updated_date")
   edited          Boolean           @default(false)
   createdBy       User              @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  createdById     String
+  createdById     String            @map("created_by_id")
   post            Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId          String
-  commentHeight   Int               @default(0) // The height of the comment in the comment tree
-  childCommentIds String[] // The ids of the child comments. The parent will always be null
+  postId          String            @map("post_id")
+  commentHeight   Int               @default(0) @map("comment_height")// The height of the comment in the comment tree
+  childCommentIds String[]          @map("child_comment_ids") // The ids of the child comments. The parent will always be null
   flags           FlagComment[]
   commentReaction CommentReaction[]
-  activityId      String?           @unique
+  activityId      String?           @unique @map("activity_id")
 
   @@index([status, commentHeight])
+  @@map("post_comment")
 }
 
 model PostReaction {
   id           String       @id @default(cuid())
-  reactionType ReactionType
+  reactionType ReactionType @map("reaction_type")
   createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  createdById  String
+  createdById  String       @map("created_by_id")
   post         Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId       String
-  activityId   String?     @unique
-  createdDate  DateTime    @default(now())
+  postId       String       @map("post_id")
+  activityId   String?      @unique @map("activity_id")
+  createdDate  DateTime     @default(now()) @map("created_date")
 
   @@unique([createdById, postId])
   @@index([reactionType])
+  @@map("post_reaction")
 }
 
 model PostTag {
   id        String   @id @default(cuid())
   name      String   @unique
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
   posts     Post[]
 
   @@index([name])
+  @@map("post_tag")
 }
 
 model FlagPost {
   id              String       @id @default(cuid())
-  createdDate     DateTime     @default(now())
+  createdDate     DateTime     @default(now()) @map("created_date")
   details         String?
   post            Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId          String
+  postId          String       @map("post_id")
   category        FlagCategory @default(OTHER)
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  createdByUserId String
-  activityId      String?      @unique
+  createdByUserId String       @map("created_by_user_id")
+  activityId      String?      @unique @map("activity_id")
 
   @@unique([postId, createdByUserId])
   @@index([category])
+  @@map("flag_post")
 }
 
 model PostBookmark {
     id              String       @id @default(cuid())
-    createdDate     DateTime     @default(now())
+    createdDate     DateTime     @default(now()) @map("created_date")
     post            Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
-    postId          String
+    postId          String       @map("post_id")
     user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-    userId          String
-    activityId      String?      @unique
+    userId          String       @map("user_id")
+    activityId      String?      @unique @map("activity_id")
 
     @@unique([postId, userId])
+    @@map("post_bookmark")
 }
 
 model Post {
@@ -116,61 +123,65 @@ model Post {
   content      String
   status       PostStatus     @default(ACTIVE)
   ghillie      Ghillie        @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
-  ghillieId    String
+  ghillieId    String         @map("ghillie_id")
   tags         PostTag[]
   postedBy     User           @relation(fields: [postedById], references: [id], onDelete: Cascade)
-  postedById   String
+  postedById   String         @map("posted_by_id")
   postComments PostComment[]
   flagPosts    FlagPost[]
-  createdDate  DateTime       @default(now())
-  updatedDate  DateTime       @updatedAt
+  createdDate  DateTime       @default(now()) @map("created_date")
+  updatedDate  DateTime       @updatedAt @map("updated_date")
   edited       Boolean        @default(false)
   postReaction PostReaction[]
-  activityId   String?        @unique
+  activityId   String?        @unique @map("activity_id")
   postBookmarks PostBookmark[]
 
   @@index([title, status, uid])
+  @@map("post")
 }
 
 model FlagGhillie {
   id              String       @id @default(cuid())
-  createdDate     DateTime     @default(now())
+  createdDate     DateTime     @default(now()) @map("created_date")
   details         String?
   ghillie         Ghillie      @relation(fields: [ghillieId], references: [id])
-  ghillieId       String
+  ghillieId       String       @map("ghillie_id")
   category        FlagCategory @default(OTHER)
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  createdByUserId String
-  activityId      String?      @unique
+  createdByUserId String       @map("created_by_user_id")
+  activityId      String?      @unique @map("activity_id")
 
   @@unique([ghillieId, createdByUserId])
   @@index([category])
+  @@map("flag_ghillie")
 }
 
 model GhillieMembers {
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId       String
+  userId       String       @map("user_id")
   ghillie      Ghillie      @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
-  ghillieId    String
-  joinDate     DateTime     @default(now())
-  memberStatus MemberStatus @default(ACTIVE)
+  ghillieId    String       @map("ghillie_id")
+  joinDate     DateTime     @default(now()) @map("join_date")
+  memberStatus MemberStatus @default(ACTIVE) @map("member_status")
   role         GhillieRole  @default(MEMBER)
 
   @@id([userId, ghillieId])
   @@index([memberStatus, role])
+  @@map("ghillie_members")
 }
 
 model Topic {
   id              String    @id @default(cuid())
   name            String    @unique
   slug            String    @unique
-  createdDate     DateTime  @default(now())
-  updatedDate     DateTime  @updatedAt
+  createdDate     DateTime  @default(now()) @map("created_date")
+  updatedDate     DateTime  @updatedAt @map("updated_date")
   createdBy       User      @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
-  createdByUserId String
+  createdByUserId String    @map("created_by_user_id")
   ghillies        Ghillie[]
 
   @@index([name, slug])
+  @@map("topic")
 }
 
 model Ghillie {
@@ -179,18 +190,19 @@ model Ghillie {
   slug            String           @unique
   about           String?
   status          GhillieStatus    @default(ACTIVE)
-  createdDate     DateTime         @default(now())
-  updatedDate     DateTime         @updatedAt
+  createdDate     DateTime         @default(now()) @map("created_date")
+  updatedDate     DateTime         @updatedAt @map("updated_date")
   createdBy       User             @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
-  createdByUserId String
-  readOnly        Boolean          @default(false)
-  imageUrl        String?
+  createdByUserId String           @map("created_by_user_id")
+  readOnly        Boolean          @default(false) @map("read_only")
+  imageUrl        String?          @map("image_url")
   members         GhillieMembers[]
   topics          Topic[]
   posts           Post[]
   flagGhillies    FlagGhillie[]
 
   @@index([name, slug, status, readOnly])
+  @@map("ghillie")
 }
 
 model User {
@@ -198,25 +210,25 @@ model User {
   email                    String                    @unique
   username                 String                    @unique
   slug                     String                    @unique
-  firstName                String?
-  lastName                 String?
+  firstName                String?                   @map("first_name")
+  lastName                 String?                   @map("last_name")
   branch                   ServiceBranch?            @default(UNKNOWN)
-  serviceStatus            ServiceStatus?            @default(UNKNOWN)
-  isVerifiedMilitary       Boolean                   @default(false)
-  serviceEntryDate         DateTime?
-  serviceExitDate          DateTime?
+  serviceStatus            ServiceStatus?            @default(UNKNOWN) @map("service_status")
+  isVerifiedMilitary       Boolean                   @default(false) @map("is_verified_military")
+  serviceEntryDate         DateTime?                 @map("service_entry_date")
+  serviceExitDate          DateTime?                 @map("service_exit_date")
   activated                Boolean                   @default(false)
-  activationCode           Int?                      @unique
-  activationCodeSentAt     DateTime?
-  resetKey                 Int?                      @unique
-  resetDate                DateTime?
-  idMeId                   String?                   @unique
-  lastLoginAt              DateTime?
-  imageUrl                 String?
+  activationCode           Int?                      @unique @map("activation_code")
+  activationCodeSentAt     DateTime?                 @map("activation_code_sent_at")
+  resetKey                 Int?                      @unique @map("reset_key")
+  resetDate                DateTime?                 @map("reset_date")
+  idMeId                   String?                   @unique @map("idme_id")
+  lastLoginAt              DateTime?                 @map("last_login_at")
+  imageUrl                 String?                   @map("image_url")
   password                 String
-  authorities              UserAuthority[]           @default([ROLE_USER])
-  createdDate              DateTime                  @default(now())
-  updatedDate              DateTime                  @updatedAt
+  authorities              UserAuthority[]           @default([ROLE_USER]) @map("authorities")
+  createdDate              DateTime                  @default(now()) @map("created_date")
+  updatedDate              DateTime                  @updatedAt @map("updated_date")
   joinedGhilliess          GhillieMembers[]
   commentReactions         CommentReaction[]
   flagComments             FlagComment[]
@@ -234,6 +246,7 @@ model User {
   postBookmarks            PostBookmark[]
 
   @@index([email, username, slug])
+  @@map("user")
 }
 
 model Notification {
@@ -242,42 +255,44 @@ model Notification {
   message     String?
   read        Boolean          @default(false)
   trash       Boolean          @default(false)
-  createdDate DateTime         @default(now())
-  updatedDate DateTime         @updatedAt
+  createdDate DateTime         @default(now()) @map("created_date")
+  updatedDate DateTime         @updatedAt @map("updated_date")
   fromUser    User?            @relation("fromNotifications", fields: [fromUserId], references: [id], onDelete: Cascade)
-  fromUserId  String?
+  fromUserId  String?          @map("from_user_id")
   toUser      User             @relation("notifications", fields: [toUserId], references: [id], onDelete: Cascade)
-  toUserId    String
-  sourceId    String
-  activityId  String?          @unique
+  toUserId    String           @map("to_user_id")
+  sourceId    String           @map("source_id")
+  activityId  String?          @unique @map("activity_id")
 
   @@unique([type, sourceId, fromUserId]) // To ensure we don't have duplicate notifications of the same type by the same user
   @@index([createdDate, type, read, trash])
+  @@map("notification")
 }
 
 model PushNotificationSettings {
   id               String   @id @default(cuid())
-  createdDate      DateTime @default(now())
-  updatedDate      DateTime @updatedAt
+  createdDate      DateTime @default(now()) @map("created_date")
+  updatedDate      DateTime @updatedAt @map("updated_date")
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId           String
-  postReactions    Boolean  @default(true)
-  postComments     Boolean  @default(true)
-  commentReactions Boolean  @default(true)
-  postActivity     Boolean  @default(true)
+  userId           String   @unique @map("user_id")
+  postReactions    Boolean  @default(true) @map("post_reactions")
+  postComments     Boolean  @default(true) @map("post_comments")
+  commentReactions Boolean  @default(true) @map("comment_reactions")
+  postActivity     Boolean  @default(true) @map("post_activity")
 
-  @@unique([userId])
+  @@map("push_notification_settings")
 }
 
 model DevicePushToken {
   id          String        @id @default(cuid())
   token       String
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  createdDate DateTime      @default(now())
+  userId      String        @map("user_id")
+  createdDate DateTime      @default(now()) @map("created_date")
   platform    PhonePlatform
 
   @@unique([token, userId])
+  @@map("device_push_token")
 }
 
 enum PhonePlatform {
@@ -311,6 +326,7 @@ enum ServiceBranch {
   SPACE_FORCE
   UNKNOWN
   NO_SERVICE
+  COAST_GUARD
 }
 
 enum RankingAuthority {

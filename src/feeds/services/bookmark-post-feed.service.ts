@@ -65,12 +65,12 @@ export class BookmarkPostFeedService {
         }
 
         const ghillies = await this.pg.many(
-            `SELECT * FROM "Ghillie" WHERE "id" IN ($1:csv)`,
+            `SELECT * FROM "ghillie" WHERE "id" IN ($1:csv)`,
             [activities.map((a: any) => a.data?.ghillieId)],
         );
 
         const users = await this.pg.many(
-            `SELECT * FROM "User" WHERE "id" IN ($1:csv)`,
+            `SELECT * FROM "user" WHERE "id" IN ($1:csv)`,
             [activities.map((a: any) => a.data?.postedById)],
         );
 

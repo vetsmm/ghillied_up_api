@@ -118,21 +118,21 @@ export class NotificationService {
                 const postCommentsHydrated =
                     commentIds.length > 0
                         ? t.query(
-                              'SELECT pc.id as "sourceId", pc."createdDate", pc.content as "commentContent", u.username, g.id as "ghillieId", g.name as "ghillieName", g."imageUrl" as "ghillieImageUrl",p.id as "postId" FROM "PostComment" pc JOIN "User" u ON pc."createdById" = u.id JOIN "Post" p ON pc."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId"WHERE pc.id IN ($1:list)',
+                              'SELECT pc.id as "sourceId", pc."created_date", pc.content as "commentContent", u.username, g.id as "ghillieId", g.name as "ghillie_name", g."image_url" as "ghillieImageUrl",p.id as "postId" FROM "post_comment" pc JOIN "user" u ON pc."created_by_id" = u.id JOIN "post" p ON pc."post_id" = p.id JOIN "ghillie" g on g.id = p."ghillie_id"WHERE pc.id IN ($1:list)',
                               [commentIds],
                           )
                         : [];
                 const postCommentReactionsHydrated =
                     commentReactionIds.length > 0
                         ? t.query(
-                              'SELECT cr.id as "sourceId", cr."createdDate", cr."reactionType", u.username, g.id as "ghillieId", g.name as "ghillieName", g."imageUrl" as "ghillieImageUrl", p.id as "postId" FROM "CommentReaction" cr JOIN "User" u ON cr."createdById" = u.id JOIN "PostComment" pc ON cr."commentId" = pc.id JOIN "Post" p ON pc."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId" WHERE cr.id IN ($1:list)',
+                              'SELECT cr.id as "sourceId", cr."created_date", cr."reaction_type", u.username, g.id as "ghillieId", g.name as "ghillieName", g."image_url" as "ghillieImageUrl", p.id as "postId" FROM "comment_reaction" cr JOIN "user" u ON cr."created_by_id" = u.id JOIN "post_comment" pc ON cr."comment_id" = pc.id JOIN "post" p ON pc."post_id" = p.id JOIN "ghillie" g on g.id = p."ghillie_id" WHERE cr.id IN ($1:list)',
                               [commentReactionIds],
                           )
                         : [];
                 const postReactionsHydrated =
                     reactionIds.length > 0
                         ? t.query(
-                              'SELECT pr.id as "sourceId", pr."createdDate", pr."reactionType", u.username, g.id as "ghillieId", g.name as "ghillieName", g."imageUrl" as "ghillieImageUrl", p.id as "postId" FROM "PostReaction" pr JOIN "User" u ON pr."createdById" = u.id JOIN "Post" p ON pr."postId" = p.id JOIN "Ghillie" g on g.id = p."ghillieId" WHERE pr.id IN ($1:list)',
+                              'SELECT pr.id as "sourceId", pr."created_date", pr."reaction_type", u.username, g.id as "ghillieId", g.name as "ghillieName", g."image_url" as "ghillieImageUrl", p.id as "postId" FROM "post_reaction" pr JOIN "user" u ON pr."created_by_id" = u.id JOIN "post" p ON pr."post_id" = p.id JOIN "ghillie" g on g.id = p."ghillie_id" WHERE pr.id IN ($1:list)',
                               [reactionIds],
                           )
                         : [];
@@ -187,7 +187,7 @@ export class NotificationService {
         );
 
         await this.pg.none(
-            'UPDATE "Notification" SET "read" = true, "updatedDate" = $1 WHERE "toUserId" = $2 AND "read" = false AND "trash" = false',
+            'UPDATE "notification" SET "read" = true, "updated_date" = $1 WHERE "to_user_id" = $2 AND "read" = false AND "trash" = false',
             [new Date(), ctx.user.id],
         );
 
@@ -201,7 +201,7 @@ export class NotificationService {
         this.logger.log(ctx, `${this.markNotificationsAsRead.name} was called`);
         this.pg
             .any(
-                'UPDATE "Notification" SET "read" = true, "updatedDate" = $1 WHERE "toUserId" = $2 AND "id" IN ($3:csv)',
+                'UPDATE "notification" SET "read" = true, "updated_date" = $1 WHERE "to_user_id" = $2 AND "id" IN ($3:csv)',
                 [
                     new Date(),
                     ctx.user.id,
@@ -242,7 +242,7 @@ export class NotificationService {
 
         const count = await this.pg
             .one(
-                'SELECT COUNT(*) FROM "Notification" WHERE "toUserId" = $1 AND "read" = false',
+                'SELECT COUNT(*) FROM "notification" WHERE "to_user_id" = $1 AND "read" = false',
                 [ctx.user.id],
             )
             .then((res) => Number.parseInt(res.count));
@@ -284,19 +284,19 @@ export class NotificationService {
             sourceId: sourceId,
         } as Notification;
 
-        const sql = `INSERT INTO "Notification" ("id",
+        const sql = `INSERT INTO "notification" ("id",
                                                  "type",
                                                  "message",
                                                  "read",
                                                  "trash",
-                                                 "createdDate",
-                                                 "updatedDate",
-                                                 "fromUserId",
-                                                 "toUserId",
-                                                 "sourceId")
+                                                 "created_date",
+                                                 "updated_date",
+                                                 "from_user_id",
+                                                 "to_user_id",
+                                                 "source_id")
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                      ON CONFLICT DO NOTHING
-                     RETURNING "Notification".id
+                     RETURNING "notification".id
         `;
 
         const response = await this.pg.oneOrNone(sql, [
@@ -318,7 +318,7 @@ export class NotificationService {
 
         // get the existing notification id
         return await this.pg.oneOrNone(
-            'SELECT "id" FROM "Notification" WHERE "fromUserId" = $1 AND "toUserId" = $2 AND "sourceId" = $3 AND "type" = $4',
+            'SELECT "id" FROM "notification" WHERE "from_user_id" = $1 AND "to_user_id" = $2 AND "source_id" = $3 AND "type" = $4',
             [fromUserId, toUserId, sourceId, type],
         );
     }

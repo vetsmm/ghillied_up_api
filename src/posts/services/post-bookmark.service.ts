@@ -38,7 +38,7 @@ export class PostBookmarkService {
         }
 
         const post = await this.pg.oneOrNone(
-            'SELECT * FROM "Post" WHERE id = $1',
+            'SELECT * FROM "post" WHERE id = $1',
             [id],
         );
 
@@ -50,7 +50,7 @@ export class PostBookmarkService {
         try {
             // check if a bookmark already exists
             const bookmarkFound: PostBookmark = await this.pg.oneOrNone(
-                'SELECT * FROM "PostBookmark" WHERE "userId" = $1 AND "postId" = $2',
+                'SELECT * FROM "post_bookmark" WHERE "user_id" = $1 AND "post_id" = $2',
                 [actor.id, id],
             );
 
@@ -64,9 +64,9 @@ export class PostBookmarkService {
 
             const bookmark: { id: string; createdDate: Date } =
                 await this.pg.one(
-                    `INSERT INTO "PostBookmark" (id, "userId", "postId", "createdDate")
+                    `INSERT INTO "post_bookmark" (id, "user_id", "post_id", "created_date")
                      VALUES ($1, $2, $3, $4)
-                     RETURNING id, "createdDate"`,
+                     RETURNING id, "created_date"`,
                     [cuid(), actor.id, id, new Date()],
                 );
             this.streamService
@@ -91,8 +91,8 @@ export class PostBookmarkService {
                 })
                 .then(async (res) => {
                     await this.pg.any(
-                        `UPDATE "PostBookmark"
-                         SET "activityId" = $1
+                        `UPDATE "post_bookmark"
+                         SET "activity_id" = $1
                          WHERE id = $2`,
                         [res.id, bookmark.id],
                     );
@@ -110,7 +110,7 @@ export class PostBookmarkService {
 
                     await this.pg.any(
                         `DELETE
-                         FROM "PostBookmark"
+                         FROM "post_bookmark"
                          WHERE id = $1`,
                         [bookmark.id],
                     );
@@ -126,9 +126,9 @@ export class PostBookmarkService {
 
         const bookmark: PostBookmark = await this.pg.oneOrNone(
             `SELECT *
-             FROM "PostBookmark"
-             WHERE "userId" = $1
-               AND "postId" = $2`,
+             FROM "post_bookmark"
+             WHERE "user_id" = $1
+               AND "post_id" = $2`,
             [ctx.user.id, id],
         );
 
@@ -148,9 +148,9 @@ export class PostBookmarkService {
                 this.pg
                     .any(
                         `DELETE
-                     FROM "PostBookmark"
-                     WHERE "userId" = $1
-                       AND "postId" = $2`,
+                     FROM "post_bookmark"
+                     WHERE "user_id" = $1
+                       AND "post_id" = $2`,
                         [ctx.user.id, id],
                     )
                     .catch((err) => {

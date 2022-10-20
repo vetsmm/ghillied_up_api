@@ -33,6 +33,7 @@ model FlagComment {
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
   createdByUserId String       @map("created_by_user_id")
   activityId      String?      @unique @map("activity_id")
+  flag_report_status FlagReportStatus @default(NEW) @map("flag_report_status")
 
   @@unique([postCommentId, createdByUserId])
   @@index([category])
@@ -97,6 +98,7 @@ model FlagPost {
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
   createdByUserId String       @map("created_by_user_id")
   activityId      String?      @unique @map("activity_id")
+  flag_report_status FlagReportStatus @default(NEW) @map("flag_report_status")
 
   @@unique([postId, createdByUserId])
   @@index([category])
@@ -150,6 +152,7 @@ model FlagGhillie {
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
   createdByUserId String       @map("created_by_user_id")
   activityId      String?      @unique @map("activity_id")
+  flag_report_status FlagReportStatus @default(NEW) @map("flag_report_status")
 
   @@unique([ghillieId, createdByUserId])
   @@index([category])
@@ -380,6 +383,13 @@ enum PostStatus {
   ACTIVE
   HIDDEN
   REMOVED
+  ARCHIVED
+}
+
+enum FlagReportStatus {
+  NEW
+  INVESTIGATING
+  RESOLVED
   ARCHIVED
 }
 

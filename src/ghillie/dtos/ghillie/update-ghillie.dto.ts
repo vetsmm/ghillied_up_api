@@ -1,44 +1,49 @@
-import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import {
+    HasMimeType,
+    IsFile,
+    MaxFileSize,
+    MemoryStoredFile,
+} from 'nestjs-form-data';
+import { ToBoolean } from '../../../shared';
 
 export class UpdateGhillieDto {
-  @ApiProperty({
-    description: 'Ghillie name',
-    example: 'Hello world',
-  })
-  @IsString()
-  @IsOptional()
-  name?: string;
+    @ApiProperty({
+        description: 'Ghillie name',
+        example: 'Hello world',
+    })
+    @IsString()
+    @IsOptional()
+    name?: string;
 
-  @ApiProperty({
-    description: 'Ghillie about',
-    example: 'Hello world',
-  })
-  @IsString()
-  @IsOptional()
-  about?: string | null;
+    @ApiProperty({
+        description: 'Ghillie about',
+        example: 'Hello world',
+    })
+    @IsString()
+    @IsOptional()
+    about?: string | null;
 
-  @ApiProperty({
-    description: 'Ghillie readOnly',
-    example: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  readOnly: boolean;
+    @ApiProperty({
+        type: Boolean,
+    })
+    @ToBoolean()
+    @IsOptional()
+    readOnly?: boolean;
 
-  @ApiProperty({
-    description: 'Ghillie imageUrl',
-    example: 'https://example.com/image.png',
-  })
-  @IsString()
-  @IsOptional()
-  imageUrl: string | null;
+    @IsFile()
+    @MaxFileSize(1e6)
+    @HasMimeType(['image/jpeg', 'image/png'])
+    @IsOptional()
+    @ApiProperty({ type: 'string', format: 'binary', required: false })
+    ghillieLogo?: MemoryStoredFile;
 
-  @ApiProperty({
-    description: 'Ghillie topicNames',
-    example: ['topic1', 'topic2'],
-  })
-  @IsArray()
-  @IsOptional()
-  topicNames: string[];
+    @ApiProperty({
+        description: 'Ghillie topicNames',
+        example: ['topic1', 'topic2'],
+    })
+    @IsArray()
+    @IsOptional()
+    topicNames?: string[];
 }

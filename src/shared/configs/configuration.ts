@@ -3,8 +3,6 @@ export default (): any => ({
     databaseUrl: process.env.DATABASE_URL,
     app: {
         name: 'ghillied-up',
-        frontendDomain: process.env.FRONTEND_DOMAIN,
-        backendDomain: process.env.BACKEND_DOMAIN,
     },
     stream: {
         apiKey: process.env.STREAM_API_KEY,
@@ -21,6 +19,7 @@ export default (): any => ({
     },
     aws: {
         region: process.env.AWS_REGION,
+        publicBucketName: process.env.AWS_PUBLIC_BUCKET_NAME,
         sns: {
             activityArn: process.env.AWS_SNS_ACTIVITY_ARN,
         },

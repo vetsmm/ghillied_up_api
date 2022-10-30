@@ -199,6 +199,8 @@ model Ghillie {
   createdByUserId String           @map("created_by_user_id")
   readOnly        Boolean          @default(false) @map("read_only")
   imageUrl        String?          @map("image_url")
+  publicImage     PublicFile?      @relation(fields: [publicImageId], references: [id], onDelete: SetNull)
+  publicImageId   String?          @unique @map("public_image_id")
   members         GhillieMembers[]
   topics          Topic[]
   posts           Post[]
@@ -296,6 +298,17 @@ model DevicePushToken {
 
   @@unique([token, userId])
   @@map("device_push_token")
+}
+
+model PublicFile {
+  id          String   @id @default(cuid())
+  url         String
+  key         String
+  createdDate DateTime @default(now()) @map("created_date")
+  updatedDate DateTime @updatedAt @map("updated_date")
+  Ghillie     Ghillie?
+
+  @@map("public_file")
 }
 
 enum PhonePlatform {

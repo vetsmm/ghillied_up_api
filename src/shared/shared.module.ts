@@ -8,6 +8,7 @@ import { SnsModule } from '@vetsmm/nestjs-sns';
 import { NestPgpromiseModule } from 'nestjs-pgpromise';
 import { PgPromiseConfigService } from './database/pgpromise-config.service';
 import { GetStreamModule } from './getsream/getstream.module';
+import { NestjsFormDataModule } from 'nestjs-form-data';
 
 @Module({
     imports: [

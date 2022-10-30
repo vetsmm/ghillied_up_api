@@ -1,40 +1,40 @@
-import {
-  IsArray,
-  IsBoolean,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { ToBoolean } from '../../../shared';
+import {
+    HasMimeType,
+    IsFile,
+    MaxFileSize,
+    MemoryStoredFile,
+} from 'nestjs-form-data';
 
 export class CreateGhillieInputDto {
-  @IsNotEmpty()
-  @ApiProperty()
-  @IsString()
-  name: string;
+    @IsNotEmpty()
+    @ApiProperty()
+    @IsString()
+    name: string;
 
-  @IsOptional()
-  @ApiProperty()
-  @IsString()
-  about?: string | null;
+    @IsOptional()
+    @ApiProperty({ required: false })
+    @IsString()
+    about?: string | null;
 
-  @IsNotEmpty()
-  @ApiProperty()
-  @IsBoolean()
-  readOnly: boolean;
+    @ApiProperty({
+        type: Boolean,
+    })
+    @ToBoolean()
+    readOnly: boolean;
 
-  @IsOptional()
-  @ApiProperty()
-  @IsString()
-  // TODO: Move to S3 reference
-  //  keep this until we move to S3, where we will remove this in the request, and replace with the S3 location
-  imageUrl?: string | null;
+    @ApiProperty({
+        type: [String],
+    })
+    @IsArray()
+    readonly topicNames?: string[] = [];
 
-  @IsNotEmpty()
-  @ApiProperty({
-    type: [String],
-  })
-  @IsArray()
-  @IsOptional()
-  topicNames?: string[] | null;
+    @IsFile()
+    @MaxFileSize(1e6)
+    @HasMimeType(['image/jpeg', 'image/png'])
+    @IsOptional()
+    @ApiProperty({ type: 'string', format: 'binary', required: false })
+    ghillieLogo?: MemoryStoredFile;
 }

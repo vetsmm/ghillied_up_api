@@ -18,3 +18,4 @@ export * from './feed';
 export * from './query';
 export * from './reactions';
 export * from './flags';
+export * from './decorators';

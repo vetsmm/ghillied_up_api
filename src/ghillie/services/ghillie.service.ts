@@ -21,6 +21,7 @@ import {
     GhillieRole,
     GhillieStatus,
     MemberStatus,
+    PublicFile,
     Topic,
 } from '@prisma/client';
 import { CreateGhillieInputDto } from '../dtos/ghillie/create-ghillie-input.dto';
@@ -32,6 +33,8 @@ import { UpdateGhillieDto } from '../dtos/ghillie/update-ghillie.dto';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
+import { GhillieAssetsService } from '../../files/services/ghillie-assets.service';
+import { AssetTypes } from '../../files/dtos/asset.types';
 
 @Injectable()
 export class GhillieService {
@@ -40,6 +43,7 @@ export class GhillieService {
         private readonly logger: AppLogger,
         private readonly ghillieAclService: GhillieAclService,
         private readonly streamService: GetStreamService,
+        private readonly ghillieAssetsService: GhillieAssetsService,
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(GhillieService.name);
@@ -61,98 +65,121 @@ export class GhillieService {
             );
         }
 
-        const ghillie = await this.prisma.$transaction(async (prisma) => {
-            let topics = [] as Array<Topic>;
-            if (createGhillieDto.topicNames) {
-                topics = await Promise.all(
-                    createGhillieDto.topicNames?.map(async (topicName) => {
-                        return await prisma.topic.upsert({
+        let publicFile: PublicFile;
+        if (createGhillieDto?.ghillieLogo) {
+            publicFile = await this.ghillieAssetsService.createGhillieAsset(
+                ctx,
+                AssetTypes.IMAGE,
+                createGhillieDto.ghillieLogo,
+            );
+        }
+
+        try {
+            const ghillie = await this.prisma.$transaction(async (prisma) => {
+                let topics = [] as Array<Topic>;
+                if (createGhillieDto.topicNames) {
+                    topics = await Promise.all(
+                        createGhillieDto?.topicNames?.map(async (topicName) => {
+                            return await prisma.topic.upsert({
+                                where: {
+                                    name: topicName,
+                                },
+                                update: {},
+                                create: {
+                                    name: topicName,
+                                    slug: slugify(topicName, {
+                                        replacement: '-',
+                                        lower: true,
+                                        strict: true,
+                                        trim: true,
+                                    }),
+                                    createdByUserId: ctx.user.id,
+                                },
+                            });
+                        }),
+                    );
+                }
+
+                const ghillie: Ghillie = await prisma.ghillie.create({
+                    data: {
+                        name: createGhillieDto.name,
+                        slug: slugify(createGhillieDto.name, {
+                            replacement: '-',
+                            lower: true,
+                            strict: true,
+                            trim: true,
+                        }),
+                        about: createGhillieDto.about,
+                        createdByUserId: ctx.user.id,
+                        readOnly: createGhillieDto?.readOnly ?? false,
+                        imageUrl: publicFile?.url,
+                        publicImageId: publicFile?.id,
+                        topics: {
+                            connect: topics.map((topic) => ({
+                                id: topic.id,
+                            })),
+                        },
+                    },
+                    include: {
+                        publicImage: true,
+                        topics: true,
+                        _count: {
+                            select: {
+                                members: true,
+                            },
+                        },
+                        members: {
                             where: {
-                                name: topicName,
+                                userId: ctx.user.id,
                             },
-                            update: {},
-                            create: {
-                                name: topicName,
-                                slug: slugify(topicName, {
-                                    replacement: '-',
-                                    lower: true,
-                                    strict: true,
-                                    trim: true,
-                                }),
-                                createdByUserId: ctx.user.id,
-                            },
-                        });
-                    }),
+                        },
+                    },
+                });
+
+                // Create a ghillie member for the owner
+                await prisma.ghillieMembers.create({
+                    data: {
+                        ghillieId: ghillie.id,
+                        userId: ctx.user.id,
+                        role: GhillieRole.OWNER,
+                        joinDate: new Date(),
+                        memberStatus: MemberStatus.ACTIVE,
+                    },
+                });
+
+                return ghillie;
+            });
+
+            this.streamService
+                .followGhillie(ghillie.id, ctx.user.id)
+                .then(() => {
+                    this.logger.log(
+                        ctx,
+                        `Followed ghillie ${ghillie.id} for user ${ctx.user.id}`,
+                    );
+                })
+                .catch((err) => {
+                    this.logger.error(
+                        ctx,
+                        `Failed to follow ghillie ${ghillie.id} for user ${ctx.user.id}: ${err}`,
+                    );
+                });
+
+            return plainToInstance(GhillieDetailDto, ghillie, {
+                excludeExtraneousValues: true,
+                enableImplicitConversion: true,
+            });
+        } catch (err) {
+            this.logger.error(ctx, `${this.createGhillie.name} failed: ${err}`);
+
+            if (publicFile) {
+                await this.ghillieAssetsService.deleteGhillieAssetById(
+                    ctx,
+                    publicFile,
                 );
             }
-
-            const ghillie: Ghillie = await prisma.ghillie.create({
-                data: {
-                    name: createGhillieDto.name,
-                    slug: slugify(createGhillieDto.name, {
-                        replacement: '-',
-                        lower: true,
-                        strict: true,
-                        trim: true,
-                    }),
-                    about: createGhillieDto.about,
-                    createdByUserId: ctx.user.id,
-                    readOnly: createGhillieDto.readOnly,
-                    imageUrl: createGhillieDto.imageUrl,
-                    topics: {
-                        connect: topics.map((topic) => ({
-                            id: topic.id,
-                        })),
-                    },
-                },
-                include: {
-                    topics: true,
-                    _count: {
-                        select: {
-                            members: true,
-                        },
-                    },
-                    members: {
-                        where: {
-                            userId: ctx.user.id,
-                        },
-                    },
-                },
-            });
-
-            // Create a ghillie member for the owner
-            await prisma.ghillieMembers.create({
-                data: {
-                    ghillieId: ghillie.id,
-                    userId: ctx.user.id,
-                    role: GhillieRole.OWNER,
-                    joinDate: new Date(),
-                    memberStatus: MemberStatus.ACTIVE,
-                },
-            });
-
-            return ghillie;
-        });
-
-        this.streamService
-            .followGhillie(ghillie.id, ctx.user.id)
-            .then(() => {
-                this.logger.log(
-                    ctx,
-                    `Followed ghillie ${ghillie.id} for user ${ctx.user.id}`,
-                );
-            })
-            .catch((err) => {
-                this.logger.error(
-                    ctx,
-                    `Failed to follow ghillie ${ghillie.id} for user ${ctx.user.id}: ${err}`,
-                );
-            });
-
-        return plainToInstance(GhillieDetailDto, ghillie, {
-            excludeExtraneousValues: true,
-            enableImplicitConversion: true,
-        });
+            throw new InternalServerErrorException();
+        }
     }
 
     async getGhillie(
@@ -311,7 +338,7 @@ export class GhillieService {
         this.logger.log(ctx, `${this.updateGhillie.name} was called`);
 
         // get the ghillie member
-        const ghillieUser = this.prisma.ghillieMembers.findFirst({
+        const ghillieUser = await this.prisma.ghillieMembers.findFirst({
             where: {
                 AND: [{ ghillieId: id }, { userId: ctx.user.id }],
             },
@@ -323,10 +350,9 @@ export class GhillieService {
             );
         }
 
-        const actor: Actor = ctx.user;
-        const isAllowed = this.ghillieAclService
-            .forActor(actor)
-            .canDoAction(Action.Update, ghillieUser);
+        const isAllowed =
+            ghillieUser.role === GhillieRole.OWNER ||
+            ctx.user.authorities.includes('ROLE_ADMIN');
         if (!isAllowed) {
             throw new UnauthorizedException(
                 'You are not authorized to update this ghillie',
@@ -348,26 +374,29 @@ export class GhillieService {
                     throw new NotFoundException('Ghillie not found');
                 }
 
-                const topics = await Promise.all(
-                    updateGhillieDto.topicNames?.map(async (topicName) => {
-                        return await prisma.topic.upsert({
-                            where: {
-                                name: topicName,
-                            },
-                            update: {},
-                            create: {
-                                name: topicName,
-                                slug: slugify(topicName, {
-                                    replacement: '-',
-                                    lower: true,
-                                    strict: true,
-                                    trim: true,
-                                }),
-                                createdByUserId: ctx.user.id,
-                            },
-                        });
-                    }),
-                );
+                let topics = [];
+                if (updateGhillieDto.topicNames) {
+                    topics = await Promise.all(
+                        updateGhillieDto?.topicNames?.map(async (topicName) => {
+                            return await prisma.topic.upsert({
+                                where: {
+                                    name: topicName,
+                                },
+                                update: {},
+                                create: {
+                                    name: topicName,
+                                    slug: slugify(topicName, {
+                                        replacement: '-',
+                                        lower: true,
+                                        strict: true,
+                                        trim: true,
+                                    }),
+                                    createdByUserId: ctx.user.id,
+                                },
+                            });
+                        }),
+                    );
+                }
 
                 if (updateGhillieDto.readOnly !== undefined) {
                     ghillie.readOnly = updateGhillieDto.readOnly;
@@ -387,8 +416,23 @@ export class GhillieService {
                     ghillie.about = updateGhillieDto.about;
                 }
 
-                if (updateGhillieDto.imageUrl !== undefined) {
-                    ghillie.imageUrl = updateGhillieDto.imageUrl;
+                if (updateGhillieDto.ghillieLogo !== undefined) {
+                    try {
+                        const publicImage =
+                            await this.ghillieAssetsService.createOrUpdateGhillieAsset(
+                                ctx,
+                                AssetTypes.IMAGE,
+                                updateGhillieDto.ghillieLogo,
+                                ghillie?.publicImageId,
+                            );
+                        ghillie.imageUrl = publicImage.url;
+                        ghillie.publicImageId = publicImage.id;
+                    } catch (err) {
+                        this.logger.error(ctx, err);
+                        throw new InternalServerErrorException(
+                            `Error updating ghillie logo: ${err}`,
+                        );
+                    }
                 }
 
                 // if any topics are removed, remove them from the ghillie
@@ -436,7 +480,7 @@ export class GhillieService {
         this.logger.log(ctx, `${this.deleteGhillie.name} was called`);
 
         // get the ghillie member
-        const ghillieUser = this.prisma.ghillieMembers.findFirst({
+        const ghillieUser = await this.prisma.ghillieMembers.findFirst({
             where: {
                 AND: [{ ghillieId: id }, { userId: ctx.user.id }],
             },
@@ -448,14 +492,26 @@ export class GhillieService {
             );
         }
 
-        const actor: Actor = ctx.user;
-        const isAllowed = this.ghillieAclService
-            .forActor(actor)
-            .canDoAction(Action.Delete, ghillieUser);
+        const isAllowed =
+            ghillieUser.role === GhillieRole.OWNER ||
+            ctx.user.authorities.includes('ROLE_ADMIN');
         if (!isAllowed) {
             throw new UnauthorizedException(
                 'You are not authorized to delete this ghillie',
             );
+        }
+
+        try {
+            const publicFile: PublicFile = await this.pg.one(
+                'SELECT * from public_file where public_file.id = (SELECT ghillie.public_image_id from ghillie where ghillie.id = $1)',
+                [id],
+            );
+            await this.ghillieAssetsService.deleteGhillieAssetById(
+                ctx,
+                publicFile,
+            );
+        } catch (err) {
+            this.logger.warn(ctx, `Error deleting ghillie logo: ${err}`);
         }
 
         await this.prisma.ghillie.delete({

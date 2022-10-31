@@ -25,7 +25,7 @@ export const configModuleOptions: ConfigModuleOptions = {
         SENTRY_DSN: Joi.string().uri().default(''),
         AWS_SNS_ACTIVITY_ARN: Joi.string().required(),
         AWS_REGION: Joi.string().default('us-east-1'),
-        AWS_PUBLIC_BUCKET_NAME: Joi.string().required(),
+        AWS_BUCKET_NAME: Joi.string().required(),
         STREAM_APP_ID: Joi.string().required(),
         STREAM_API_KEY: Joi.string().required(),
         STREAM_API_SECRET: Joi.string().required(),

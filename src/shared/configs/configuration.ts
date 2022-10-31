@@ -19,7 +19,7 @@ export default (): any => ({
     },
     aws: {
         region: process.env.AWS_REGION,
-        publicBucketName: process.env.AWS_PUBLIC_BUCKET_NAME,
+        publicBucketName: process.env.AWS_BUCKET_NAME,
         sns: {
             activityArn: process.env.AWS_SNS_ACTIVITY_ARN,
         },

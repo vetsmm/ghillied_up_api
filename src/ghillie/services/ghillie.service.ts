@@ -337,21 +337,19 @@ export class GhillieService {
     ): Promise<GhillieDetailDto> {
         this.logger.log(ctx, `${this.updateGhillie.name} was called`);
 
-        // get the ghillie member
-        const ghillieUser = await this.prisma.ghillieMembers.findFirst({
-            where: {
-                AND: [{ ghillieId: id }, { userId: ctx.user.id }],
-            },
-        });
+        const ghillieMember = await this.pg.one(
+            'SELECT * FROM ghillie_members WHERE ghillie_id = $1 AND user_id = $2',
+            [id, ctx.user.id],
+        );
 
-        if (!ghillieUser) {
+        if (!ghillieMember) {
             throw new UnauthorizedException(
                 'You are not allowed to update this ghillie',
             );
         }
 
         const isAllowed =
-            ghillieUser.role === GhillieRole.OWNER ||
+            ghillieMember.role === GhillieRole.OWNER ||
             ctx.user.authorities.includes('ROLE_ADMIN');
         if (!isAllowed) {
             throw new UnauthorizedException(
@@ -359,116 +357,76 @@ export class GhillieService {
             );
         }
 
-        const updatedGhillie = await this.prisma.$transaction(
-            async (prisma) => {
-                const ghillie = await prisma.ghillie.findUnique({
-                    where: {
-                        id: id,
-                    },
-                    include: {
-                        topics: true,
-                    },
-                });
-
-                if (!ghillie) {
-                    throw new NotFoundException('Ghillie not found');
-                }
-
-                let topics = [];
-                if (updateGhillieDto.topicNames) {
-                    topics = await Promise.all(
-                        updateGhillieDto?.topicNames?.map(async (topicName) => {
-                            return await prisma.topic.upsert({
-                                where: {
-                                    name: topicName,
-                                },
-                                update: {},
-                                create: {
-                                    name: topicName,
-                                    slug: slugify(topicName, {
-                                        replacement: '-',
-                                        lower: true,
-                                        strict: true,
-                                        trim: true,
-                                    }),
-                                    createdByUserId: ctx.user.id,
-                                },
-                            });
-                        }),
-                    );
-                }
-
-                if (updateGhillieDto.readOnly !== undefined) {
-                    ghillie.readOnly = updateGhillieDto.readOnly;
-                }
-
-                if (updateGhillieDto.name !== undefined) {
-                    ghillie.name = updateGhillieDto.name;
-                    ghillie.slug = slugify(updateGhillieDto.name, {
-                        replacement: '-',
-                        lower: true,
-                        strict: true,
-                        trim: true,
-                    });
-                }
-
-                if (updateGhillieDto.about !== undefined) {
-                    ghillie.about = updateGhillieDto.about;
-                }
-
-                if (updateGhillieDto.ghillieLogo !== undefined) {
-                    try {
-                        const publicImage =
-                            await this.ghillieAssetsService.createOrUpdateGhillieAsset(
-                                ctx,
-                                AssetTypes.IMAGE,
-                                updateGhillieDto.ghillieLogo,
-                                ghillie?.publicImageId,
-                            );
-                        ghillie.imageUrl = publicImage.url;
-                        ghillie.publicImageId = publicImage.id;
-                    } catch (err) {
-                        this.logger.error(ctx, err);
-                        throw new InternalServerErrorException(
-                            `Error updating ghillie logo: ${err}`,
-                        );
-                    }
-                }
-
-                // if any topics are removed, remove them from the ghillie
-                const topicsToRemove = ghillie.topics.filter((topic) => {
-                    return !updateGhillieDto.topicNames.includes(topic.name);
-                });
-
-                return await prisma.ghillie.update({
-                    where: { id: id },
-                    data: {
-                        ...ghillie,
-                        topics: {
-                            connect: topics.map((topic) => ({
-                                id: topic.id,
-                            })),
-                            disconnect: topicsToRemove.map((topic) => {
-                                return { id: topic.id };
-                            }),
-                        },
-                    },
-                    include: {
-                        topics: true,
-                        _count: {
-                            select: {
-                                members: true,
-                            },
-                        },
-                        members: {
-                            where: {
-                                userId: ctx.user.id,
-                            },
-                        },
-                    },
-                });
-            },
+        const ghillie = await this.pg.oneOrNone(
+            `SELECT *
+             FROM ghillie
+             WHERE ghillie.id = $1`,
+            [id],
         );
+
+        if (!ghillie) {
+            throw new NotFoundException('Ghillie not found');
+        }
+
+        if (updateGhillieDto.readOnly !== undefined) {
+            ghillie.readOnly = updateGhillieDto.readOnly;
+        }
+
+        if (updateGhillieDto.name !== undefined) {
+            ghillie.name = updateGhillieDto.name;
+            ghillie.slug = slugify(updateGhillieDto.name, {
+                replacement: '-',
+                lower: true,
+                strict: true,
+                trim: true,
+            });
+        }
+
+        if (updateGhillieDto.about !== undefined) {
+            ghillie.about = updateGhillieDto.about;
+        }
+
+        if (updateGhillieDto.ghillieLogo !== undefined) {
+            try {
+                const publicImage =
+                    await this.ghillieAssetsService.createOrUpdateGhillieAsset(
+                        ctx,
+                        AssetTypes.IMAGE,
+                        updateGhillieDto.ghillieLogo,
+                        ghillie?.publicImageId,
+                    );
+                ghillie.imageUrl = publicImage.url;
+                ghillie.publicImageId = publicImage.id;
+            } catch (err) {
+                this.logger.error(ctx, err);
+                throw new InternalServerErrorException(
+                    `Error updating ghillie logo: ${err}`,
+                );
+            }
+        }
+
+        // TODO: Add back in the ability to update topics
+
+        const updatedGhillie = await this.prisma.ghillie.update({
+            where: { id: id },
+            data: {
+                ...ghillie,
+                publicImageId: ghillie?.publicImageId,
+            },
+            include: {
+                topics: true,
+                _count: {
+                    select: {
+                        members: true,
+                    },
+                },
+                members: {
+                    where: {
+                        userId: ctx.user.id,
+                    },
+                },
+            },
+        });
 
         return plainToInstance(GhillieDetailDto, updatedGhillie, {
             excludeExtraneousValues: true,

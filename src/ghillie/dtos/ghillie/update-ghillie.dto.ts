@@ -33,8 +33,14 @@ export class UpdateGhillieDto {
     readOnly?: boolean;
 
     @IsFile()
-    @MaxFileSize(1e6)
-    @HasMimeType(['image/jpeg', 'image/png'])
+    @MaxFileSize(2e7)
+    @HasMimeType([
+        'image/jpeg',
+        'image/png',
+        'image/heic',
+        'image/heif',
+        'image/jpg',
+    ])
     @IsOptional()
     @ApiProperty({ type: 'string', format: 'binary', required: false })
     ghillieLogo?: MemoryStoredFile;

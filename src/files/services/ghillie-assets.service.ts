@@ -44,10 +44,14 @@ export class GhillieAssetsService extends BaseS3Service {
             return;
         }
 
-        await this.deleteFile(ctx, publicFile.key);
-        await this.pg.none('DELETE FROM public_file WHERE id = $1', [
-            publicFile.id,
-        ]);
+        try {
+            await this.pg.none('DELETE FROM public_file WHERE id = $1', [
+                publicFile.id,
+            ]);
+            await this.deleteFile(ctx, publicFile.key);
+        } catch (err) {
+            this.logger.error(ctx, `Error Deleting Ghillie Image: ${err}`);
+        }
     }
 
     async createGhillieAsset(
@@ -59,8 +63,15 @@ export class GhillieAssetsService extends BaseS3Service {
 
         const filePath = `ghillies/${assetType}`;
 
-        const { key, url } = await this.uploadFile(ctx, file, filePath);
+        let response;
+        try {
+            response = await this.uploadFile(ctx, file, filePath);
+        } catch (error) {
+            this.logger.error(ctx, `Error Uploading Ghillie Image: ${error}`);
+            throw error;
+        }
 
+        const { key, url } = response;
         try {
             return this.pg.one(
                 'INSERT INTO public_file (id, url, key, created_date, updated_date) VALUES ($1, $2, $3, $4, $5) RETURNING *',
@@ -68,6 +79,10 @@ export class GhillieAssetsService extends BaseS3Service {
             );
         } catch (err) {
             // perform async
+            this.logger.error(
+                ctx,
+                `Error Saving PublicFile for Ghillie Image Image: ${err}`,
+            );
             this.deleteFile(ctx, key);
             throw err;
         }
@@ -86,14 +101,20 @@ export class GhillieAssetsService extends BaseS3Service {
 
         const filePath = `ghillies/${assetType}`;
 
-        const { key, url } = await this.uploadFile(ctx, file, filePath);
-
+        let response;
         try {
-            await this.deleteFile(ctx, publicFileId);
+            response = await this.uploadFile(ctx, file, filePath);
+        } catch (error) {
+            this.logger.error(ctx, `Error Uploading Ghillie Image: ${error}`);
+            throw error;
+        }
 
+        const { key, url } = response;
+        try {
             await this.pg.none('DELETE FROM public_file WHERE id = $1', [
                 publicFileId,
             ]);
+            await this.deleteFile(ctx, publicFileId);
         } catch (err) {
             this.logger.warn(ctx, err);
         }

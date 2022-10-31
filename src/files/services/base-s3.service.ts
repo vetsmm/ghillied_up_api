@@ -54,14 +54,13 @@ export abstract class BaseS3Service {
     protected async deleteFile(
         ctx: RequestContext,
         key: string,
-    ): Promise<boolean> {
+    ): Promise<void> {
         const s3 = new S3();
         const params = {
             Bucket: this.config.get('aws.publicBucketName'),
             Key: key,
         };
         await s3.deleteObject(params).promise();
-        return true;
     }
 
     /**

@@ -27,19 +27,20 @@ import {
     RequestContext,
     SwaggerBaseApiResponse,
     GhillieSearchCriteria,
-} from '../../shared';
-import { GhillieService } from '../services/ghillie.service';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { AuthoritiesGuard } from '../../auth/guards/authorities.guard';
-import { CreateGhillieInputDto } from '../dtos/ghillie/create-ghillie-input.dto';
-import { GhillieDetailDto } from '../dtos/ghillie/ghillie-detail.dto';
-import { Authorities } from '../../auth/decorators/authority.decorator';
+} from '../../../shared';
+import { GhillieService } from '../../services/ghillie.service';
+import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
+import { AuthoritiesGuard } from '../../../auth/guards/authorities.guard';
+import { CreateGhillieInputDto } from '../../dtos/ghillie/create-ghillie-input.dto';
+import { GhillieDetailDto } from '../../dtos/ghillie/ghillie-detail.dto';
+import { Authorities } from '../../../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
-import { UpdateGhillieDto } from '../dtos/ghillie/update-ghillie.dto';
-import { GhillieOwnershipTransferDto } from '../dtos/members/ghillie-ownership-transfer.dto';
-import { GhillieUserDto } from '../dtos/members/ghillie-user.dto';
-import { TopicNamesDto } from '../dtos/topic/topic-names.dto';
-import { TopicIdsDto } from '../dtos/topic/topic-ids.dto';
+import { UpdateGhillieDto } from '../../dtos/ghillie/update-ghillie.dto';
+import { GhillieOwnershipTransferDto } from '../../dtos/members/ghillie-ownership-transfer.dto';
+import { GhillieUserDto } from '../../dtos/members/ghillie-user.dto';
+import { TopicNamesDto } from '../../dtos/topic/topic-names.dto';
+import { TopicIdsDto } from '../../dtos/topic/topic-ids.dto';
+import { FormDataRequest } from 'nestjs-form-data';
 
 @ApiTags('ghillies')
 @Controller('ghillies')
@@ -53,7 +54,7 @@ export class GhillieController {
 
     @UseGuards(JwtAuthGuard, AuthoritiesGuard)
     @ApiBearerAuth()
-    @UseInterceptors(ClassSerializerInterceptor)
+    @FormDataRequest()
     @Post()
     @ApiOperation({
         summary: 'Creates a new Ghillie',
@@ -62,15 +63,10 @@ export class GhillieController {
         status: HttpStatus.OK,
         type: SwaggerBaseApiResponse(GhillieDetailDto),
     })
-    @ApiResponse({
-        status: HttpStatus.NOT_FOUND,
-        type: BaseApiErrorResponse,
-    })
     @HttpCode(HttpStatus.CREATED)
-    @Authorities(UserAuthority.ROLE_ADMIN)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_ADMIN)
     async createGhillie(
         @ReqContext() ctx: RequestContext,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         @Body() createGhillieDto: CreateGhillieInputDto,
     ): Promise<BaseApiResponse<GhillieDetailDto>> {
         this.logger.log(ctx, `${this.createGhillie.name} was called`);
@@ -78,6 +74,37 @@ export class GhillieController {
         const ghillie = await this.ghillieService.createGhillie(
             ctx,
             createGhillieDto,
+        );
+        return {
+            data: ghillie,
+            meta: {},
+        };
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @ApiBearerAuth()
+    @FormDataRequest()
+    @Put(':id')
+    @ApiOperation({
+        summary: 'Update a Ghillie',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: SwaggerBaseApiResponse(GhillieDetailDto),
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_ADMIN)
+    async updateGhillie(
+        @ReqContext() ctx: RequestContext,
+        @Param('id') id: string,
+        @Body() updateGhillieDto: UpdateGhillieDto,
+    ): Promise<BaseApiResponse<GhillieDetailDto>> {
+        this.logger.log(ctx, `${this.updateGhillie.name} was called`);
+
+        const ghillie = await this.ghillieService.updateGhillie(
+            ctx,
+            id,
+            updateGhillieDto,
         );
         return {
             data: ghillie,
@@ -96,9 +123,6 @@ export class GhillieController {
     @ApiResponse({
         status: HttpStatus.OK,
         type: SwaggerBaseApiResponse(GhillieDetailDto),
-    })
-    @ApiResponse({
-        status: HttpStatus.NOT_FOUND,
     })
     @HttpCode(HttpStatus.OK)
     async getGhillie(
@@ -210,42 +234,7 @@ export class GhillieController {
     }
 
     @UseGuards(JwtAuthGuard, AuthoritiesGuard)
-    @Authorities(UserAuthority.ROLE_ADMIN)
-    @ApiBearerAuth()
-    @UseInterceptors(ClassSerializerInterceptor)
-    @Put(':id')
-    @ApiOperation({
-        summary: 'Update a Ghillie',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(GhillieDetailDto),
-    })
-    @ApiResponse({
-        status: HttpStatus.NOT_FOUND,
-        type: BaseApiErrorResponse,
-    })
-    @HttpCode(HttpStatus.OK)
-    async updateGhillie(
-        @ReqContext() ctx: RequestContext,
-        @Param('id') id: string,
-        @Body() updateGhillieDto: UpdateGhillieDto,
-    ): Promise<BaseApiResponse<GhillieDetailDto>> {
-        this.logger.log(ctx, `${this.updateGhillie.name} was called`);
-
-        const ghillie = await this.ghillieService.updateGhillie(
-            ctx,
-            id,
-            updateGhillieDto,
-        );
-        return {
-            data: ghillie,
-            meta: {},
-        };
-    }
-
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
-    @Authorities(UserAuthority.ROLE_ADMIN)
+    @Authorities(UserAuthority.ROLE_ADMIN, UserAuthority.ROLE_VERIFIED_MILITARY)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Delete(':id')

@@ -1,9 +1,9 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { GhillieController } from './ghillie.controller';
-import { AppLogger, RequestContext } from '../../shared';
-import { GhillieService } from '../services/ghillie.service';
-import { CreateGhillieInputDto } from '../dtos/ghillie/create-ghillie-input.dto';
+import { AppLogger, RequestContext } from '../../../shared';
+import { GhillieService } from '../../services/ghillie.service';
+import { CreateGhillieInputDto } from '../../dtos/ghillie/create-ghillie-input.dto';
 
 describe('GhillieController', () => {
   let moduleRef: TestingModule;

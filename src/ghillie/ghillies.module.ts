@@ -4,20 +4,31 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AppLogger } from '../shared';
 import { GhillieService } from './services/ghillie.service';
 import { GhillieAclService } from './services/ghillie-acl.service';
-import { GhillieController } from './controllers/ghillie.controller';
+import { GhillieController } from './controllers/v1/ghillie.controller';
 import { FlagGhillieService } from '../flags/services/flag-ghillie.service';
 import { FlagGhillieController } from '../flags/controllers/flag-ghillie.controller';
+import { GhillieAssetsService } from '../files/services/ghillie-assets.service';
+import { MemoryStoredFile, NestjsFormDataModule } from 'nestjs-form-data';
 
 @Module({
-  providers: [
-    GhillieService,
-    FlagGhillieService,
-    GhillieAclService,
-    JwtAuthStrategy,
-    PrismaService,
-    AppLogger,
-  ],
-  controllers: [GhillieController, FlagGhillieController],
-  exports: [GhillieService, FlagGhillieService],
+    imports: [
+        NestjsFormDataModule.configAsync({
+            useFactory: () => ({
+                storage: MemoryStoredFile,
+            }),
+            inject: [],
+        }),
+    ],
+    providers: [
+        GhillieService,
+        FlagGhillieService,
+        GhillieAclService,
+        JwtAuthStrategy,
+        PrismaService,
+        AppLogger,
+        GhillieAssetsService,
+    ],
+    controllers: [GhillieController, FlagGhillieController],
+    exports: [GhillieService, FlagGhillieService],
 })
 export class GhillieModule {}

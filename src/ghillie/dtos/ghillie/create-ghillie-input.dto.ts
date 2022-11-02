@@ -1,15 +1,8 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ToBoolean } from '../../../shared';
-import {
-    HasMimeType,
-    IsFile,
-    MaxFileSize,
-    MemoryStoredFile,
-} from 'nestjs-form-data';
 
 export class CreateGhillieInputDto {
-    @IsNotEmpty()
     @ApiProperty()
     @IsString()
     name: string;
@@ -30,17 +23,4 @@ export class CreateGhillieInputDto {
     })
     @IsArray()
     readonly topicNames?: string[] = [];
-
-    @IsFile()
-    @MaxFileSize(2e7)
-    @HasMimeType([
-        'image/jpeg',
-        'image/png',
-        'image/heic',
-        'image/heif',
-        'image/jpg',
-    ])
-    @IsOptional()
-    @ApiProperty({ type: 'string', format: 'binary', required: false })
-    ghillieLogo?: MemoryStoredFile;
 }

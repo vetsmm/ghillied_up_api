@@ -16,6 +16,7 @@ import {
     Post,
     Put,
     Query,
+    UploadedFile,
     UseGuards,
     UseInterceptors,
 } from '@nestjs/common';
@@ -23,10 +24,10 @@ import {
     AppLogger,
     BaseApiErrorResponse,
     BaseApiResponse,
+    GhillieSearchCriteria,
     ReqContext,
     RequestContext,
     SwaggerBaseApiResponse,
-    GhillieSearchCriteria,
 } from '../../../shared';
 import { GhillieService } from '../../services/ghillie.service';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
@@ -40,7 +41,7 @@ import { GhillieOwnershipTransferDto } from '../../dtos/members/ghillie-ownershi
 import { GhillieUserDto } from '../../dtos/members/ghillie-user.dto';
 import { TopicNamesDto } from '../../dtos/topic/topic-names.dto';
 import { TopicIdsDto } from '../../dtos/topic/topic-ids.dto';
-import { FormDataRequest } from 'nestjs-form-data';
+import ImageFilesInterceptor from '../../../shared/interceptors/image-file.interceptor';
 
 @ApiTags('ghillies')
 @Controller('ghillies')
@@ -54,7 +55,7 @@ export class GhillieController {
 
     @UseGuards(JwtAuthGuard, AuthoritiesGuard)
     @ApiBearerAuth()
-    @FormDataRequest()
+    @UseInterceptors(ClassSerializerInterceptor)
     @Post()
     @ApiOperation({
         summary: 'Creates a new Ghillie',
@@ -83,8 +84,8 @@ export class GhillieController {
 
     @UseGuards(JwtAuthGuard, AuthoritiesGuard)
     @ApiBearerAuth()
-    @FormDataRequest()
     @Put(':id')
+    @UseInterceptors(ClassSerializerInterceptor)
     @ApiOperation({
         summary: 'Update a Ghillie',
     })
@@ -110,6 +111,29 @@ export class GhillieController {
             data: ghillie,
             meta: {},
         };
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(
+        ImageFilesInterceptor({
+            fieldName: 'image',
+        }),
+    )
+    @Put(':id/logo')
+    @ApiOperation({
+        summary: "Update a Ghillie's logo",
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_ADMIN)
+    async updateGhillieLogo(
+        @ReqContext() ctx: RequestContext,
+        @Param('id') id: string,
+        @UploadedFile() image: Express.Multer.File,
+    ): Promise<GhillieDetailDto> {
+        this.logger.log(ctx, `${this.updateGhillieLogo.name} was called`);
+
+        return await this.ghillieService.updateGhillieLogo(ctx, id, image);
     }
 
     @UseGuards(JwtAuthGuard, AuthoritiesGuard)

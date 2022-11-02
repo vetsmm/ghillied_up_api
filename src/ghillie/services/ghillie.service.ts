@@ -66,13 +66,6 @@ export class GhillieService {
         }
 
         let publicFile: PublicFile;
-        if (createGhillieDto?.ghillieLogo) {
-            publicFile = await this.ghillieAssetsService.createGhillieAsset(
-                ctx,
-                AssetTypes.IMAGE,
-                createGhillieDto.ghillieLogo,
-            );
-        }
 
         try {
             const ghillie = await this.prisma.$transaction(async (prisma) => {
@@ -112,8 +105,6 @@ export class GhillieService {
                         about: createGhillieDto.about,
                         createdByUserId: ctx.user.id,
                         readOnly: createGhillieDto?.readOnly ?? false,
-                        imageUrl: publicFile?.url,
-                        publicImageId: publicFile?.id,
                         topics: {
                             connect: topics.map((topic) => ({
                                 id: topic.id,
@@ -337,7 +328,7 @@ export class GhillieService {
     ): Promise<GhillieDetailDto> {
         this.logger.log(ctx, `${this.updateGhillie.name} was called`);
 
-        const ghillieMember = await this.pg.one(
+        const ghillieMember = await this.pg.oneOrNone(
             'SELECT * FROM ghillie_members WHERE ghillie_id = $1 AND user_id = $2',
             [id, ctx.user.id],
         );
@@ -386,24 +377,24 @@ export class GhillieService {
             ghillie.about = updateGhillieDto.about;
         }
 
-        if (updateGhillieDto.ghillieLogo !== undefined) {
-            try {
-                const publicImage =
-                    await this.ghillieAssetsService.createOrUpdateGhillieAsset(
-                        ctx,
-                        AssetTypes.IMAGE,
-                        updateGhillieDto.ghillieLogo,
-                        ghillie?.publicImageId,
-                    );
-                ghillie.imageUrl = publicImage.url;
-                ghillie.publicImageId = publicImage.id;
-            } catch (err) {
-                this.logger.error(ctx, err);
-                throw new InternalServerErrorException(
-                    `Error updating ghillie logo: ${err}`,
-                );
-            }
-        }
+        // if (updateGhillieDto.ghillieLogo !== undefined) {
+        //     try {
+        //         const publicImage =
+        //             await this.ghillieAssetsService.createOrUpdateGhillieAsset(
+        //                 ctx,
+        //                 AssetTypes.IMAGE,
+        //                 updateGhillieDto.ghillieLogo,
+        //                 ghillie?.publicImageId,
+        //             );
+        //         ghillie.imageUrl = publicImage.url;
+        //         ghillie.publicImageId = publicImage.id;
+        //     } catch (err) {
+        //         this.logger.error(ctx, err);
+        //         throw new InternalServerErrorException(
+        //             `Error updating ghillie logo: ${err}`,
+        //         );
+        //     }
+        // }
 
         // TODO: Add back in the ability to update topics
 
@@ -1089,6 +1080,69 @@ export class GhillieService {
         } catch (error) {
             this.logger.error(ctx, error);
             throw new InternalServerErrorException();
+        }
+    }
+
+    async updateGhillieLogo(
+        ctx: RequestContext,
+        id: string,
+        file: Express.Multer.File,
+    ) {
+        this.logger.log(ctx, `${this.updateGhillieLogo.name} was called`);
+
+        const ghillieMember = await this.pg.oneOrNone(
+            'SELECT * FROM ghillie_members WHERE ghillie_id = $1 AND user_id = $2',
+            [id, ctx.user.id],
+        );
+
+        if (!ghillieMember) {
+            throw new UnauthorizedException(
+                'You are not allowed to update this ghillie',
+            );
+        }
+
+        const isAllowed =
+            ghillieMember.role === GhillieRole.OWNER ||
+            ctx.user.authorities.includes('ROLE_ADMIN');
+        if (!isAllowed) {
+            throw new UnauthorizedException(
+                'You are not authorized to update this ghillie',
+            );
+        }
+
+        const ghillie = await this.pg.oneOrNone(
+            `SELECT *
+             FROM ghillie
+             WHERE ghillie.id = $1`,
+            [id],
+        );
+
+        if (!ghillie) {
+            throw new NotFoundException('Ghillie not found');
+        }
+
+        try {
+            const publicImage =
+                await this.ghillieAssetsService.createOrUpdateGhillieAsset(
+                    ctx,
+                    AssetTypes.IMAGE,
+                    file,
+                    ghillie?.publicImageId,
+                );
+
+            return await this.pg.one(
+                `UPDATE ghillie
+                 SET image_url = $1,
+                     public_image_id = $2
+                 WHERE id = $3
+                 RETURNING *`,
+                [publicImage.url, publicImage.id, id],
+            );
+        } catch (err) {
+            this.logger.error(ctx, err);
+            throw new InternalServerErrorException(
+                `Error updating ghillie logo: ${err}`,
+            );
         }
     }
 }

@@ -64,4 +64,10 @@ export default (): any => ({
         secure: process.env.MAIL_SECURE === 'true',
         requireTLS: process.env.MAIL_REQUIRE_TLS === 'true',
     },
+    files: {
+        images: {
+            maxSize: 2e7,
+            allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png'],
+        },
+    },
 });

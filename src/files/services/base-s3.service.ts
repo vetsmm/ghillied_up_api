@@ -3,7 +3,6 @@ import { RequestContext } from '../../shared';
 import { v4 as uuidv4 } from 'uuid';
 import { ConfigService } from '@nestjs/config';
 import { ManagedUpload } from 'aws-sdk/lib/s3/managed_upload';
-import { MemoryStoredFile } from 'nestjs-form-data';
 
 export abstract class BaseS3Service {
     protected constructor(private readonly config: ConfigService) {}
@@ -19,16 +18,16 @@ export abstract class BaseS3Service {
      */
     protected async uploadFile(
         ctx: RequestContext,
-        file: MemoryStoredFile,
+        file: Express.Multer.File,
         filePath: string,
     ): Promise<{
         key: string;
         url: string;
     }> {
-        const { originalName, buffer } = file;
+        const { originalname, buffer } = file;
 
         const s3 = new S3();
-        const key = `${filePath}/${uuidv4()}-${originalName}`;
+        const key = `${filePath}/${uuidv4()}-${originalname}`;
         const params = {
             Bucket: this.config.get('aws.publicBucketName'),
             Key: key,

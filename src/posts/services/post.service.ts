@@ -309,7 +309,10 @@ export class PostService {
         this.streamService
             .deletePostActivity(post.postedById, post.id)
             .then((res) => {
-                this.logger.log(ctx, `Post deleted from feed: ${JSON.stringify(res)}`);
+                this.logger.log(
+                    ctx,
+                    `Post deleted from feed: ${JSON.stringify(res)}`,
+                );
             })
             .catch((err) => {
                 this.logger.error(ctx, `Error deleting post from feed: ${err}`);
@@ -323,27 +326,31 @@ export class PostService {
         }
 
         this.streamService
-            .updatePostActivity(
-                ctx.user.id,
-                updatedPost.activityId,
-                updatedPost.ghillieId,
-                {
-                    title: updatedPost.title,
-                    content: updatedPost.content,
-                    status: updatedPost.status,
-                    updatedDate: updatedPost.updatedDate,
-                    edited: true,
-                    tags: updatedPost.tags.map((tag) => ({
-                        name: tag.name,
-                        id: tag.id,
-                    })),
-                },
-            )
+            .getPostActivity(updatedPost.postedById, updatedPost.activityId)
             .then((res) => {
-                this.logger.log(ctx, `Activity updated with ID: ${res.id}`);
-            })
-            .catch((err) => {
-                this.logger.error(ctx, `Error updating activity: ${err}`);
+                const activity: any = res.results[0];
+                activity.data.title = updatedPost.title;
+                activity.data.content = updatedPost.content;
+                activity.data.edited = updatedPost.edited;
+                activity.data.tags = updatedPost.tags.map((tag: PostTag) => ({
+                    name: tag.name,
+                    id: tag.id,
+                }));
+                activity.data.status = updatedPost.status;
+                this.streamService
+                    .updatePostActivity(activity)
+                    .then((res) => {
+                        this.logger.log(
+                            ctx,
+                            `Post updated in feed: ${JSON.stringify(res)}`,
+                        );
+                    })
+                    .catch((err) => {
+                        this.logger.error(
+                            ctx,
+                            `Error updating post in feed: ${err}`,
+                        );
+                    });
             });
     }
 

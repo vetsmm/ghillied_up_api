@@ -19,6 +19,7 @@ import { PostDetailDto } from '../dtos/post-detail.dto';
 import {
     GhillieRole,
     MemberStatus,
+    Post,
     PostStatus,
     PostTag,
     Prisma,
@@ -293,6 +294,34 @@ export class PostService {
             });
         });
 
+        this.updateOrDeletePostFromFeed(ctx, updatedPost);
+
+        const dto = plainToInstance(PostDetailDto, updatedPost, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
+        dto.tags = updatedPost.tags.map((tag) => tag.name);
+        return dto;
+    }
+
+    deletePostFromFeed(ctx: RequestContext, post: Post) {
+        this.logger.log(ctx, 'Deleting post from feed');
+        this.streamService
+            .deletePostActivity(post.postedById, post.id)
+            .then((res) => {
+                this.logger.log(ctx, `Post deleted from feed: ${JSON.stringify(res)}`);
+            })
+            .catch((err) => {
+                this.logger.error(ctx, `Error deleting post from feed: ${err}`);
+            });
+    }
+
+    updateOrDeletePostFromFeed(ctx: RequestContext, updatedPost: any) {
+        if (updatedPost.status !== PostStatus.ACTIVE) {
+            this.deletePostFromFeed(ctx, updatedPost);
+            return;
+        }
+
         this.streamService
             .updatePostActivity(
                 ctx.user.id,
@@ -316,13 +345,6 @@ export class PostService {
             .catch((err) => {
                 this.logger.error(ctx, `Error updating activity: ${err}`);
             });
-
-        const dto = plainToInstance(PostDetailDto, updatedPost, {
-            excludeExtraneousValues: true,
-            enableImplicitConversion: true,
-        });
-        dto.tags = updatedPost.tags.map((tag) => tag.name);
-        return dto;
     }
 
     async getPostById(ctx: RequestContext, id: string) {
@@ -377,7 +399,6 @@ export class PostService {
         return dto;
     }
 
-    // todo: this would probably be better with elasticsearch in the future
     async getAllPosts(
         ctx: RequestContext,
         criteria: PostSearchCriteria,
@@ -489,11 +510,23 @@ export class PostService {
             );
         }
 
+        const post = await this.prisma.post.findUnique({
+            where: {
+                id,
+            },
+        });
+
+        if (!post) {
+            throw new NotFoundException('Post not found');
+        }
+
         await this.prisma.post.delete({
             where: {
                 id,
             },
         });
+
+        this.deletePostFromFeed(ctx, post);
     }
 
     async getPostsForGhillie(

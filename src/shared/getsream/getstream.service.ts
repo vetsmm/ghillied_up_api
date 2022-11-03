@@ -8,7 +8,6 @@ import {
     NewPostBookmarkActivity,
     NewPostCommentReaction,
     NewPostReaction,
-    PostFeedUpdateActivityData,
 } from '../feed/feed.types';
 import {
     connect,
@@ -92,6 +91,13 @@ export class GetStreamService {
         });
     }
 
+    async getPostActivity(userId: string, activityId: string) {
+        return this.stream.feed('user', userId).get({
+            id_gte: activityId,
+            limit: 1,
+        });
+    }
+
     async addFlagActivity(
         feedGroup: 'flag_post' | 'flag_ghillie' | 'flag_comment',
         flag: NewFlagActivity,
@@ -130,21 +136,8 @@ export class GetStreamService {
         });
     }
 
-    async updatePostActivity(
-        actorId: string,
-        ghillieId: string,
-        postId: string,
-        updatedFields: PostFeedUpdateActivityData,
-    ) {
-        return this.stream.activityPartialUpdate({
-            foreign_id: `post:${postId}`,
-            set: {
-                data: {
-                    ...updatedFields,
-                },
-            },
-            time: new Date(),
-        });
+    async updatePostActivity(activity) {
+        return this.stream.updateActivity(activity);
     }
 
     async addPostComment(

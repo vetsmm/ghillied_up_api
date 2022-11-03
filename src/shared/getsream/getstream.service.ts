@@ -124,6 +124,12 @@ export class GetStreamService {
         });
     }
 
+    async deletePostActivity(userId: string, postId: string) {
+        return this.stream.feed('user', userId).removeActivity({
+            foreign_id: `post:${postId}`,
+        });
+    }
+
     async updatePostActivity(
         actorId: string,
         ghillieId: string,

@@ -16,12 +16,16 @@ import { PostCommentReactionService } from './services/post-comment-reaction.ser
 import { QueueService } from '../queue/services/queue.service';
 import { NotificationService } from '../notifications/services/notification.service';
 import { PostBookmarkService } from './services/post-bookmark.service';
+import { OpenGraphService } from '../open-graph/open-graph.service';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
+    imports: [HttpModule],
     providers: [
         JwtAuthStrategy,
         PrismaService,
         AppLogger,
+        OpenGraphService,
         PostAclService,
         PostService,
         PostReactionService,

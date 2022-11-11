@@ -19,6 +19,7 @@ import { QueueModule } from '../queue/queue.module';
 import { SettingsModule } from '../settings/settings.module';
 import { NotificationModule } from '../notifications/notification.module';
 import { FilesModule } from '../files/files.module';
+import { OpenGraphModule } from '../open-graph/open-graph.module';
 
 @Module({
     imports: [
@@ -34,6 +35,7 @@ import { FilesModule } from '../files/files.module';
         SettingsModule,
         NotificationModule,
         FilesModule,
+        OpenGraphModule,
     ],
     controllers: [AppController],
     providers: [
@@ -45,5 +47,4 @@ import { FilesModule } from '../files/files.module';
         },
     ],
 })
-export class AppModule {
-}
+export class AppModule {}

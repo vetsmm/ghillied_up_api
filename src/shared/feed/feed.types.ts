@@ -7,6 +7,7 @@ import {
     PostStatus,
     ReactionType,
 } from '@prisma/client';
+import { LinkMeta } from '../../open-graph/dtos/link-meta';
 
 export interface TagMeta {
     id: string;
@@ -37,6 +38,7 @@ export interface PostFeedCreateActivityData {
     tags?: { id: string; name: string }[];
     ghillieId: string;
     postedById: string;
+    linkMeta?: LinkMeta;
 }
 
 export interface PostBookmarkCreateActivityData {

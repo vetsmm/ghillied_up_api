@@ -3,23 +3,23 @@ import { ApiProperty } from '@nestjs/swagger';
 import { FeedFilters } from './feed.filters';
 
 export class FeedInputDto {
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  cursor?: string;
+    @ApiProperty()
+    @IsString()
+    @IsOptional()
+    cursor?: string;
 
-  @ApiProperty()
-  @IsNumber()
-  @IsOptional()
-  take?: number = 25;
+    @ApiProperty()
+    @IsNumber()
+    @IsOptional()
+    take?: number = 25;
 
-  @ApiProperty()
-  @IsObject()
-  @IsOptional()
-  filters?: FeedFilters;
+    @ApiProperty()
+    @IsObject()
+    @IsOptional()
+    filters?: FeedFilters;
 
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  orderBy?: 'asc' | 'desc' = 'desc';
+    @ApiProperty()
+    @IsString()
+    @IsOptional()
+    orderBy?: 'asc' | 'desc' = 'desc';
 }

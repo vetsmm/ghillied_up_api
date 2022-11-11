@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AppLogger, FeedInputDto, RequestContext } from '../../shared';
+import { AppLogger, RequestContext } from '../../shared';
 import { PostFeedAclService } from './post-feed-acl.service';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
@@ -123,16 +123,20 @@ export class PostFeedService {
         }
 
         const ghillies = await this.pg.many(
-            `SELECT * FROM "ghillie" WHERE "id" IN ($1:csv)`,
+            `SELECT *
+             FROM "ghillie"
+             WHERE "id" IN ($1:csv)`,
             [activities.map((a: any) => a.data?.ghillieId)],
         );
 
         const users = await this.pg.many(
-            `SELECT * FROM "user" WHERE "id" IN ($1:csv)`,
+            `SELECT *
+             FROM "user"
+             WHERE "id" IN ($1:csv)`,
             [activities.map((a: any) => a.data?.postedById)],
         );
 
-        const feedItems: FeedInputDto[] = activities.map((a: any) => {
+        const feedItems: PostFeedDto[] = activities.map((a: any) => {
             const currentUserReaction =
                 a.own_reactions.POST_REACTION?.find(
                     (r) => r.user_id === ctx.user.id,
@@ -147,18 +151,16 @@ export class PostFeedService {
                     currentUserReaction?.data?.reactionType || null,
                 postCommentsCount: totalComments,
                 postReactionsCount: totalReactions,
-            } as FeedInputDto;
+            } as PostFeedDto;
         });
 
-        // Add the ghillie to the feed and conver the ghillie to
-        feedItems.forEach((item: any) => {
+        feedItems.forEach((item: PostFeedDto) => {
+            // Hydrate in the ghillie
             const ghillie = ghillies.find((g) => g.id === item.ghillieId);
             item.ghillieName = ghillie?.name;
             item.ghillieImageUrl = ghillie?.imageUrl || null;
-        });
 
-        // Add the user to the feed
-        feedItems.forEach((item: any) => {
+            // Hydrate in the user
             const postedBy = users.find((u: any) => u.id === item.postedById);
             item.ownerUsername = postedBy?.username;
             item.ownerBranch = postedBy?.branch;

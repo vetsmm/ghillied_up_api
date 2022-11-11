@@ -6,6 +6,7 @@ import {
     ServiceStatus,
 } from '@prisma/client';
 import { Expose, Transform, Type } from 'class-transformer';
+import { LinkMeta } from '../../open-graph/dtos/link-meta';
 
 export class PostGhillieMetaDto {
     @ApiProperty()
@@ -108,4 +109,8 @@ export class PostDetailDto {
         { toClassOnly: true },
     )
     currentUserReaction?: ReactionType = null;
+
+    @ApiProperty()
+    @Expose()
+    linkMeta?: LinkMeta;
 }

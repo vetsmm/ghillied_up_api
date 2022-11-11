@@ -5,6 +5,8 @@ import {
     ServiceStatus,
 } from '@prisma/client';
 import { Expose } from 'class-transformer';
+import { OpenGraphResult } from '../../open-graph/dtos/open-graph-response';
+import { LinkMeta } from '../../open-graph/dtos/link-meta';
 
 export class PostFeedDto {
     @Expose()
@@ -49,4 +51,6 @@ export class PostFeedDto {
     ghillieName: string;
     @Expose()
     ghillieImageUrl: string | null;
+    @Expose()
+    linkMeta?: LinkMeta | undefined;
 }

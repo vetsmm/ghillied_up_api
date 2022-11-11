@@ -32,6 +32,7 @@ import { QueueService } from '../../queue/services/queue.service';
 import { ActivityType } from '../../shared/queue/activity-type';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { PostFeedVerb } from '../../shared/feed/feed.types';
+import { OpenGraphService } from '../../open-graph/open-graph.service';
 
 @Injectable()
 export class PostService {
@@ -41,6 +42,7 @@ export class PostService {
         private readonly postAclService: PostAclService,
         private readonly queueService: QueueService,
         private readonly streamService: GetStreamService,
+        private readonly openGraphService: OpenGraphService,
     ) {
         this.logger.setContext(PostService.name);
     }
@@ -158,6 +160,12 @@ export class PostService {
             .catch((err) => {
                 this.logger.error(ctx, err.message);
             });
+
+        const linkMeta = await this.openGraphService.getOpenGraphData(
+            ctx,
+            post.content,
+        );
+
         this.streamService
             .addPostActivity({
                 actor: ctx.user.id,
@@ -182,6 +190,7 @@ export class PostService {
                     createdDate: post.createdDate,
                     updatedDate: post.updatedDate,
                     edited: post.edited,
+                    linkMeta: linkMeta,
                 },
             })
             .then(async (res) => {
@@ -327,7 +336,7 @@ export class PostService {
 
         this.streamService
             .getPostActivity(updatedPost.postedById, updatedPost.activityId)
-            .then((res) => {
+            .then(async (res) => {
                 const activity: any = res.results[0];
                 activity.data.title = updatedPost.title;
                 activity.data.content = updatedPost.content;
@@ -337,6 +346,11 @@ export class PostService {
                     id: tag.id,
                 }));
                 activity.data.status = updatedPost.status;
+                activity.data.linkMeta =
+                    await this.openGraphService.getOpenGraphData(
+                        ctx,
+                        updatedPost.content,
+                    );
                 this.streamService
                     .updatePostActivity(activity)
                     .then((res) => {
@@ -403,6 +417,10 @@ export class PostService {
             enableImplicitConversion: true,
         });
         dto.tags = post.tags.map((tag) => tag.name);
+        dto.linkMeta = await this.openGraphService.getOpenGraphData(
+            ctx,
+            post.content,
+        );
         return dto;
     }
 

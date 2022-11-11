@@ -8,17 +8,8 @@ import { GhillieController } from './controllers/v1/ghillie.controller';
 import { FlagGhillieService } from '../flags/services/flag-ghillie.service';
 import { FlagGhillieController } from '../flags/controllers/flag-ghillie.controller';
 import { GhillieAssetsService } from '../files/services/ghillie-assets.service';
-import { MemoryStoredFile, NestjsFormDataModule } from 'nestjs-form-data';
 
 @Module({
-    imports: [
-        NestjsFormDataModule.configAsync({
-            useFactory: () => ({
-                storage: MemoryStoredFile,
-            }),
-            inject: [],
-        }),
-    ],
     providers: [
         GhillieService,
         FlagGhillieService,

@@ -143,6 +143,37 @@ export class FeedController {
     @UseGuards(JwtAuthGuard, AuthoritiesGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
+    @Get('hashtag/:tagName')
+    @ApiOperation({
+        summary: 'Retrieves the post feed of a hashtag',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: SwaggerBaseApiResponse([PostFeedDto]),
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        type: BaseApiErrorResponse,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_USER)
+    async getHashtagFeed(
+        @ReqContext() ctx: RequestContext,
+        @Param('tagName') tagName: string,
+        @Query('page') page?: number,
+        @Query('take') take?: number,
+    ): Promise<PostFeedDto[]> {
+        return await this.postFeedService.getHashtagPostFeed(
+            ctx,
+            tagName,
+            page,
+            take,
+        );
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
     @Get('ghillie/:ghillieId')
     @ApiOperation({
         summary: 'Retrieves the post feed of a ghillie',

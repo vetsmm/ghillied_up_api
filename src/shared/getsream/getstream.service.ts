@@ -259,6 +259,10 @@ export class GetStreamService {
         return this.stream.feed('user', userId).get(options);
     }
 
+    async getHashtagFeed(tagName: string, options: GetFeedOptions = {}) {
+        return this.stream.feed('post_tag', tagName).get(options);
+    }
+
     async getUsersPersonalFeed(
         userId: string,
         options: GetFeedOptions = {},

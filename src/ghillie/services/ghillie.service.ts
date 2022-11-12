@@ -377,27 +377,6 @@ export class GhillieService {
             ghillie.about = updateGhillieDto.about;
         }
 
-        // if (updateGhillieDto.ghillieLogo !== undefined) {
-        //     try {
-        //         const publicImage =
-        //             await this.ghillieAssetsService.createOrUpdateGhillieAsset(
-        //                 ctx,
-        //                 AssetTypes.IMAGE,
-        //                 updateGhillieDto.ghillieLogo,
-        //                 ghillie?.publicImageId,
-        //             );
-        //         ghillie.imageUrl = publicImage.url;
-        //         ghillie.publicImageId = publicImage.id;
-        //     } catch (err) {
-        //         this.logger.error(ctx, err);
-        //         throw new InternalServerErrorException(
-        //             `Error updating ghillie logo: ${err}`,
-        //         );
-        //     }
-        // }
-
-        // TODO: Add back in the ability to update topics
-
         const updatedGhillie = await this.prisma.ghillie.update({
             where: { id: id },
             data: {

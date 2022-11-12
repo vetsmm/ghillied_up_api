@@ -141,11 +141,9 @@ export class GetStreamService {
     async updatePostActivity(activity: UpdateActivity<any>) {
         await this.stream
             .feed('user', activity.actor)
-            .updateActivityToTargets(
-                activity.foreign_id,
-                new Date().toISOString(),
-                [...activity.tags.map((tag) => `post_tag:${tag.name}`)],
-            );
+            .updateActivityToTargets(activity.foreign_id, activity.time, [
+                ...activity.data.tags.map((tag) => `post_tag:${tag.name}`),
+            ]);
         return this.stream.updateActivity(activity);
     }
 

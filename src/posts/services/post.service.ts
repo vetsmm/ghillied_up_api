@@ -88,11 +88,12 @@ export class PostService {
             );
         }
 
+        let tags = [] as Array<PostTag>;
         const post = await this.prisma.$transaction(async (prisma) => {
-            let tags = [] as Array<PostTag>;
-            if (postDto.postTagNames) {
+            const foundTags = this.parseHashTags(postDto.content);
+            if (foundTags.length > 0) {
                 tags = await Promise.all(
-                    postDto.postTagNames.map(async (tagName) => {
+                    foundTags.map(async (tagName) => {
                         return prisma.postTag.upsert({
                             where: {
                                 name: tagName,
@@ -121,7 +122,6 @@ export class PostService {
                     },
                 },
                 include: {
-                    tags: true,
                     postedBy: true,
                     ghillie: true,
                     _count: {
@@ -146,7 +146,7 @@ export class PostService {
                 published: post.createdDate.toISOString(),
                 //This is the ID of the ghillie here the activity was made.
                 ghillieId: post.ghillieId,
-                tags: post.tags.map((tag) => ({
+                tags: tags.map((tag) => ({
                     name: tag.name,
                     id: tag.id,
                 })),
@@ -178,7 +178,7 @@ export class PostService {
                 data: {
                     ghillieId: post.ghillieId,
                     postedById: post.postedById,
-                    tags: post.tags.map((tag: PostTag) => ({
+                    tags: tags.map((tag: PostTag) => ({
                         name: tag.name,
                         id: tag.id,
                     })),
@@ -211,12 +211,10 @@ export class PostService {
                 this.logger.error(ctx, `Error adding activity to feed: ${err}`);
             });
 
-        const dto = plainToInstance(PostDetailDto, post, {
+        return plainToInstance(PostDetailDto, post, {
             excludeExtraneousValues: true,
             enableImplicitConversion: true,
         });
-        dto.tags = post.tags.map((tag) => tag.name);
-        return dto;
     }
 
     async updatePost(
@@ -232,6 +230,7 @@ export class PostService {
             },
             include: {
                 ghillie: true,
+                tags: true,
             },
         });
 
@@ -267,6 +266,7 @@ export class PostService {
             );
         }
 
+        let tags = [] as Array<PostTag>;
         const updatedPost = await this.prisma.$transaction(async (prisma) => {
             if (postDto.content !== undefined) {
                 foundPost.content = postDto.content;
@@ -274,6 +274,29 @@ export class PostService {
             if (postDto.status !== undefined) {
                 foundPost.status = postDto.status;
             }
+
+            const foundTags = this.parseHashTags(foundPost.content);
+            if (foundTags.length > 0) {
+                tags = await Promise.all(
+                    foundTags.map(async (tagName) => {
+                        return prisma.postTag.upsert({
+                            where: {
+                                name: tagName,
+                            },
+                            update: {},
+                            create: {
+                                name: tagName,
+                            },
+                        });
+                    }),
+                );
+            }
+            const tagsToDisconnect = foundPost.tags.filter(
+                (tag) => !tags.map((t) => t.id).includes(tag.id),
+            );
+            const tagsToConnect = tags.filter(
+                (tag) => !foundPost.tags.map((t) => t.id).includes(tag.id),
+            );
 
             return await prisma.post.update({
                 where: {
@@ -283,11 +306,21 @@ export class PostService {
                     content: foundPost.content,
                     status: foundPost.status,
                     edited: true,
+                    tags: {
+                        // Connect new tags
+                        connect: tagsToConnect.map((tag) => ({
+                            id: tag.id,
+                        })),
+                        // Disconnect any tags that are no longer in the post
+                        disconnect: tagsToDisconnect.map((tag) => ({
+                            id: tag.id,
+                        })),
+                    },
                 },
                 include: {
                     ghillie: true,
-                    postedBy: true,
                     tags: true,
+                    postedBy: true,
                     _count: {
                         select: {
                             postComments: true,
@@ -305,12 +338,10 @@ export class PostService {
 
         this.updateOrDeletePostFromFeed(ctx, updatedPost);
 
-        const dto = plainToInstance(PostDetailDto, updatedPost, {
+        return plainToInstance(PostDetailDto, updatedPost, {
             excludeExtraneousValues: true,
             enableImplicitConversion: true,
         });
-        dto.tags = updatedPost.tags.map((tag) => tag.name);
-        return dto;
     }
 
     deletePostFromFeed(ctx: RequestContext, post: Post) {
@@ -416,7 +447,6 @@ export class PostService {
             excludeExtraneousValues: true,
             enableImplicitConversion: true,
         });
-        dto.tags = post.tags.map((tag) => tag.name);
         dto.linkMeta = await this.openGraphService.getOpenGraphData(
             ctx,
             post.content,
@@ -685,5 +715,14 @@ export class PostService {
             ),
             pageInfo: toConnection(posts).pageInfo,
         };
+    }
+
+    parseHashTags(text: string): Array<string> {
+        const regex = /#(\w+)/g;
+        const matches = text.match(regex);
+        if (matches) {
+            return matches.map((match) => match.replace('#', ''));
+        }
+        return [];
     }
 }

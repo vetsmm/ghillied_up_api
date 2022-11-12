@@ -85,10 +85,6 @@ export class PostDetailDto {
 
     @ApiProperty()
     @Expose()
-    tags: string[];
-
-    @ApiProperty()
-    @Expose()
     @Transform((value) => value.obj._count?.postComments, { toClassOnly: true })
     numberOfComments?: number = 0;
 

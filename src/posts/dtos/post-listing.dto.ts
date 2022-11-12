@@ -3,80 +3,65 @@ import { Expose, Transform, Type } from 'class-transformer';
 import { PostStatus, ReactionType } from '@prisma/client';
 import { PostGhillieMetaDto, PostUserMetaDto } from './post-detail.dto';
 
-export class TagMetaDto {
-  @ApiProperty()
-  @Expose()
-  id: string;
-
-  @ApiProperty()
-  @Expose()
-  name: string;
-}
-
 export class PostListingDto {
-  @ApiProperty()
-  @Expose()
-  id: string;
+    @ApiProperty()
+    @Expose()
+    id: string;
 
-  @ApiProperty()
-  @Expose()
-  uid: string;
+    @ApiProperty()
+    @Expose()
+    uid: string;
 
-  @ApiProperty()
-  @Expose()
-  title: string;
+    @ApiProperty()
+    @Expose()
+    title: string;
 
-  @ApiProperty()
-  @Expose()
-  content: string;
+    @ApiProperty()
+    @Expose()
+    content: string;
 
-  @ApiProperty()
-  @Expose()
-  status: PostStatus;
+    @ApiProperty()
+    @Expose()
+    status: PostStatus;
 
-  @ApiProperty()
-  @Expose()
-  @Type(() => PostUserMetaDto)
-  postedBy: PostUserMetaDto;
+    @ApiProperty()
+    @Expose()
+    @Type(() => PostUserMetaDto)
+    postedBy: PostUserMetaDto;
 
-  @ApiProperty()
-  @Expose()
-  createdDate: Date;
+    @ApiProperty()
+    @Expose()
+    createdDate: Date;
 
-  @ApiProperty()
-  @Expose()
-  edited: boolean;
+    @ApiProperty()
+    @Expose()
+    edited: boolean;
 
-  @ApiProperty()
-  @Expose()
-  @Type(() => TagMetaDto)
-  tags: TagMetaDto[];
+    @ApiProperty()
+    @Expose()
+    @Type(() => PostGhillieMetaDto)
+    ghillie?: PostGhillieMetaDto;
 
-  @ApiProperty()
-  @Expose()
-  @Type(() => PostGhillieMetaDto)
-  ghillie?: PostGhillieMetaDto;
+    @ApiProperty()
+    @Expose()
+    @Transform((value) => value.obj._count?.postComments, { toClassOnly: true })
+    numberOfComments = 0;
 
-  @ApiProperty()
-  @Expose()
-  @Transform((value) => value.obj._count?.postComments, { toClassOnly: true })
-  numberOfComments = 0;
+    @ApiProperty()
+    @Expose()
+    @Transform((value) => value.obj._count?.postReaction, { toClassOnly: true })
+    numberOfReactions = 0;
 
-  @ApiProperty()
-  @Expose()
-  @Transform((value) => value.obj._count?.postReaction, { toClassOnly: true })
-  numberOfReactions = 0;
-
-  @ApiProperty()
-  @Expose()
-  @Transform(
-    (value) => {
-      return value.obj.postReaction !== undefined &&
-        value.obj.postReaction.length > 0
-        ? value.obj.postReaction.reactionType
-        : null;
-    },
-    { toClassOnly: true },
-  )
-  currentUserReaction: ReactionType = null;
+    @ApiProperty()
+    @Expose()
+    @Transform(
+        (value) => {
+            return value.obj.postReaction !== undefined &&
+            value.obj.postReaction.length > 0
+                ? value.obj.postReaction.reactionType
+                : null;
+        },
+        { toClassOnly: true },
+    )
+    currentUserReaction: ReactionType = null;
 }

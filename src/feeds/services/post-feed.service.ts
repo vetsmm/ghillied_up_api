@@ -21,6 +21,39 @@ export class PostFeedService {
         this.logger.setContext(PostFeedService.name);
     }
 
+    async getHashtagPostFeed(
+        ctx: RequestContext,
+        tagName: string,
+        page: number,
+        take: number,
+    ) {
+        this.logger.log(ctx, `${this.getHashtagPostFeed.name} was called`);
+
+        try {
+            const activities = await this.streamService.getHashtagFeed(
+                tagName,
+                {
+                    limit: take,
+                    offset: (page - 1) * take,
+                    withReactionCounts: true,
+                    withOwnReactions: true,
+                },
+            );
+
+            return this.hydratePosts(
+                ctx,
+                activities.results as Array<FlatActivity>,
+            );
+        } catch (err) {
+            this.logger.error(
+                ctx,
+                `${this.getHashtagPostFeed.name} failed`,
+                err,
+            );
+            return [];
+        }
+    }
+
     async getUserFeed(
         ctx: RequestContext,
         page = 1,

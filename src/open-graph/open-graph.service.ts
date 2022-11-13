@@ -57,7 +57,10 @@ export class OpenGraphService {
         }
     }
 
-    cleanPublisherUrl(url: string): string {
+    cleanPublisherUrl(url?: string): string {
+        if (!url) {
+            return undefined;
+        }
         // If Twitter, make sure the url follows the format https://twitter.com/username/status/1234567890
         if (url.includes('twitter.com') || url.includes('t.co')) {
             const splitUrl = url.split('/');

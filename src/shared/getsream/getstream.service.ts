@@ -18,6 +18,7 @@ import {
     FeedAPIResponse,
     StreamUser,
     GetActivitiesAPIResponse,
+    UpdateActivity,
 } from 'getstream';
 import { CommentStatus, ReactionType } from '@prisma/client';
 import { StreamUserDto } from '../../user/dtos/stream-user.dto';
@@ -87,6 +88,7 @@ export class GetStreamService {
                 `ghillie:${post.data.ghillieId}`,
                 `user_post:${post.actor}`,
                 'post_admin:ALL',
+                ...post.data.tags.map((tag) => `post_tag:${tag.name}`),
             ],
         });
     }
@@ -136,7 +138,12 @@ export class GetStreamService {
         });
     }
 
-    async updatePostActivity(activity) {
+    async updatePostActivity(activity: UpdateActivity<any>) {
+        await this.stream
+            .feed('user', activity.actor)
+            .updateActivityToTargets(activity.foreign_id, activity.time, [
+                ...activity.data.tags.map((tag) => `post_tag:${tag.name}`),
+            ]);
         return this.stream.updateActivity(activity);
     }
 
@@ -250,6 +257,10 @@ export class GetStreamService {
         options: GetFeedOptions = {},
     ): Promise<FeedAPIResponse> {
         return this.stream.feed('user', userId).get(options);
+    }
+
+    async getHashtagFeed(tagName: string, options: GetFeedOptions = {}) {
+        return this.stream.feed('post_tag', tagName).get(options);
     }
 
     async getUsersPersonalFeed(

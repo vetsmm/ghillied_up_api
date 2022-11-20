@@ -21,8 +21,6 @@ import {
 } from '@nestjs/common';
 import {
     AppLogger,
-    CommentDetailDto,
-    CreateCommentDto,
     ReqContext,
     RequestContext,
     UpdateCommentDto,
@@ -34,7 +32,7 @@ import { UserAuthority } from '@prisma/client';
 import { ParentCommentDto } from '../dtos/parent-comment.dto';
 import { CommentReplyService } from '../services/comment-reply.service';
 import { ChildCommentDto } from '../dtos/child-comment.dto';
-import { CreateCommentReplyDto } from '../../posts/dtos/create-comment-reply.dto';
+import { CreateCommentReplyDto } from '../dtos/create-comment-reply.dto';
 
 @ApiTags('Comment Replies')
 @Controller('comment-replies')

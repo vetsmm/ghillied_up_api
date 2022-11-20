@@ -8,8 +8,6 @@ import { PostController } from './controllers/post.controller';
 import { PostReactionService } from './services/post-reaction.service';
 import { PostReactionAclService } from './services/post-reaction-acl.service';
 import { PostReactionController } from './controllers/post-reaction.controller';
-import { PostCommentService } from './services/post-comment.service';
-import { PostCommentController } from './controllers/post-comment.controller';
 import { PostCommentAclService } from './services/post-comment-acl.service';
 import { CommentReactionController } from './controllers/comment-reaction.controller';
 import { PostCommentReactionService } from './services/post-comment-reaction.service';
@@ -31,7 +29,6 @@ import { HttpModule } from '@nestjs/axios';
         PostReactionService,
         PostReactionAclService,
         PostCommentAclService,
-        PostCommentService,
         PostCommentReactionService,
         QueueService,
         NotificationService,
@@ -40,14 +37,8 @@ import { HttpModule } from '@nestjs/axios';
     controllers: [
         PostController,
         PostReactionController,
-        PostCommentController,
         CommentReactionController,
     ],
-    exports: [
-        PostService,
-        PostReactionService,
-        PostCommentService,
-        PostBookmarkService,
-    ],
+    exports: [PostService, PostReactionService, PostBookmarkService],
 })
 export class PostsModule {}

@@ -3,11 +3,10 @@ import {
     Action,
     Actor,
     AppLogger,
-    CommentDetailDto,
     RequestContext,
     UpdateCommentDto,
 } from '../../shared';
-import { CreateCommentReplyDto } from '../../posts/dtos/create-comment-reply.dto';
+import { CreateCommentReplyDto } from '../dtos/create-comment-reply.dto';
 import { ReactionAPIResponse } from 'getstream';
 import {
     CommentStatus,

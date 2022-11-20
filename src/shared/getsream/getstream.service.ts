@@ -3,6 +3,7 @@ import { GET_STREAM_OPTIONS } from './getstream.constants';
 import { GetStreamOptions } from './interfaces';
 import {
     NewCommentActivity,
+    NewCommentReply,
     NewFlagActivity,
     NewPostActivity,
     NewPostBookmarkActivity,
@@ -10,18 +11,19 @@ import {
     NewPostReaction,
 } from '../feed/feed.types';
 import {
-    connect,
-    ReactionAPIResponse,
-    StreamClient,
     Activity,
-    GetFeedOptions,
+    connect, DefaultGenerics,
     FeedAPIResponse,
-    StreamUser,
     GetActivitiesAPIResponse,
+    GetFeedOptions,
+    ReactionAPIResponse, ReactionFilterAPIResponse,
+    StreamClient,
+    StreamUser,
     UpdateActivity,
 } from 'getstream';
 import { CommentStatus, ReactionType } from '@prisma/client';
 import { StreamUserDto } from '../../user/dtos/stream-user.dto';
+import { ActivityType } from '../queue/activity-type';
 
 @Injectable()
 export class GetStreamService {
@@ -156,7 +158,7 @@ export class GetStreamService {
             comment.data.commentingUserId,
         );
 
-        const response = userFeed.client.reactions.add(
+        return userFeed.client.reactions.add(
             comment.kind,
             comment.postActivityId,
             { ...comment.data },
@@ -165,11 +167,20 @@ export class GetStreamService {
                 targetFeeds: [`notification:${comment.data.postOwnerId}`],
             },
         );
+    }
 
-        // Update the post activity to include the comment
-        // TODO: This is not working
+    async createChildPostComment(
+        commentReply: NewCommentReply,
+    ): Promise<ReactionAPIResponse<any>> {
+        return this.stream.reactions.addChild(
+            ActivityType.POST_COMMENT_REPLY,
+            commentReply.parentCommentReactionId,
+            { ...commentReply.data },
+            {
 
-        return response;
+                ...commentReply.reactionAddOptions,
+            },
+        );
     }
 
     async updatePostComment(
@@ -184,7 +195,7 @@ export class GetStreamService {
     }
 
     async deletePostComment(reactionId: string) {
-        return this.stream.reactions.update(reactionId);
+        return this.stream.reactions.delete(reactionId);
     }
 
     async addPostReaction(
@@ -227,8 +238,20 @@ export class GetStreamService {
                 targetFeeds: [`notification:${reaction.data.commentOwnerId}`],
             },
         );
+    }
 
-        // TODO: Add the reaction to the comment activity
+    async addCommentReplyReaction(
+        reaction: NewPostCommentReaction,
+    ): Promise<ReactionAPIResponse<any>> {
+        return this.stream.reactions.addChild(
+            reaction.kind,
+            reaction.commentActivityId,
+            { ...reaction.data },
+            {
+                ...reaction.reactionAddOptions,
+                targetFeeds: [`notification:${reaction.data.commentOwnerId}`],
+            },
+        );
     }
 
     async updatePostCommentReaction(
@@ -288,6 +311,28 @@ export class GetStreamService {
             ...options,
             mark_seen: true,
             enrich: true,
+        });
+    }
+
+    async getCommentsForPost(
+        postActivityId: string,
+        options: GetFeedOptions = {},
+    ): Promise<ReactionFilterAPIResponse<DefaultGenerics>> {
+        return this.stream.reactions.filter({
+            activity_id: postActivityId,
+            kind: 'POST_COMMENT',
+            ...options,
+        });
+    }
+
+    async getCommentReplies(
+        commentReactionId: string,
+        options: GetFeedOptions = {},
+    ): Promise<ReactionFilterAPIResponse> {
+        return this.stream.reactions.filter({
+            reaction_id: commentReactionId,
+            kind: 'POST_COMMENT_REPLY',
+            ...options,
         });
     }
 

@@ -8,6 +8,7 @@ import {
     ReactionType,
 } from '@prisma/client';
 import { LinkMeta } from '../../open-graph/dtos/link-meta';
+import { ActivityType } from '../queue/activity-type';
 
 export interface TagMeta {
     id: string;
@@ -114,6 +115,23 @@ export type NewPostBookmarkActivity = NewActivity & {
     data: PostBookmarkCreateActivityData;
 };
 
+export type NewCommentReply = {
+    parentCommentReactionId: string;
+    kind: 'POST_COMMENT_REPLY';
+    data: {
+        parentCommentId: string;
+        parentCommentOwnerId: string;
+        commentingUserId: string;
+        time: string;
+        commentId: string;
+        reactionCount?: number;
+        content: string;
+        status: CommentStatus;
+        edited: boolean;
+    };
+    reactionAddOptions: ReactionAddOptions;
+};
+
 export type NewCommentActivity = {
     kind: 'POST_COMMENT';
     // The ID of the activity (post) the reaction refers to
@@ -157,7 +175,7 @@ export type NewPostCommentReaction = {
         commentOwnerId: string;
         reactingUserId: string;
         time: string;
-        postId: string;
+        postId?: string;
         reactionType: ReactionType;
     };
     reactionAddOptions: ReactionAddOptions;

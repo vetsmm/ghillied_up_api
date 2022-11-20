@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+    Inject,
+    Injectable,
+    NotFoundException,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
     Action,
@@ -25,6 +30,9 @@ import { ActivityType } from '../../shared/queue/activity-type';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NotificationService } from '../../notifications/services/notification.service';
 import { ReactionAPIResponse } from 'getstream';
+import { CreateCommentReplyDto } from '../dtos/create-comment-reply.dto';
+import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
+import { IDatabase } from 'pg-promise';
 
 @Injectable()
 export class PostCommentService {
@@ -35,6 +43,7 @@ export class PostCommentService {
         private readonly queueService: QueueService,
         private readonly streamService: GetStreamService,
         private readonly notificationService: NotificationService,
+        @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(PostCommentService.name);
     }
@@ -76,48 +85,10 @@ export class PostCommentService {
             );
         }
 
-        let comment;
-        if (createPostCommentInput.parentCommentId) {
-            comment = await this.createChildComment(
-                ctx,
-                createPostCommentInput,
-            );
-        } else {
-            comment = await this.createParentComment(
-                ctx,
-                createPostCommentInput,
-            );
-        }
-
-        // Send notification to post owner
-        const postOwnerId = await this.getPostOwnerId(
+        const comment = await this.createParentComment(
             ctx,
-            createPostCommentInput.postId,
+            createPostCommentInput,
         );
-        this.queueService.publishActivity(
-            ctx,
-            ActivityType.POST_COMMENT,
-            comment,
-            undefined,
-            postOwnerId,
-        );
-
-        try {
-            const notification =
-                await this.notificationService.createNotification(ctx, {
-                    type: NotificationType.POST_COMMENT,
-                    sourceId: comment.id,
-                    fromUserId: ctx.user.id,
-                    toUserId: postOwnerId,
-                    message: `${ctx.user.username} commented on your post`,
-                });
-            await this.syncPostComment(ctx, comment, notification.id);
-        } catch (err) {
-            this.logger.warn(
-                ctx,
-                `Error while sending comment: ${comment.id} to stream or saving to notification table: ${err}`,
-            );
-        }
 
         return plainToInstance(CommentDetailDto, comment, {
             excludeExtraneousValues: true,
@@ -125,7 +96,145 @@ export class PostCommentService {
         });
     }
 
-    async syncPostComment(
+    async createCommentReply(
+        ctx: RequestContext,
+        parentCommentId: string,
+        createCommentInput: CreateCommentReplyDto,
+    ) {
+        this.logger.log(ctx, `${this.createCommentReply.name} was called`);
+
+        const actor: Actor = ctx.user;
+        const isAllowed = this.aclService
+            .forActor(actor)
+            .canDoAction(Action.Create);
+        if (!isAllowed) {
+            throw new UnauthorizedException(
+                'You are not allowed to create comments in this Ghillie',
+            );
+        }
+
+        const parentComment = await this.prisma.postComment.findFirst({
+            where: {
+                id: parentCommentId,
+            },
+        });
+
+        if (!parentComment) {
+            throw new Error('Parent comment does not exist.');
+        }
+
+        // Check if user is member of the ghillie, from which the post belongs
+        const ghillieMember = await this.prisma.ghillieMembers.findFirst({
+            where: {
+                ghillie: {
+                    posts: {
+                        some: {
+                            id: parentComment.postId,
+                        },
+                    },
+                },
+                userId: ctx.user.id,
+                memberStatus: MemberStatus.ACTIVE,
+            },
+        });
+
+        if (!ghillieMember) {
+            throw new Error(
+                'User is not a member of the ghillie and cannot comment on this post',
+            );
+        }
+
+        if (parentComment.commentHeight >= 1) {
+            throw new Error('Maximum comment depth reached.');
+        }
+
+        const childComment: PostComment = await this.prisma.$transaction(
+            async (prisma) => {
+                // Create the child comment
+                const comment = await prisma.postComment.create({
+                    data: {
+                        content: createCommentInput.content,
+                        postId: parentComment.postId,
+                        createdById: ctx.user.id,
+                        createdDate: new Date(),
+                        status: CommentStatus.ACTIVE,
+                        // Get the parent comment's commentHeight and add 1
+                        commentHeight: parentComment.commentHeight + 1,
+                    },
+                    include: {
+                        commentReaction: {
+                            where: {
+                                createdById: ctx.user.id,
+                            },
+                        },
+                        post: {
+                            include: {
+                                postedBy: true,
+                            },
+                        },
+                    },
+                });
+
+                // Update the parent comment to include the child comment
+                await prisma.postComment.update({
+                    where: {
+                        id: parentCommentId,
+                    },
+                    data: {
+                        childCommentIds: {
+                            push: comment.id,
+                        },
+                    },
+                });
+
+                return comment;
+            },
+        );
+
+        this.queueService.publishActivity(
+            ctx,
+            ActivityType.POST_COMMENT_REPLY,
+            childComment,
+            `comment-reply-${parentComment.id}`,
+            parentComment.createdById,
+        );
+
+        try {
+            const notification =
+                await this.notificationService.createNotification(ctx, {
+                    type: NotificationType.POST_COMMENT,
+                    sourceId: childComment.id,
+                    fromUserId: ctx.user.id,
+                    toUserId: parentComment.createdById,
+                    message: `${ctx.user.username} replied to your comment`,
+                });
+
+            try {
+                await this.syncPostChildComment(
+                    ctx,
+                    parentComment,
+                    childComment,
+                    notification?.id,
+                );
+            } catch (err) {
+                this.logger.warn(
+                    ctx,
+                    `Error while sending child comment: ${childComment.id} to stream: ${err}`,
+                );
+            }
+        } catch (error) {
+            this.logger.error(
+                ctx,
+                `Error while creating comment reply notification: ${error}`,
+            );
+        }
+        return plainToInstance(CommentDetailDto, childComment, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
+    }
+
+    async syncPostParentComment(
         ctx: RequestContext,
         comment: any,
         notificationId: string,
@@ -163,6 +272,57 @@ export class PostCommentService {
                 await this.prisma.postComment.update({
                     where: {
                         id: comment.id,
+                    },
+                    data: {
+                        activityId: res.id,
+                    },
+                });
+            });
+    }
+
+    async syncPostChildComment(
+        ctx: RequestContext,
+        parentComment: any,
+        childComment: any,
+        notificationId?: string,
+    ) {
+        this.logger.log(ctx, `${this.syncPostChildComment.name} was called`);
+        const reactionAddOptions = notificationId && {
+            targetFeeds: [`notification:${parentComment.createdById}`],
+            targetFeedsExtraData: {
+                [`notification:${parentComment.createdById}`]: {
+                    sourceId: childComment.id,
+                    type: 'POST_COMMENT',
+                    from: ctx.user.id,
+                    to: parentComment.createdById,
+                    notificationId: notificationId,
+                },
+            },
+        };
+
+        this.streamService
+            .createChildPostComment({
+                parentCommentReactionId: parentComment.activityId,
+                kind: 'POST_COMMENT_REPLY',
+                data: {
+                    parentCommentId: childComment.id,
+                    parentCommentOwnerId: childComment.content,
+                    commentingUserId: childComment.createdById,
+                    time: childComment.createdDate.toISOString(),
+                    commentId: childComment.id,
+                    content: childComment.content,
+                    status: childComment.status,
+                    edited: false,
+                },
+                reactionAddOptions: {
+                    userId: childComment.createdById,
+                    ...reactionAddOptions,
+                },
+            })
+            .then(async (res: ReactionAPIResponse) => {
+                await this.prisma.postComment.update({
+                    where: {
+                        id: childComment.id,
                     },
                     data: {
                         activityId: res.id,
@@ -393,7 +553,7 @@ export class PostCommentService {
     ): Promise<PostComment> {
         this.logger.log(ctx, `${this.createParentComment.name} was called`);
 
-        return this.prisma.postComment.create({
+        const comment = await this.prisma.postComment.create({
             data: {
                 content: createPostCommentInput.content,
                 postId: createPostCommentInput.postId,
@@ -414,68 +574,38 @@ export class PostCommentService {
                 },
             },
         });
-    }
 
-    private async createChildComment(
-        ctx: RequestContext,
-        createPostCommentInput: CreateCommentDto,
-    ) {
-        this.logger.log(ctx, `${this.createChildComment.name} was called`);
+        // Send notification to post owner
+        const postOwnerId = await this.getPostOwnerId(
+            ctx,
+            createPostCommentInput.postId,
+        );
+        this.queueService.publishActivity(
+            ctx,
+            ActivityType.POST_COMMENT,
+            comment,
+            undefined,
+            postOwnerId,
+        );
 
-        const parentComment = await this.prisma.postComment.findFirst({
-            where: {
-                id: createPostCommentInput.parentCommentId,
-            },
-        });
-
-        if (!parentComment) {
-            throw new Error('Parent comment does not exist.');
+        try {
+            const notification =
+                await this.notificationService.createNotification(ctx, {
+                    type: NotificationType.POST_COMMENT,
+                    sourceId: comment.id,
+                    fromUserId: ctx.user.id,
+                    toUserId: postOwnerId,
+                    message: `${ctx.user.username} commented on your post`,
+                });
+            await this.syncPostParentComment(ctx, comment, notification.id);
+        } catch (err) {
+            this.logger.warn(
+                ctx,
+                `Error while sending comment: ${comment.id} to stream or saving to notification table: ${err}`,
+            );
         }
 
-        if (parentComment.commentHeight >= 2) {
-            throw new Error('Maximum comment depth reached.');
-        }
-
-        return await this.prisma.$transaction(async (prisma) => {
-            // Create the child comment
-            const comment = await prisma.postComment.create({
-                data: {
-                    content: createPostCommentInput.content,
-                    postId: createPostCommentInput.postId,
-                    createdById: ctx.user.id,
-                    createdDate: new Date(),
-                    status: CommentStatus.ACTIVE,
-                    // Get the parent comment's commentHeight and add 1
-                    commentHeight: parentComment.commentHeight + 1,
-                },
-                include: {
-                    commentReaction: {
-                        where: {
-                            createdById: ctx.user.id,
-                        },
-                    },
-                    post: {
-                        include: {
-                            postedBy: true,
-                        },
-                    },
-                },
-            });
-
-            // Update the parent comment to include the child comment
-            await prisma.postComment.update({
-                where: {
-                    id: createPostCommentInput.parentCommentId,
-                },
-                data: {
-                    childCommentIds: {
-                        push: comment.id,
-                    },
-                },
-            });
-
-            return comment;
-        });
+        return comment;
     }
 
     // delete comment and all children based on the childCommentIds
@@ -530,12 +660,13 @@ export class PostCommentService {
         }
     }
 
-    async getAllChildrenByLevel(
+    async getPostCommentReplies(
         ctx: RequestContext,
-        id: string,
-        level: number,
+        parentCommentId: string,
+        page = 1,
+        perPage = 25,
     ) {
-        this.logger.log(ctx, `${this.createChildComment.name} was called`);
+        this.logger.log(ctx, `${this.getPostCommentReplies.name} was called`);
 
         const actor: Actor = ctx.user;
         const isAllowed = this.aclService
@@ -547,47 +678,42 @@ export class PostCommentService {
             );
         }
 
-        if (level >= 2) {
-            throw new Error(
-                'Comment depth cannot exceed 1. Possible choices are 0-1.',
-            );
+        const parentComment: PostComment = await this.pg.one(
+            'SELECT * FROM post_comment WHERE id = $1',
+            [parentCommentId],
+        );
+
+        if (!parentComment) {
+            throw new NotFoundException('Parent comment does not exist');
         }
 
-        const comment = await this.prisma.postComment.findUnique({
-            where: {
-                id: id,
+        const commentResponse = await this.streamService.getCommentReplies(
+            parentComment.activityId,
+            {
+                limit: perPage,
+                offset: (page - 1) * perPage,
+                withReactionCounts: true,
+                withOwnReactions: true,
             },
-        });
+        );
 
-        if (!comment) {
-            return [];
-        }
+        const resultData = commentResponse.results.map((comment) => ({
+            ...comment,
+        }));
 
-        const comments = await this.prisma.postComment.findMany({
-            where: {
-                commentHeight: level,
-                id: {
-                    in: comment.childCommentIds,
-                },
-            },
-            include: {
-                createdBy: true,
-                _count: {
-                    select: {
-                        commentReaction: true,
+        return resultData.map(
+            (comment) =>
+                ({
+                    id: comment.data.id,
+                    content: comment.data.content,
+                    status: comment.data.status,
+                    createdDate: comment.data.time,
+                    createdBy: {
+                        ...comment.user.data,
                     },
-                },
-                commentReaction: {
-                    where: {
-                        createdById: ctx.user.id,
-                    },
-                },
-            },
-        });
-
-        return plainToInstance(CommentDetailDto, comments, {
-            excludeExtraneousValues: true,
-            enableImplicitConversion: true,
-        });
+                    edited: comment.data.edited || false,
+                    postId: parentComment.postId,
+                } as CommentDetailDto),
+        );
     }
 }

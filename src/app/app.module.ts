@@ -20,6 +20,7 @@ import { SettingsModule } from '../settings/settings.module';
 import { NotificationModule } from '../notifications/notification.module';
 import { FilesModule } from '../files/files.module';
 import { OpenGraphModule } from '../open-graph/open-graph.module';
+import { CommentsModule } from '../comments/comments.module';
 
 @Module({
     imports: [
@@ -36,6 +37,7 @@ import { OpenGraphModule } from '../open-graph/open-graph.module';
         NotificationModule,
         FilesModule,
         OpenGraphModule,
+        CommentsModule,
     ],
     controllers: [AppController],
     providers: [

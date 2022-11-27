@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
     AppLogger,
@@ -19,17 +19,20 @@ import { QueueService } from '../../queue/services/queue.service';
 import { ActivityType } from '../../shared/queue/activity-type';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NotificationService } from '../../notifications/services/notification.service';
+import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
+import { IDatabase } from 'pg-promise';
 
 @Injectable()
-export class PostCommentReactionService {
+export class CommentReactionService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly logger: AppLogger,
         private readonly queueService: QueueService,
         private readonly streamService: GetStreamService,
         private readonly notificationService: NotificationService,
+        @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
-        this.logger.setContext(PostCommentReactionService.name);
+        this.logger.setContext(CommentReactionService.name);
     }
 
     async reactToComment(
@@ -38,19 +41,13 @@ export class PostCommentReactionService {
     ): Promise<void> {
         this.logger.log(ctx, `${this.reactToComment.name} was called`);
 
-        // get the post
-        const comment = await this.prisma.postComment.findUnique({
-            where: {
-                id: commentReactionDto.commentId,
-            },
-            include: {
-                post: {
-                    include: {
-                        ghillie: true,
-                    },
-                },
-            },
-        });
+        const comment = await this.pg.oneOrNone(
+            `SELECT pc.id, pc.post_id, pc.created_by_id, pc.activity_id, p.ghillie_id as ghillie_id
+             FROM post_comment pc
+                      INNER JOIN post p ON p.id = pc.post_id
+             WHERE pc.id = $1`,
+            [commentReactionDto.commentId],
+        );
 
         if (!comment) {
             throw new Error(
@@ -61,7 +58,7 @@ export class PostCommentReactionService {
         // check if the user has access to the ghillie for the post
         const member = await this.prisma.ghillieMembers.findFirst({
             where: {
-                ghillieId: comment.post.ghillieId,
+                ghillieId: comment.ghillieId,
                 userId: ctx.user.id,
                 memberStatus: MemberStatus.ACTIVE,
             },
@@ -115,16 +112,23 @@ export class PostCommentReactionService {
                         toUserId: comment.createdById,
                         message: `${ctx.user.username} reacted to your comment`,
                     });
-                await this.syncPostCommentReaction(
+                try {
+                    await this.syncPostCommentReaction(
+                        ctx,
+                        cr,
+                        comment,
+                        notification?.id,
+                    );
+                } catch (err) {
+                    this.logger.warn(
+                        ctx,
+                        `Error adding reaction to stream: ${err}`,
+                    );
+                }
+            } catch (e) {
+                this.logger.error(
                     ctx,
-                    cr,
-                    comment,
-                    notification.id,
-                );
-            } catch (err) {
-                this.logger.warn(
-                    ctx,
-                    `Error adding reaction to stream or notification table: ${err}`,
+                    `Error while creating comment reaction notification: ${e}`,
                 );
             }
         } else {
@@ -176,8 +180,23 @@ export class PostCommentReactionService {
             );
             return;
         }
+
+        const reactionAddOptions = notificationId && {
+            targetFeeds: [`notification:${comment.createdById}`],
+            targetFeedsExtraData: {
+                [`notification:${comment.createdById}`]: {
+                    sourceId: cr.id,
+                    type: 'POST_COMMENT_REACTION',
+                    from: ctx.user.id,
+                    to: comment.createdById,
+                    notificationId,
+                },
+            },
+        };
+
+        // Take the comment's activity ID and make a child reaction
         this.streamService
-            .addPostCommentReaction({
+            .addCommentReaction({
                 kind: 'POST_COMMENT_REACTION',
                 commentActivityId: comment.activityId,
                 data: {
@@ -191,16 +210,8 @@ export class PostCommentReactionService {
                     reactionType: cr.reactionType,
                 },
                 reactionAddOptions: {
-                    userId: cr.createdById,
-                    targetFeedsExtraData: {
-                        [`notification:${comment.createdById}`]: {
-                            sourceId: cr.id,
-                            type: 'POST_COMMENT_REACTION',
-                            from: ctx.user.id,
-                            to: comment.createdById,
-                            notificationId,
-                        },
-                    },
+                    userId: comment.createdById,
+                    ...reactionAddOptions,
                 },
             })
             .then(async (res) => {
@@ -220,62 +231,6 @@ export class PostCommentReactionService {
                     `Error adding reaction: ${cr.id} to stream: ${err}`,
                 );
             });
-    }
-
-    async getAllCommentReactions(
-        ctx: RequestContext,
-        commentId: string,
-        cursor?: string,
-        take = 25,
-    ): Promise<{
-        reactions: CommentReactionDetailsDto[];
-        pageInfo: PageInfo;
-    }> {
-        this.logger.log(ctx, `${this.getAllCommentReactions.name} was called`);
-
-        const { findManyArgs, toConnection, toResponse } = parsePaginationArgs({
-            first: take - 1,
-            after: cursor ? cursor : undefined,
-        });
-
-        // get the reactions for the post
-        const reactions = await this.prisma.commentReaction.findMany({
-            ...findManyArgs,
-            where: {
-                commentId: commentId,
-            },
-            include: {
-                postComment: {
-                    include: {
-                        post: {
-                            include: {
-                                ghillie: true,
-                                postedBy: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
-
-        if (reactions.length === 0) {
-            return {
-                reactions: [] as Array<CommentReactionDetailsDto>,
-                pageInfo: toConnection(reactions).pageInfo,
-            };
-        }
-
-        return {
-            reactions: plainToInstance(
-                CommentReactionDetailsDto,
-                toResponse(reactions),
-                {
-                    excludeExtraneousValues: true,
-                    enableImplicitConversion: true,
-                },
-            ),
-            pageInfo: toConnection(reactions).pageInfo,
-        };
     }
 
     async getCurrentUserReactions(

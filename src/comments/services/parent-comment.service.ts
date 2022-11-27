@@ -1,4 +1,9 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+    Inject,
+    Injectable,
+    NotFoundException,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
     Action,
@@ -28,6 +33,7 @@ import { ActivityType } from '../../shared/queue/activity-type';
 import { ReactionAPIResponse } from 'getstream';
 import { ParentCommentDto } from '../dtos/parent-comment.dto';
 import { ChildCommentDto } from '../dtos/child-comment.dto';
+import Immutable from 'immutable';
 
 @Injectable()
 export class ParentCommentService {
@@ -118,7 +124,7 @@ export class ParentCommentService {
             );
         }
 
-        const updatedComment = this.prisma.postComment.update({
+        const updatedComment = await this.prisma.postComment.update({
             where: {
                 id: commentId,
             },
@@ -128,6 +134,7 @@ export class ParentCommentService {
                 edited: true,
             },
             include: {
+                post: true,
                 createdBy: true,
                 _count: {
                     select: {
@@ -143,11 +150,20 @@ export class ParentCommentService {
         });
 
         try {
-            await this.streamService.updatePostComment(
-                comment.activityId,
-                updatePostCommentInput.content,
-                updatePostCommentInput.status,
-            );
+            await this.streamService.updateComment({
+                reactionId: updatedComment.activityId,
+                data: {
+                    sourceId: updatedComment.id,
+                    postOwnerId: updatedComment.post.postedById,
+                    commentingUserId: updatedComment.createdById,
+                    time: new Date().toISOString(),
+                    commentId: updatedComment.id,
+                    postId: updatedComment.postId,
+                    content: updatedComment.content,
+                    status: updatedComment.status,
+                },
+                reactionUpdateOptions: {},
+            });
         } catch (error) {
             this.logger.error(
                 ctx,
@@ -182,6 +198,13 @@ export class ParentCommentService {
 
         if (!comment) {
             throw new Error('Comment does not exist');
+        }
+
+        if (
+            comment.createdById !== ctx.user.id &&
+            !ctx.user.authorities.includes('ROLE_ADMIN')
+        ) {
+            throw new Error('You are not allowed to delete this comment');
         }
 
         // delete all children
@@ -246,13 +269,21 @@ export class ParentCommentService {
                 offset: (page - 1) * limit,
                 withReactionCounts: true,
                 withOwnReactions: true,
+                withOwnChildren: true,
             },
         );
 
         const resultData: ParentCommentDto[] = commentResponse.results.map(
             (comment) => {
                 const latestReplies =
-                    comment?.latest_children?.POST_COMMENT_REPLY;
+                    comment?.latest_children?.POST_COMMENT_REPLY?.map(
+                        (childComment) =>
+                            this.getLatestChildComments(
+                                ctx,
+                                comment.data.id,
+                                childComment,
+                            ),
+                    ) || [];
                 return {
                     id: comment.data.commentId,
                     content: comment.data.content,
@@ -267,15 +298,7 @@ export class ParentCommentService {
                         comment?.children_counts?.POST_COMMENT_REACTION || 0,
                     commentReplyCount:
                         comment?.children_counts?.POST_COMMENT_REPLY || 0,
-                    latestChildComments: [
-                        ...latestReplies?.map((childComment) =>
-                            this.getLatestChildComments(
-                                ctx,
-                                comment.data.id,
-                                childComment,
-                            ),
-                        ),
-                    ],
+                    latestChildComments: latestReplies,
                 } as ParentCommentDto;
             },
         );
@@ -300,10 +323,11 @@ export class ParentCommentService {
         // Fill in the current user reactions for parent comments and child comments
         resultData.forEach((parentComment) => {
             parentComment.currentUserReaction =
-                currentUserParentCommentReactions[parentComment.id];
+                currentUserParentCommentReactions.get(parentComment.id) || null;
             parentComment.latestChildComments.forEach((childComment) => {
                 childComment.currentUserReaction =
-                    currentUserChildCommentReactions[childComment.id];
+                    currentUserChildCommentReactions.get(childComment.id) ||
+                    null;
             });
         });
 
@@ -336,14 +360,14 @@ export class ParentCommentService {
     private async hydrateCurrentUserReactions(
         ctx: RequestContext,
         commentIds: Array<string>,
-    ): Promise<Set<{ commentId: string; reactionType: ReactionType | null }>> {
+    ): Promise<Immutable.Map<string, ReactionType | null>> {
         this.logger.log(
             ctx,
             `${this.hydrateCurrentUserReactions.name} was called`,
         );
 
         if (commentIds.length === 0) {
-            return new Set();
+            return Immutable.Map();
         }
 
         const reactions = await this.pg.manyOrNone(
@@ -355,7 +379,7 @@ export class ParentCommentService {
         );
 
         if (!reactions) {
-            return new Set();
+            return Immutable.Map();
         }
 
         const commentReactions = reactions.map((reaction) => {
@@ -365,7 +389,13 @@ export class ParentCommentService {
             };
         });
 
-        return new Set(commentReactions);
+        // The key is the reaction.commentId and the value is the reaction.reactionType
+        return Immutable.Map(
+            commentReactions.map((reaction) => [
+                reaction.commentId,
+                reaction.reactionType,
+            ]),
+        );
     }
 
     private async createParentComment(
@@ -418,7 +448,7 @@ export class ParentCommentService {
                     toUserId: postOwnerId,
                     message: `${ctx.user.username} commented on your post`,
                 });
-            await this.syncPostParentComment(ctx, comment, notification.id);
+            await this.syncPostParentComment(ctx, comment, notification?.id);
         } catch (err) {
             this.logger.warn(
                 ctx,
@@ -445,8 +475,21 @@ export class ParentCommentService {
     async syncPostParentComment(
         ctx: RequestContext,
         comment: any,
-        notificationId: string,
+        notificationId?: string,
     ) {
+        const reactionAddOptions = notificationId && {
+            userId: comment.createdById,
+            targetFeedsExtraData: {
+                [`notification:${comment.post.postedById}`]: {
+                    sourceId: comment.id,
+                    type: 'POST_COMMENT',
+                    from: ctx.user.id,
+                    to: comment.post.postedById,
+                    notificationId: notificationId,
+                },
+            },
+        };
+
         await this.streamService
             .addPostComment({
                 kind: 'POST_COMMENT',
@@ -465,15 +508,7 @@ export class ParentCommentService {
                 },
                 reactionAddOptions: {
                     userId: comment.createdById,
-                    targetFeedsExtraData: {
-                        [`notification:${comment.post.postedById}`]: {
-                            sourceId: comment.id,
-                            type: 'POST_COMMENT',
-                            from: ctx.user.id,
-                            to: comment.post.postedById,
-                            notificationId: notificationId,
-                        },
-                    },
+                    ...reactionAddOptions,
                 },
             })
             .then(async (res: ReactionAPIResponse) => {
@@ -486,5 +521,70 @@ export class ParentCommentService {
                     },
                 });
             });
+    }
+
+    async getParentCommentById(ctx: RequestContext, id: string) {
+        this.logger.log(ctx, `${this.getParentCommentById.name} was called`);
+
+        const comment = await this.pg.oneOrNone(
+            `SELECT *
+             FROM post_comment
+             WHERE id = $1`,
+            [id],
+        );
+
+        if (!comment) {
+            throw new NotFoundException(
+                `Parent comment with id ${id} not found`,
+            );
+        }
+
+        try {
+            const foundComment = await this.streamService
+                .getComment(comment.activityId)
+                .then((res: any) => {
+                    return {
+                        id: res.data.commentId,
+                        content: res.data.content,
+                        status: res.data.status,
+                        createdDate: res.data.time,
+                        createdBy: {
+                            ...res.user.data,
+                        },
+                        edited: res.data.edited || false,
+                        postId: res.data.postId,
+                        numberOfReactions:
+                            res?.children_counts?.POST_COMMENT_REACTION || 0,
+                        commentReplyCount:
+                            res?.children_counts?.POST_COMMENT_REPLY || 0,
+                    } as ParentCommentDto;
+                })
+                .catch((err) => {
+                    this.logger.warn(
+                        ctx,
+                        `Error while getting comment: ${comment.id} from stream: ${err}`,
+                    );
+                    throw new NotFoundException(
+                        `Parent comment with id ${id} not found`,
+                    );
+                });
+
+            const reactions = await this.hydrateCurrentUserReactions(ctx, [id]);
+            const hydratedComment = {
+                ...foundComment,
+                reactionType: reactions.get(id) || null,
+            };
+
+            return hydratedComment;
+        } catch (err) {
+            this.logger.warn(
+                ctx,
+                `Error while fetching comment: ${id} from stream: ${err}`,
+            );
+
+            throw new NotFoundException(
+                `Comment with id: ${id} does not exist`,
+            );
+        }
     }
 }

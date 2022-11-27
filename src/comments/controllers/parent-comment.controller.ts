@@ -71,6 +71,27 @@ export class ParentCommentController {
     @UseGuards(JwtAuthGuard, AuthoritiesGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
+    @Get(':id')
+    @ApiOperation({
+        summary: 'Gets a Parent Comment',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: CommentDetailDto,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_USER)
+    async getParentComment(
+        @ReqContext() ctx: RequestContext,
+        @Param('id') id: string,
+    ): Promise<ParentCommentDto> {
+        this.logger.log(ctx, `${this.getParentComment.name} was called`);
+        return await this.parentCommentService.getParentCommentById(ctx, id);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
     @Patch(':id')
     @ApiOperation({
         summary: 'Updates a Parent Comment',

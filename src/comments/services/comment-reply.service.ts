@@ -25,6 +25,7 @@ import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChildCommentDto } from '../dtos/child-comment.dto';
+import Immutable from 'immutable';
 
 @Injectable()
 export class CommentReplyService {
@@ -219,7 +220,7 @@ export class CommentReplyService {
             );
         }
 
-        const updatedComment = this.prisma.postComment.update({
+        const updatedComment = await this.prisma.postComment.update({
             where: {
                 id: commentId,
             },
@@ -244,11 +245,20 @@ export class CommentReplyService {
         });
 
         try {
-            await this.streamService.updatePostComment(
-                comment.activityId,
-                updatePostCommentInput.content,
-                updatePostCommentInput.status,
-            );
+            await this.streamService.updateComment({
+                reactionId: updatedComment.activityId,
+                data: {
+                    parentCommentId: updatedComment.id,
+                    parentCommentOwnerId: updatedComment.content,
+                    commentingUserId: updatedComment.createdById,
+                    time: updatedComment.createdDate.toISOString(),
+                    commentId: updatedComment.id,
+                    content: updatedComment.content,
+                    status: updatedComment.status,
+                    edited: true,
+                },
+                reactionUpdateOptions: {},
+            });
         } catch (error) {
             this.logger.error(
                 ctx,
@@ -339,6 +349,14 @@ export class CommentReplyService {
             throw new Error('Comment does not exist');
         }
 
+        // Check if the request user is the owner of the comment or an admin
+        if (
+            ctx.user.id !== comment.createdById &&
+            !ctx.user.authorities.includes('ROLE_ADMIN')
+        ) {
+            throw new Error('You are not allowed to delete this comment');
+        }
+
         await this.pg.none(
             `DELETE
              FROM post_comment
@@ -392,11 +410,14 @@ export class CommentReplyService {
                 offset: (page - 1) * limit,
                 withReactionCounts: true,
                 withOwnReactions: true,
+                withOwnChildren: true,
             },
         );
 
         const resultData: ChildCommentDto[] = childComments.results.map(
             (comment) => {
+                const currentUserReaction =
+                    comment?.own_children?.POST_COMMENT_REACTION[0]?.user?.data;
                 return {
                     id: comment.data.commentId,
                     content: comment.data.content,
@@ -411,6 +432,9 @@ export class CommentReplyService {
                     commentReplyCount:
                         comment?.children_counts?.POST_COMMENT_REPLY || 0,
                     parentId: parentCommentId,
+                    currentUserReaction: currentUserReaction
+                        ? ReactionType.THUMBS_UP
+                        : undefined,
                 } as ChildCommentDto;
             },
         );
@@ -421,9 +445,9 @@ export class CommentReplyService {
         const currentUserParentCommentReactions =
             await this.hydrateCurrentUserReactions(ctx, commentIds);
 
-        resultData.forEach((parentComment) => {
-            parentComment.currentUserReaction =
-                currentUserParentCommentReactions[parentComment.id];
+        resultData.forEach((childComment) => {
+            childComment.currentUserReaction =
+                currentUserParentCommentReactions.get(childComment.id) || null;
         });
 
         return resultData;
@@ -432,14 +456,14 @@ export class CommentReplyService {
     private async hydrateCurrentUserReactions(
         ctx: RequestContext,
         commentIds: Array<string>,
-    ): Promise<Set<{ commentId: string; reactionType: ReactionType | null }>> {
+    ): Promise<Immutable.Map<string, ReactionType | null>> {
         this.logger.log(
             ctx,
             `${this.hydrateCurrentUserReactions.name} was called`,
         );
 
         if (commentIds.length === 0) {
-            return new Set();
+            return Immutable.Map();
         }
 
         const reactions = await this.pg.manyOrNone(
@@ -451,7 +475,7 @@ export class CommentReplyService {
         );
 
         if (!reactions) {
-            return new Set();
+            return Immutable.Map();
         }
 
         const commentReactions = reactions.map((reaction) => {
@@ -461,6 +485,12 @@ export class CommentReplyService {
             };
         });
 
-        return new Set(commentReactions);
+        // The key is the reaction.commentId and the value is the reaction.reactionType
+        return Immutable.Map(
+            commentReactions.map((reaction) => [
+                reaction.commentId,
+                reaction.reactionType,
+            ]),
+        );
     }
 }

@@ -9,14 +9,18 @@ import {
     NewPostBookmarkActivity,
     NewPostCommentReaction,
     NewPostReaction,
+    UpdateCommentReply,
+    UpdateParentComment,
 } from '../feed/feed.types';
 import {
     Activity,
-    connect, DefaultGenerics,
+    connect,
+    DefaultGenerics,
     FeedAPIResponse,
     GetActivitiesAPIResponse,
     GetFeedOptions,
-    ReactionAPIResponse, ReactionFilterAPIResponse,
+    ReactionAPIResponse,
+    ReactionFilterAPIResponse,
     StreamClient,
     StreamUser,
     UpdateActivity,
@@ -177,21 +181,23 @@ export class GetStreamService {
             commentReply.parentCommentReactionId,
             { ...commentReply.data },
             {
-
                 ...commentReply.reactionAddOptions,
             },
         );
     }
 
-    async updatePostComment(
-        reactionId: string,
-        content?: string,
-        status?: CommentStatus,
+    async updateComment(
+        updatedComment: UpdateCommentReply | UpdateParentComment,
     ) {
-        return this.stream.reactions.update(reactionId, {
-            content,
-            status,
-        });
+        return this.stream.reactions.update(
+            updatedComment.reactionId,
+            { ...updatedComment.data },
+            updatedComment.reactionUpdateOptions,
+        );
+    }
+
+    async getComment(activityId: string) {
+        return this.stream.reactions.get(activityId);
     }
 
     async deletePostComment(reactionId: string) {
@@ -223,14 +229,11 @@ export class GetStreamService {
         return this.stream.reactions.delete(reactionId);
     }
 
-    async addPostCommentReaction(
+    async addCommentReaction(
         reaction: NewPostCommentReaction,
     ): Promise<ReactionAPIResponse<any>> {
-        // Get the user's feed
-        const userFeed = this.stream.feed('user', reaction.data.reactingUserId);
-
-        return userFeed.client.reactions.add(
-            reaction.kind,
+        return this.stream.reactions.addChild(
+            ActivityType.POST_COMMENT_REACTION,
             reaction.commentActivityId,
             { ...reaction.data },
             {
@@ -244,7 +247,7 @@ export class GetStreamService {
         reaction: NewPostCommentReaction,
     ): Promise<ReactionAPIResponse<any>> {
         return this.stream.reactions.addChild(
-            reaction.kind,
+            ActivityType.POST_COMMENT_REACTION,
             reaction.commentActivityId,
             { ...reaction.data },
             {

@@ -10,6 +10,8 @@ import { QueueService } from '../queue/services/queue.service';
 import { NotificationService } from '../notifications/services/notification.service';
 import { CommentReplyService } from './services/comment-reply.service';
 import { CommentReplyController } from './controllers/comment-reply.controller';
+import { CommentReactionService } from './services/comment-reaction.service';
+import { CommentReactionController } from './controllers/comment-reaction.controller';
 
 @Module({
     imports: [HttpModule],
@@ -22,8 +24,13 @@ import { CommentReplyController } from './controllers/comment-reply.controller';
         CommentAclService,
         ParentCommentService,
         CommentReplyService,
+        CommentReactionService,
     ],
-    controllers: [ParentCommentController, CommentReplyController],
+    controllers: [
+        ParentCommentController,
+        CommentReplyController,
+        CommentReactionController,
+    ],
     exports: [],
 })
 export class CommentsModule {}

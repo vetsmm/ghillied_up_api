@@ -35,7 +35,14 @@ export class CommentAclService extends BaseAclService<PostComment> {
         );
 
         // Only an admin can do a hard delete
-        this.canDo(UserAuthority.ROLE_ADMIN, [Action.Delete]);
+        this.canDo(
+            [
+                UserAuthority.ROLE_ADMIN,
+                UserAuthority.ROLE_USER,
+                UserAuthority.ROLE_VERIFIED_MILITARY,
+            ],
+            [Action.Delete],
+        );
     }
 
     isUserCommentOwner(comment: PostComment, user: Actor): boolean {

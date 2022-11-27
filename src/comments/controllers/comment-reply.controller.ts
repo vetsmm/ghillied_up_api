@@ -110,7 +110,7 @@ export class CommentReplyController {
         status: HttpStatus.NOT_FOUND,
     })
     @HttpCode(HttpStatus.OK)
-    @Authorities(UserAuthority.ROLE_ADMIN)
+    @Authorities(UserAuthority.ROLE_ADMIN, UserAuthority.ROLE_VERIFIED_MILITARY)
     async deleteComment(
         @ReqContext() ctx: RequestContext,
         @Param('id') id: string,

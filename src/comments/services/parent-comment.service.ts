@@ -569,13 +569,12 @@ export class ParentCommentService {
                     );
                 });
 
-            const reactions = await this.hydrateCurrentUserReactions(ctx, [id]);
-            const hydratedComment = {
-                ...foundComment,
-                reactionType: reactions.get(id) || null,
-            };
+            const currentUserParentCommentReactions =
+                await this.hydrateCurrentUserReactions(ctx, [id]);
+            foundComment.currentUserReaction =
+                currentUserParentCommentReactions.get(id) || null;
 
-            return hydratedComment;
+            return foundComment;
         } catch (err) {
             this.logger.warn(
                 ctx,

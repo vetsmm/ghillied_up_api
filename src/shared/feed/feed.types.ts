@@ -1,4 +1,4 @@
-import { ReactionAddOptions, NewActivity } from 'getstream';
+import { ReactionAddOptions, NewActivity, ReactionUpdateOptions } from 'getstream';
 import {
     CommentStatus,
     FlagComment,
@@ -8,6 +8,7 @@ import {
     ReactionType,
 } from '@prisma/client';
 import { LinkMeta } from '../../open-graph/dtos/link-meta';
+import { ActivityType } from '../queue/activity-type';
 
 export interface TagMeta {
     id: string;
@@ -114,6 +115,39 @@ export type NewPostBookmarkActivity = NewActivity & {
     data: PostBookmarkCreateActivityData;
 };
 
+export type NewCommentReply = {
+    parentCommentReactionId: string;
+    kind: 'POST_COMMENT_REPLY';
+    data: {
+        parentCommentId: string;
+        parentCommentOwnerId: string;
+        commentingUserId: string;
+        time: string;
+        commentId: string;
+        reactionCount?: number;
+        content: string;
+        status: CommentStatus;
+        edited: boolean;
+    };
+    reactionAddOptions: ReactionAddOptions;
+};
+
+export type UpdateCommentReply = {
+    reactionId: string;
+    data: {
+        parentCommentId: string;
+        parentCommentOwnerId: string;
+        commentingUserId: string;
+        time: string;
+        commentId: string;
+        reactionCount?: number;
+        content: string;
+        status: CommentStatus;
+        edited: boolean;
+    };
+    reactionUpdateOptions: ReactionUpdateOptions;
+};
+
 export type NewCommentActivity = {
     kind: 'POST_COMMENT';
     // The ID of the activity (post) the reaction refers to
@@ -130,6 +164,22 @@ export type NewCommentActivity = {
         status: CommentStatus;
     };
     reactionAddOptions: ReactionAddOptions;
+};
+
+export type UpdateParentComment = {
+    reactionId: string;
+    data: {
+        sourceId: string;
+        postOwnerId: string;
+        commentingUserId: string;
+        time: string;
+        commentId: string;
+        reactionCount?: number;
+        postId: string;
+        content: string;
+        status: CommentStatus;
+    };
+    reactionUpdateOptions: ReactionUpdateOptions;
 };
 
 export type NewPostReaction = {
@@ -157,7 +207,7 @@ export type NewPostCommentReaction = {
         commentOwnerId: string;
         reactingUserId: string;
         time: string;
-        postId: string;
+        postId?: string;
         reactionType: ReactionType;
     };
     reactionAddOptions: ReactionAddOptions;

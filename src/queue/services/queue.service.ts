@@ -29,6 +29,14 @@ export class QueueService {
     ): Promise<snsTypes.PublishResponse> {
         this.logger.log(ctx, `${this.publishActivity.name} was called`);
 
+        if (ctx.user.id === toUserId) {
+            this.logger.debug(
+                ctx,
+                `${this.publishActivity.name} toUserId is same as fromUserId, not sending push notification`,
+            );
+            return null;
+        }
+
         const message = {
             activityType: activityType,
             message: body,

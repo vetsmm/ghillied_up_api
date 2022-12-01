@@ -144,33 +144,43 @@ export class NotificationService {
                 ];
             })
             .then((data) => {
-                return data.map((hydratedData) => {
-                    const notification = activityNotifications.find(
-                        (d) => d.sourceId === hydratedData.sourceId,
-                    );
-                    if (notification) {
-                        switch (notification.type) {
-                            case NotificationType.POST_COMMENT:
-                                return {
-                                    ...notification,
-                                    ...hydratedData,
-                                } as PostCommentNotificationDto;
-                            case NotificationType.POST_COMMENT_REACTION:
-                                return {
-                                    ...notification,
-                                    ...hydratedData,
-                                } as PostCommentReactionNotificationDto;
-                            case NotificationType.POST_REACTION:
-                                return {
-                                    ...notification,
-                                    ...hydratedData,
-                                } as PostReactionNotificationDto;
-                            default:
-                                return notification;
-                        }
-                    }
-                    return hydratedData;
-                });
+                return (
+                    data
+                        .map((hydratedData) => {
+                            const notification = activityNotifications.find(
+                                (d) => d.sourceId === hydratedData.sourceId,
+                            );
+                            if (notification) {
+                                switch (notification.type) {
+                                    case NotificationType.POST_COMMENT:
+                                        return {
+                                            ...notification,
+                                            ...hydratedData,
+                                        } as PostCommentNotificationDto;
+                                    case NotificationType.POST_COMMENT_REACTION:
+                                        return {
+                                            ...notification,
+                                            ...hydratedData,
+                                        } as PostCommentReactionNotificationDto;
+                                    case NotificationType.POST_REACTION:
+                                        return {
+                                            ...notification,
+                                            ...hydratedData,
+                                        } as PostReactionNotificationDto;
+                                    default:
+                                        return notification;
+                                }
+                            }
+                            return hydratedData;
+                        })
+                        // sort by created date descending
+                        .sort((a, b) => {
+                            return (
+                                new Date(b.created_date).getTime() -
+                                new Date(a.created_date).getTime()
+                            );
+                        })
+                );
             })
             .catch((err) => {
                 this.logger.error(ctx, `Error hydrating notifications: ${err}`);

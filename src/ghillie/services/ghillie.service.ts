@@ -1111,7 +1111,7 @@ export class GhillieService {
 
             return await this.pg.one(
                 `UPDATE ghillie
-                 SET image_url = $1,
+                 SET image_url       = $1,
                      public_image_id = $2
                  WHERE id = $3
                  RETURNING *`,
@@ -1123,5 +1123,150 @@ export class GhillieService {
                 `Error updating ghillie logo: ${err}`,
             );
         }
+    }
+
+    async getPopularGhilliesByMembers(
+        ctx: RequestContext,
+        limit: number,
+    ): Promise<GhillieDetailDto[]> {
+        this.logger.log(
+            ctx,
+            `${this.getPopularGhilliesByMembers.name} was called`,
+        );
+
+        const actor: Actor = ctx.user;
+        const isAllowed = this.ghillieAclService
+            .forActor(actor)
+            .canDoAction(Action.Read);
+        if (!isAllowed) {
+            throw new UnauthorizedException(
+                'You are not allowed to view Ghillies',
+            );
+        }
+
+        const ghillies = await this.prisma.ghillie.findMany({
+            where: {
+                status: GhillieStatus.ACTIVE,
+            },
+            skip: 0,
+            take: 10,
+            orderBy: {
+                members: {
+                    _count: 'desc',
+                },
+            },
+            include: {
+                topics: true,
+                _count: {
+                    select: {
+                        members: true,
+                    },
+                },
+                members: {
+                    where: {
+                        userId: ctx.user.id,
+                    },
+                },
+            },
+        });
+
+        return plainToInstance(GhillieDetailDto, ghillies, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
+    }
+
+    async getPopularGhilliesByTrendingPosts(
+        ctx: RequestContext,
+        limit: number,
+    ) {
+        this.logger.log(
+            ctx,
+            `${this.getPopularGhilliesByTrendingPosts.name} was called`,
+        );
+
+        const actor: Actor = ctx.user;
+        const isAllowed = this.ghillieAclService
+            .forActor(actor)
+            .canDoAction(Action.Read);
+        if (!isAllowed) {
+            throw new UnauthorizedException(
+                'You are not allowed to view Ghillies',
+            );
+        }
+
+        const ghillies = await this.prisma.ghillie.findMany({
+            where: {
+                status: GhillieStatus.ACTIVE,
+            },
+            skip: 0,
+            take: 10,
+            orderBy: {
+                posts: {
+                    _count: 'desc',
+                },
+            },
+            include: {
+                topics: true,
+                _count: {
+                    select: {
+                        members: true,
+                    },
+                },
+                members: {
+                    where: {
+                        userId: ctx.user.id,
+                    },
+                },
+            },
+        });
+
+        return plainToInstance(GhillieDetailDto, ghillies, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
+    }
+
+    async getNewestGhillies(ctx: RequestContext, limit: number) {
+        this.logger.log(ctx, `${this.getNewestGhillies.name} was called`);
+
+        const actor: Actor = ctx.user;
+        const isAllowed = this.ghillieAclService
+            .forActor(actor)
+            .canDoAction(Action.Read);
+        if (!isAllowed) {
+            throw new UnauthorizedException(
+                'You are not allowed to view Ghillies',
+            );
+        }
+
+        const ghillies = await this.prisma.ghillie.findMany({
+            where: {
+                status: GhillieStatus.ACTIVE,
+            },
+            skip: 0,
+            take: 10,
+            orderBy: {
+                createdDate: 'desc',
+            },
+            include: {
+                topics: true,
+                _count: {
+                    select: {
+                        members: true,
+                    },
+                },
+                members: {
+                    where: {
+                        userId: ctx.user.id,
+                    },
+                },
+            },
+        });
+
+        return plainToInstance(GhillieDetailDto, ghillies, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
     }
 }

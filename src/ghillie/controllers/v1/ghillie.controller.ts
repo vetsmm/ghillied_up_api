@@ -232,6 +232,81 @@ export class GhillieController {
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
+    @Get('metrics/members')
+    @ApiOperation({
+        summary: 'Get popular ghillies (by number of members)',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: GhillieDetailDto,
+    })
+    @HttpCode(HttpStatus.OK)
+    async getPopularGhilliesByMembers(
+        @ReqContext() ctx: RequestContext,
+        @Query('limit') limit = 10,
+    ): Promise<GhillieDetailDto[]> {
+        this.logger.log(ctx, `${this.getCurrentUsersGhillies.name} was called`);
+
+        return await this.ghillieService.getPopularGhilliesByMembers(
+            ctx,
+            limit,
+        );
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @Authorities(UserAuthority.ROLE_USER)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Get('metrics/trending-posts')
+    @ApiOperation({
+        summary: 'Get popular ghillies (by recent post count)',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: GhillieDetailDto,
+    })
+    @HttpCode(HttpStatus.OK)
+    async getPopularGhilliesByTrendingPosts(
+        @ReqContext() ctx: RequestContext,
+        @Query('limit') limit = 10,
+    ): Promise<GhillieDetailDto[]> {
+        this.logger.log(
+            ctx,
+            `${this.getPopularGhilliesByTrendingPosts.name} was called`,
+        );
+
+        return await this.ghillieService.getPopularGhilliesByTrendingPosts(
+            ctx,
+            limit,
+        );
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @Authorities(UserAuthority.ROLE_USER)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Get('metrics/newest')
+    @ApiOperation({
+        summary: 'Get newest ghillies',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: GhillieDetailDto,
+    })
+    @HttpCode(HttpStatus.OK)
+    async getNewestGhillies(
+        @ReqContext() ctx: RequestContext,
+        @Query('limit') limit = 10,
+    ): Promise<GhillieDetailDto[]> {
+        this.logger.log(ctx, `${this.getNewestGhillies.name} was called`);
+
+        return await this.ghillieService.getNewestGhillies(ctx, limit);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @Authorities(UserAuthority.ROLE_USER)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
     @Post('all')
     @ApiOperation({
         summary: 'Get all Ghillies w/ filters',

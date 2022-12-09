@@ -90,10 +90,13 @@ export class PostReactionService {
                     },
                 },
             });
-            this.queueService.publishActivity<PostReaction>(
+            this.queueService.publishActivity(
                 ctx,
                 ActivityType.POST_REACTION,
-                reaction,
+                {
+                    ...reaction,
+                    postId: post.id,
+                },
                 undefined,
                 reaction.post.postedBy.id,
             );

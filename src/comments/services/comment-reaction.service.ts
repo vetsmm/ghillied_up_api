@@ -96,10 +96,13 @@ export class CommentReactionService {
                     },
                 },
             });
-            this.queueService.publishActivity<CommentReaction>(
+            this.queueService.publishActivity(
                 ctx,
                 ActivityType.POST_COMMENT_REACTION,
-                cr,
+                {
+                    ...cr,
+                    postId: comment.postId,
+                },
                 undefined,
                 cr.postComment.createdBy.id,
             );

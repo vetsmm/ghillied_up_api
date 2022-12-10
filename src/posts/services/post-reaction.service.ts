@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
     AppLogger,
@@ -11,13 +11,21 @@ import {
     PostDetailDto,
 } from '../../shared';
 import { PostAclService } from './post-acl.service';
-import { MemberStatus, NotificationType, PostReaction } from '@prisma/client';
+import {
+    MemberStatus,
+    NotificationType,
+    PostReaction,
+    User,
+} from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { PostService } from './post.service';
 import { QueueService } from '../../queue/services/queue.service';
 import { ActivityType } from '../../shared/queue/activity-type';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NotificationService } from '../../notifications/services/notification.service';
+import { getMilitaryString } from '../../shared/utils/military-utils';
+import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
+import { IDatabase } from 'pg-promise';
 
 @Injectable()
 export class PostReactionService {
@@ -29,6 +37,7 @@ export class PostReactionService {
         private readonly queueService: QueueService,
         private readonly streamService: GetStreamService,
         private readonly notificationService: NotificationService,
+        @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(PostReactionService.name);
     }
@@ -101,13 +110,23 @@ export class PostReactionService {
                 reaction.post.postedBy.id,
             );
             try {
+                const user: User = await this.pg.oneOrNone(
+                    `SELECT *
+                    FROM "user"
+                    WHERE id = $1`,
+                    [ctx.user.id],
+                );
+
                 const notification =
                     await this.notificationService.createNotification(ctx, {
                         type: NotificationType.POST_COMMENT,
                         sourceId: reaction.id,
                         fromUserId: ctx.user.id,
                         toUserId: post.postedById,
-                        message: `${ctx.user.username} reacted to your post`,
+                        message: `${getMilitaryString(
+                            user.branch,
+                            user.serviceStatus,
+                        )}  reacted to your post`,
                     });
                 this.syncPostReaction(ctx, post, reaction, notification.id);
             } catch (e) {

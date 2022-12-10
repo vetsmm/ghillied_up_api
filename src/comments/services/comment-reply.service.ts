@@ -14,6 +14,7 @@ import {
     NotificationType,
     PostComment,
     ReactionType,
+    User,
 } from '@prisma/client';
 import { ActivityType } from '../../shared/queue/activity-type';
 import { plainToInstance } from 'class-transformer';
@@ -26,6 +27,7 @@ import { IDatabase } from 'pg-promise';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChildCommentDto } from '../dtos/child-comment.dto';
 import Immutable from 'immutable';
+import { getMilitaryString } from '../../shared/utils/military-utils';
 
 @Injectable()
 export class CommentReplyService {
@@ -68,21 +70,6 @@ export class CommentReplyService {
         if (!parentComment) {
             throw new Error('Parent comment does not exist.');
         }
-
-        // Check if user is member of the ghillie, from which the post belongs
-        // const ghillieMember = await this.prisma.ghillieMembers.findFirst({
-        //     where: {
-        //         ghillie: {
-        //             posts: {
-        //                 some: {
-        //                     id: parentComment.postId,
-        //                 },
-        //             },
-        //         },
-        //         userId: ctx.user.id,
-        //         memberStatus: MemberStatus.ACTIVE,
-        //     },
-        // });
 
         const ghillieMember = await this.pg.oneOrNone(
             `SELECT *
@@ -156,13 +143,22 @@ export class CommentReplyService {
         );
 
         try {
+            const user: User = await this.pg.oneOrNone(
+                `SELECT *
+                    FROM "user"
+                    WHERE id = $1`,
+                [ctx.user.id],
+            );
             const notification =
                 await this.notificationService.createNotification(ctx, {
                     type: NotificationType.POST_COMMENT,
                     sourceId: childComment.id,
                     fromUserId: ctx.user.id,
                     toUserId: parentComment.createdById,
-                    message: `${ctx.user.username} replied to your comment`,
+                    message: `${getMilitaryString(
+                        user.branch,
+                        user.serviceStatus,
+                    )} replied to your comment`,
                 });
 
             try {

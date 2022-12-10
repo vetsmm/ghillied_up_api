@@ -13,6 +13,7 @@ import {
     CommentReaction,
     MemberStatus,
     NotificationType,
+    User,
 } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { QueueService } from '../../queue/services/queue.service';
@@ -21,6 +22,7 @@ import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NotificationService } from '../../notifications/services/notification.service';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
+import { getMilitaryString } from '../../shared/utils/military-utils';
 
 @Injectable()
 export class CommentReactionService {
@@ -107,13 +109,22 @@ export class CommentReactionService {
                 cr.postComment.createdBy.id,
             );
             try {
+                const user: User = await this.pg.oneOrNone(
+                    `SELECT *
+                    FROM "user"
+                    WHERE id = $1`,
+                    [ctx.user.id],
+                );
                 const notification =
                     await this.notificationService.createNotification(ctx, {
                         type: NotificationType.POST_COMMENT,
                         sourceId: cr.id,
                         fromUserId: ctx.user.id,
                         toUserId: comment.createdById,
-                        message: `${ctx.user.username} reacted to your comment`,
+                        message: `${getMilitaryString(
+                            user.branch,
+                            user.serviceStatus,
+                        )}  reacted to your comment`,
                     });
                 try {
                     await this.syncPostCommentReaction(

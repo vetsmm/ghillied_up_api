@@ -27,6 +27,7 @@ import {
     Post,
     PostComment,
     ReactionType,
+    User,
 } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { ActivityType } from '../../shared/queue/activity-type';
@@ -34,6 +35,7 @@ import { ReactionAPIResponse } from 'getstream';
 import { ParentCommentDto } from '../dtos/parent-comment.dto';
 import { ChildCommentDto } from '../dtos/child-comment.dto';
 import Immutable from 'immutable';
+import { getMilitaryString } from '../../shared/utils/military-utils';
 
 @Injectable()
 export class ParentCommentService {
@@ -440,13 +442,23 @@ export class ParentCommentService {
         );
 
         try {
+            const user: User = await this.pg.oneOrNone(
+                `SELECT *
+                    FROM "user"
+                    WHERE id = $1`,
+                [ctx.user.id],
+            );
+
             const notification =
                 await this.notificationService.createNotification(ctx, {
                     type: NotificationType.POST_COMMENT,
                     sourceId: comment.id,
                     fromUserId: ctx.user.id,
                     toUserId: postOwnerId,
-                    message: `${ctx.user.username} commented on your post`,
+                    message: `${getMilitaryString(
+                        user.branch,
+                        user.serviceStatus,
+                    )} commented on your post`,
                 });
             await this.syncPostParentComment(ctx, comment, notification?.id);
         } catch (err) {

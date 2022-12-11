@@ -115,22 +115,26 @@ export class CommentReactionService {
                     WHERE id = $1`,
                     [ctx.user.id],
                 );
+
+                const notificationMessage = `${getMilitaryString(
+                    user.branch,
+                    user.serviceStatus,
+                )} reacted to your comment`;
+
                 const notification =
                     await this.notificationService.createNotification(ctx, {
                         type: NotificationType.POST_COMMENT,
                         sourceId: cr.id,
                         fromUserId: ctx.user.id,
                         toUserId: comment.createdById,
-                        message: `${getMilitaryString(
-                            user.branch,
-                            user.serviceStatus,
-                        )}  reacted to your comment`,
+                        message: notificationMessage,
                     });
                 try {
                     await this.syncPostCommentReaction(
                         ctx,
                         cr,
                         comment,
+                        notificationMessage,
                         notification?.id,
                     );
                 } catch (err) {
@@ -184,6 +188,7 @@ export class CommentReactionService {
         ctx: RequestContext,
         cr: CommentReaction,
         comment: any,
+        notificationMessage: string,
         notificationId: string,
     ): Promise<void> {
         // If there is already an activityId, then lets just update the activity
@@ -203,6 +208,7 @@ export class CommentReactionService {
                     type: 'POST_COMMENT_REACTION',
                     from: ctx.user.id,
                     to: comment.createdById,
+                    message: notificationMessage,
                     notificationId,
                 },
             },

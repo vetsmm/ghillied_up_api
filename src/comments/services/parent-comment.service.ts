@@ -444,10 +444,15 @@ export class ParentCommentService {
         try {
             const user: User = await this.pg.oneOrNone(
                 `SELECT *
-                    FROM "user"
-                    WHERE id = $1`,
+                 FROM "user"
+                 WHERE id = $1`,
                 [ctx.user.id],
             );
+
+            const notificationMessage = `${getMilitaryString(
+                user.branch,
+                user.serviceStatus,
+            )} commented on your post`;
 
             const notification =
                 await this.notificationService.createNotification(ctx, {
@@ -455,12 +460,14 @@ export class ParentCommentService {
                     sourceId: comment.id,
                     fromUserId: ctx.user.id,
                     toUserId: postOwnerId,
-                    message: `${getMilitaryString(
-                        user.branch,
-                        user.serviceStatus,
-                    )} commented on your post`,
+                    message: notificationMessage,
                 });
-            await this.syncPostParentComment(ctx, comment, notification?.id);
+            await this.syncPostParentComment(
+                ctx,
+                comment,
+                notificationMessage,
+                notification?.id,
+            );
         } catch (err) {
             this.logger.warn(
                 ctx,
@@ -487,6 +494,7 @@ export class ParentCommentService {
     async syncPostParentComment(
         ctx: RequestContext,
         comment: any,
+        notificationMessage: string,
         notificationId?: string,
     ) {
         const reactionAddOptions = notificationId && {
@@ -498,6 +506,7 @@ export class ParentCommentService {
                     from: ctx.user.id,
                     to: comment.post.postedById,
                     notificationId: notificationId,
+                    message: notificationMessage,
                 },
             },
         };

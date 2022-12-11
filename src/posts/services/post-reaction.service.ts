@@ -117,18 +117,26 @@ export class PostReactionService {
                     [ctx.user.id],
                 );
 
+                const notificationMessage = `${getMilitaryString(
+                    user.branch,
+                    user.serviceStatus,
+                )} reacted to your post`;
+
                 const notification =
                     await this.notificationService.createNotification(ctx, {
                         type: NotificationType.POST_COMMENT,
                         sourceId: reaction.id,
                         fromUserId: ctx.user.id,
                         toUserId: post.postedById,
-                        message: `${getMilitaryString(
-                            user.branch,
-                            user.serviceStatus,
-                        )}  reacted to your post`,
+                        message: notificationMessage,
                     });
-                this.syncPostReaction(ctx, post, reaction, notification.id);
+                this.syncPostReaction(
+                    ctx,
+                    post,
+                    reaction,
+                    notificationMessage,
+                    notification.id,
+                );
             } catch (e) {
                 this.logger.warn(ctx, '');
             }
@@ -171,6 +179,7 @@ export class PostReactionService {
         ctx: RequestContext,
         post: any,
         reaction: PostReaction,
+        notificationMessage: string,
         notificationId: string,
     ): void {
         if (reaction.activityId) {
@@ -206,6 +215,7 @@ export class PostReactionService {
                             from: ctx.user.id,
                             to: post.postedById,
                             notificationId: notificationId,
+                            message: notificationMessage,
                         },
                     },
                 },

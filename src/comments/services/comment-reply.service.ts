@@ -149,16 +149,18 @@ export class CommentReplyService {
                     WHERE id = $1`,
                 [ctx.user.id],
             );
+            const notificationMessage = `${getMilitaryString(
+                user.branch,
+                user.serviceStatus,
+            )} replied to your comment`;
+
             const notification =
                 await this.notificationService.createNotification(ctx, {
                     type: NotificationType.POST_COMMENT,
                     sourceId: childComment.id,
                     fromUserId: ctx.user.id,
                     toUserId: parentComment.createdById,
-                    message: `${getMilitaryString(
-                        user.branch,
-                        user.serviceStatus,
-                    )} replied to your comment`,
+                    message: notificationMessage,
                 });
 
             try {
@@ -166,6 +168,7 @@ export class CommentReplyService {
                     ctx,
                     parentComment,
                     childComment,
+                    notificationMessage,
                     notification?.id,
                 );
             } catch (err) {
@@ -274,6 +277,7 @@ export class CommentReplyService {
         ctx: RequestContext,
         parentComment: any,
         childComment: any,
+        notificationMessage,
         notificationId?: string,
     ) {
         this.logger.log(ctx, `${this.syncPostChildComment.name} was called`);
@@ -285,6 +289,7 @@ export class CommentReplyService {
                     type: 'POST_COMMENT',
                     from: ctx.user.id,
                     to: parentComment.createdById,
+                    message: notificationMessage,
                     notificationId: notificationId,
                 },
             },

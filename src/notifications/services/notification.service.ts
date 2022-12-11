@@ -56,6 +56,7 @@ export class NotificationService {
             activityId: string;
             notificationId: string;
             read: boolean;
+            notificationMessage: string;
         }[] = [];
 
         const notificationsByType = Immutable.Map<
@@ -94,6 +95,7 @@ export class NotificationService {
                             notificationId: notificationDetails.notificationId,
                             activityId: innerActivity.activityId,
                             read: innerActivity.is_read,
+                            notificationMessage: notificationDetails.message,
                         });
                     }
                 } catch (e) {
@@ -118,23 +120,23 @@ export class NotificationService {
                 const postCommentsHydrated =
                     commentIds.length > 0
                         ? t.query(
-                            'SELECT pc.id as "sourceId", pc."created_date", pc.content as "commentContent", u.username, g.id as "ghillieId", g.name as "ghillie_name", g."image_url" as "ghillieImageUrl",p.id as "postId" FROM "post_comment" pc JOIN "user" u ON pc."created_by_id" = u.id JOIN "post" p ON pc."post_id" = p.id JOIN "ghillie" g on g.id = p."ghillie_id"WHERE pc.id IN ($1:list)',
-                            [commentIds],
-                        )
+                              'SELECT pc.id as "sourceId", pc."created_date", pc.content as "commentContent", g.id as "ghillieId", g.name as "ghillie_name", g."image_url" as "ghillieImageUrl",p.id as "postId" FROM "post_comment" pc JOIN "user" u ON pc."created_by_id" = u.id JOIN "post" p ON pc."post_id" = p.id JOIN "ghillie" g on g.id = p."ghillie_id" WHERE pc.id IN ($1:list)',
+                              [commentIds],
+                          )
                         : [];
                 const postCommentReactionsHydrated =
                     commentReactionIds.length > 0
                         ? t.query(
-                            'SELECT cr.id as "sourceId", cr."created_date", cr."reaction_type", u.username, g.id as "ghillieId", g.name as "ghillieName", g."image_url" as "ghillieImageUrl", p.id as "postId" FROM "comment_reaction" cr JOIN "user" u ON cr."created_by_id" = u.id JOIN "post_comment" pc ON cr."comment_id" = pc.id JOIN "post" p ON pc."post_id" = p.id JOIN "ghillie" g on g.id = p."ghillie_id" WHERE cr.id IN ($1:list)',
-                            [commentReactionIds],
-                        )
+                              'SELECT cr.id as "sourceId", cr."created_date", cr."reaction_type", g.id as "ghillieId", g.name as "ghillieName", g."image_url" as "ghillieImageUrl", p.id as "postId" FROM "comment_reaction" cr JOIN "user" u ON cr."created_by_id" = u.id JOIN "post_comment" pc ON cr."comment_id" = pc.id JOIN "post" p ON pc."post_id" = p.id JOIN "ghillie" g on g.id = p."ghillie_id" WHERE cr.id IN ($1:list)',
+                              [commentReactionIds],
+                          )
                         : [];
                 const postReactionsHydrated =
                     reactionIds.length > 0
                         ? t.query(
-                            'SELECT pr.id as "sourceId", pr."created_date", pr."reaction_type", u.username, g.id as "ghillieId", g.name as "ghillieName", g."image_url" as "ghillieImageUrl", p.id as "postId" FROM "post_reaction" pr JOIN "user" u ON pr."created_by_id" = u.id JOIN "post" p ON pr."post_id" = p.id JOIN "ghillie" g on g.id = p."ghillie_id" WHERE pr.id IN ($1:list)',
-                            [reactionIds],
-                        )
+                              'SELECT pr.id as "sourceId", pr."created_date", pr."reaction_type", g.id as "ghillieId", g.name as "ghillieName", g."image_url" as "ghillieImageUrl", p.id as "postId" FROM "post_reaction" pr JOIN "user" u ON pr."created_by_id" = u.id JOIN "post" p ON pr."post_id" = p.id JOIN "ghillie" g on g.id = p."ghillie_id" WHERE pr.id IN ($1:list)',
+                              [reactionIds],
+                          )
                         : [];
 
                 return [

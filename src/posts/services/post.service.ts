@@ -70,7 +70,18 @@ export class PostService {
         if (!ghillieUser) {
             throw new Error('You are not a member of this Ghillie');
         }
-        if (
+
+        // Check if the ghillie is readOnly, if it is make sure the user is an admin
+        if (ghillieUser.ghillie.readOnly) {
+            if (
+                ghillieUser.role !== GhillieRole.OWNER &&
+                ghillieUser.role !== GhillieRole.MODERATOR
+            ) {
+                throw new UnauthorizedException(
+                    'You are not allowed to post to this Ghillie',
+                );
+            }
+        } else if (
             ghillieUser.role !== GhillieRole.OWNER &&
             ghillieUser.memberStatus !== MemberStatus.ACTIVE
         ) {

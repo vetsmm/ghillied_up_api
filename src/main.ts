@@ -3,23 +3,23 @@
  * This is only a minimal backend to get started.
  */
 
-import {Logger, ValidationPipe} from '@nestjs/common';
-import {NestFactory} from '@nestjs/core';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import * as ip from 'ip';
 import * as Sentry from '@sentry/node';
 import * as Tracing from '@sentry/tracing';
 
-import {AppModule} from './app/app.module';
-import {SwaggerModule, DocumentBuilder} from '@nestjs/swagger';
+import { AppModule } from './app/app.module';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
-import {environment} from './environments/environment.prod';
+import { environment } from './environments/environment.prod';
 import {
     SentryInterceptor,
     VALIDATION_PIPE_OPTIONS,
     RequestIdMiddleware,
 } from './shared';
-import {PrismaClient} from '@prisma/client';
-import {ConfigService} from '@nestjs/config';
+import { PrismaClient } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
@@ -45,9 +45,9 @@ async function bootstrap() {
             dsn: appConfig.get('sentryDsn'),
             integrations: [
                 // enable HTTP calls tracing
-                new Sentry.Integrations.Http({tracing: true}),
+                new Sentry.Integrations.Http({ tracing: true }),
                 // enable Express.js middleware tracing
-                new Tracing.Integrations.Prisma({client}),
+                new Tracing.Integrations.Prisma({ client }),
                 new Sentry.Integrations.OnUncaughtException(),
                 new Sentry.Integrations.OnUnhandledRejection(),
             ],

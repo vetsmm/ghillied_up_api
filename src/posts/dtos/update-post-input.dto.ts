@@ -5,7 +5,7 @@ import { PostStatus } from '@prisma/client';
 export class UpdatePostInputDto {
     @ApiProperty()
     @IsString()
-    @MaxLength(400)
+    @MaxLength(1000)
     @IsOptional()
     content?: string;
 

@@ -9,7 +9,7 @@ export class CreatePostInputDto {
 
     @ApiProperty()
     @IsString()
-    @MaxLength(400)
+    @MaxLength(1000)
     content: string;
 
     @ApiProperty()

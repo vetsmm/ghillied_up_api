@@ -1,3 +1,5 @@
+import { ServiceBranch } from '@prisma/client';
+
 export type DefaultGhillieType = {
     name: string;
     description: string;
@@ -68,3 +70,26 @@ export const DEFAULT_GHILLIES: Array<DefaultGhillieType> = [
         image: 'MILITARY_GAMERS.png',
     },
 ];
+
+export const getDefaultGhillieForBranch = (branch: ServiceBranch): string => {
+    switch (branch) {
+        case ServiceBranch.ARMY:
+            return DEFAULT_GHILLIES[0].name;
+        case ServiceBranch.NAVY:
+            return DEFAULT_GHILLIES[1].name;
+        case ServiceBranch.AIR_FORCE:
+            return DEFAULT_GHILLIES[2].name;
+        case ServiceBranch.COAST_GUARD:
+            return DEFAULT_GHILLIES[3].name;
+        case ServiceBranch.MARINES:
+            return DEFAULT_GHILLIES[4].name;
+        case ServiceBranch.SPACE_FORCE:
+            return DEFAULT_GHILLIES[5].name;
+        case ServiceBranch.ARMY_NATIONAL_GUARD:
+            return DEFAULT_GHILLIES[6].name;
+        case ServiceBranch.AIR_NATIONAL_GUARD:
+            return DEFAULT_GHILLIES[7].name;
+        default:
+            return undefined;
+    }
+};

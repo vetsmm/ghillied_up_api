@@ -1,6 +1,6 @@
 import {
     BadRequestException,
-    ForbiddenException,
+    ForbiddenException, Inject,
     Injectable,
     NotFoundException,
     UnauthorizedException,
@@ -23,10 +23,13 @@ import slugify from 'slugify';
 import { plainToInstance } from 'class-transformer';
 import { UserOutputAnonymousDto } from '../dtos/anonymous/user-output-anonymous.dto';
 import { ConfigService } from '@nestjs/config';
-import { User } from '@prisma/client';
+import { GhillieRole, MemberStatus, ServiceStatus, User } from '@prisma/client';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { StreamUserDto } from '../dtos/stream-user.dto';
 import { SocialInterface } from '../../auth/interfaces/social.interface';
+import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
+import { IDatabase } from 'pg-promise';
+import { getDefaultGhillieForBranch } from '../../assets/base-ghillies/default-ghillies';
 
 @Injectable()
 export class UserService {
@@ -35,6 +38,7 @@ export class UserService {
         private readonly logger: AppLogger,
         private readonly configService: ConfigService,
         private readonly stream: GetStreamService,
+        @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(UserService.name);
     }
@@ -97,6 +101,20 @@ export class UserService {
             )
             .then((res) => {
                 this.logger.log(ctx, `Stream User Created ${res}`);
+
+                this.joinGhilliedUpGhillie(ctx, user)
+                    .then((res) => {
+                        this.logger.log(
+                            ctx,
+                            `User Joined Default Ghillie ${res}`,
+                        );
+                    })
+                    .catch((err) => {
+                        this.logger.error(
+                            ctx,
+                            `Error Joining Default Ghillie ${err}`,
+                        );
+                    });
             })
             .catch((e) => {
                 this.logger.error(ctx, 'Error creating user in stream', e);
@@ -613,7 +631,7 @@ export class UserService {
         this.logger.log(ctx, `${this.addMilitaryVerification.name} was called`);
 
         // Update the user with the role ROLE_VERIFIED_MILITARY, Service Branch, and Service Status
-        await this.prisma.user.update({
+        const user = await this.prisma.user.update({
             where: { id: ctx.user.id },
             data: {
                 authorities: {
@@ -627,5 +645,86 @@ export class UserService {
                 lastName: input.lastName,
             },
         });
+
+        this.joinBranchGhillie(ctx, user)
+            .then(() => {
+                this.logger.log(ctx, 'User joined branch ghillie');
+            })
+            .catch((err) => {
+                this.logger.log(ctx, `Error joining branch ghillie: ${err}`);
+            });
+    }
+
+    private async joinBranchGhillie(
+        ctx: RequestContext,
+        user: User,
+    ): Promise<void> {
+        this.logger.log(ctx, `${this.joinBranchGhillie.name} was called`);
+
+        const branchGhillieName = getDefaultGhillieForBranch(user.branch);
+
+        if (!branchGhillieName) {
+            return;
+        }
+
+        const ghillieId = await this.getGhillieIdByName(branchGhillieName);
+
+        await this.prisma.ghillieMembers.create({
+            data: {
+                ghillieId: ghillieId,
+                userId: user.id,
+                joinDate: new Date(),
+                memberStatus: MemberStatus.ACTIVE,
+                role: GhillieRole.MEMBER,
+            },
+        });
+        await this.stream.followGhillie(ghillieId, user.id);
+
+        if (user.serviceStatus === ServiceStatus.VETERAN) {
+            await this.prisma.ghillieMembers.create({
+                data: {
+                    ghillieId: ghillieId,
+                    userId: user.id,
+                    joinDate: new Date(),
+                    memberStatus: MemberStatus.ACTIVE,
+                    role: GhillieRole.MEMBER,
+                },
+            });
+            await this.stream.followGhillie(ghillieId, user.id);
+        }
+    }
+
+    private async joinGhilliedUpGhillie(
+        ctx: RequestContext,
+        user: User,
+    ): Promise<void> {
+        this.logger.log(ctx, `${this.joinGhilliedUpGhillie.name} was called`);
+
+        const ghillieId = await this.getGhillieIdByName('Ghillied Up');
+
+        if (!ghillieId) {
+            return;
+        }
+
+        await this.prisma.ghillieMembers.create({
+            data: {
+                ghillieId: ghillieId,
+                userId: user.id,
+                joinDate: new Date(),
+                memberStatus: MemberStatus.ACTIVE,
+                role: GhillieRole.MEMBER,
+            },
+        });
+
+        await this.stream.followGhillie(ghillieId, user.id);
+    }
+
+    private async getGhillieIdByName(
+        name: string,
+    ): Promise<string | undefined> {
+        return await this.pg.oneOrNone<string>(
+            'SELECT id FROM ghillie WHERE name = $1',
+            name,
+        );
     }
 }

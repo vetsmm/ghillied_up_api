@@ -35,7 +35,6 @@ import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
 import { GhillieAssetsService } from '../../files/services/ghillie-assets.service';
 import { AssetTypes } from '../../files/dtos/asset.types';
-import { QueueService } from '../../queue/services/queue.service';
 
 @Injectable()
 export class GhillieService {
@@ -45,7 +44,6 @@ export class GhillieService {
         private readonly ghillieAclService: GhillieAclService,
         private readonly streamService: GetStreamService,
         private readonly ghillieAssetsService: GhillieAssetsService,
-        private readonly queueService: QueueService,
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(GhillieService.name);

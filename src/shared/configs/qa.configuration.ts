@@ -19,8 +19,6 @@ export default (): ConfigurationType => ({
         sns: {
             activityArn:
                 'arn:aws:sns:us-east-1:189846578713:activities-qa.fifo',
-            ghilliePurgeArn:
-                'arn:aws:sns:us-east-1:189846578713:ghillie-purge-qa.fifo',
             accountPurgeArn:
                 'arn:aws:sns:us-east-1:189846578713:account-purge-qa.fifo',
         },

@@ -17,9 +17,6 @@ export type ConfigurationType = {
             activityArn:
                 | 'arn:aws:sns:us-east-1:189846578713:activities-qa.fifo'
                 | 'arn:aws:sns:us-east-1:189846578713:activities.fifo';
-            ghilliePurgeArn:
-                | 'arn:aws:sns:us-east-1:189846578713:ghillie-purge-qa.fifo'
-                | 'arn:aws:sns:us-east-1:189846578713:ghillie-purge.fifo';
             accountPurgeArn:
                 | 'arn:aws:sns:us-east-1:189846578713:account-purge-qa.fifo'
                 | 'arn:aws:sns:us-east-1:189846578713:account-purge.fifo';

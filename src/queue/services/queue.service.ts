@@ -50,37 +50,6 @@ export class QueueService {
         return snsResponse;
     }
 
-    public async publishGhilliePurge(
-        ctx: RequestContext,
-        ghillieId: string,
-    ): Promise<snsTypes.PublishResponse> {
-        this.logger.log(ctx, `${this.publishGhilliePurge.name} was called`);
-
-        const message = {
-            requestId: ctx.requestID,
-            userId: ctx.user.id,
-            ghillieId: ghillieId,
-        };
-
-        const snsResponse: snsTypes.PublishResponse =
-            await this.snsService.publish({
-                MessageGroupId: `${uuidv4()}`,
-                MessageDeduplicationId: `ghillie-${ghillieId}`,
-                Message: JSON.stringify(message),
-                TopicArn: this.configService.get<string>(
-                    'aws.sns.ghilliePurgeArn',
-                ),
-            });
-
-        this.logger.log(
-            ctx,
-            `${this.publishGhilliePurge.name} snsResponse: ${JSON.stringify(
-                snsResponse,
-            )}`,
-        );
-        return snsResponse;
-    }
-
     public async publishActivity<T>(
         ctx: RequestContext,
         activityType: ActivityType,

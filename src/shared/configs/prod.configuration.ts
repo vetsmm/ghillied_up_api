@@ -17,8 +17,8 @@ export default (): ConfigurationType => ({
         publicBucketName: process.env.AWS_BUCKET_NAME || 'ghillied-up-assets',
         sns: {
             activityArn: 'arn:aws:sns:us-east-1:189846578713:activities.fifo',
-            ghilliePurgeArn: 'arn:aws:sns:us-east-1:189846578713:ghillie-purge.fifo',
-            accountPurgeArn: 'arn:aws:sns:us-east-1:189846578713:account-purge.fifo',
+            accountPurgeArn:
+                'arn:aws:sns:us-east-1:189846578713:account-purge.fifo',
         },
     },
     sentryDsn:
@@ -55,7 +55,8 @@ export default (): ConfigurationType => ({
         host: process.env.MAIL_HOST || 'email-smtp.us-east-1.amazonaws.com',
         user: process.env.MAIL_USER,
         password: process.env.MAIL_PASSWORD,
-        defaultEmail: process.env.MAIL_DEFAULT_EMAIL || 'support@ghilliedup.com',
+        defaultEmail:
+            process.env.MAIL_DEFAULT_EMAIL || 'support@ghilliedup.com',
         defaultName: 'Ghillied Up',
         ignoreTLS: process.env.MAIL_IGNORE_TLS === 'true',
         secure: process.env.MAIL_SECURE === 'true',

@@ -1,7 +1,7 @@
 import {
     BadRequestException,
     ForbiddenException, Inject,
-    Injectable,
+    Injectable, InternalServerErrorException,
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
@@ -743,11 +743,24 @@ export class UserService {
             },
         });
 
-        await this.queueService.publicAccountPurge(ctx, {
-            requestId: ctx.requestID,
-            userId: id,
-            email: user.email,
-            startTime: new Date(),
-        });
+        try {
+            await this.queueService.publicAccountPurge(ctx, {
+                requestId: ctx.requestID,
+                userId: id,
+                email: user.email,
+                startTime: new Date(),
+            });
+        } catch (err) {
+            this.logger.log(ctx, `Error adding purge message to queue: ${err}`);
+
+            await this.pg.none(
+                'UPDATE "user" SET activated = true WHERE id = $1',
+                id,
+            );
+
+            throw new InternalServerErrorException(
+                'An error occurred while trying to deactivate your account. Please try again later.',
+            );
+        }
     }
 }

@@ -1,11 +1,11 @@
 import {
     Body,
     ClassSerializerInterceptor,
-    Controller,
+    Controller, Delete,
     Get,
     HttpStatus,
     Param,
-    Patch,
+    Patch, Post,
     Query,
     UseGuards,
     UseInterceptors,
@@ -147,5 +147,30 @@ export class UserController {
 
         const user = await this.userService.updateUser(ctx, ctx.user.id, input);
         return { data: user, meta: {} };
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @Post('deactivate')
+    @ApiOperation({
+        summary: 'initiates an account purge',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: SwaggerBaseApiResponse(UserOutput),
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        type: BaseApiErrorResponse,
+    })
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Authorities(UserAuthority.ROLE_USER)
+    async deactivateUserSelf(ctx: RequestContext): Promise<void> {
+        this.logger.log(
+            ctx,
+            `An account purge was initiated for USER=${ctx.user.id}`,
+        );
+
+        await this.userService.deactivateUser(ctx, ctx.user.id);
     }
 }

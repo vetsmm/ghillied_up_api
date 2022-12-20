@@ -1,7 +1,9 @@
 import {
     BadRequestException,
-    ForbiddenException, Inject,
+    ForbiddenException,
+    Inject,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
@@ -30,6 +32,7 @@ import { SocialInterface } from '../../auth/interfaces/social.interface';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
 import { getDefaultGhillieForBranch } from '../../assets/base-ghillies/default-ghillies';
+import { QueueService } from '../../queue/services/queue.service';
 
 @Injectable()
 export class UserService {
@@ -38,6 +41,7 @@ export class UserService {
         private readonly logger: AppLogger,
         private readonly configService: ConfigService,
         private readonly stream: GetStreamService,
+        private readonly queueService: QueueService,
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(UserService.name);
@@ -728,5 +732,37 @@ export class UserService {
             name,
         );
         return ghillie.id;
+    }
+
+    async deactivateUser(ctx: RequestContext, id: string) {
+        this.logger.log(ctx, `${this.deactivateUser.name} was called`);
+
+        // Deactivate the user so they cant perform more actions, while the purge is happening
+        const user = await this.prisma.user.update({
+            where: { id },
+            data: {
+                activated: false,
+            },
+        });
+
+        try {
+            await this.queueService.publicAccountPurge(ctx, {
+                requestId: ctx.requestID,
+                userId: id,
+                email: user.email,
+                startTime: new Date(),
+            });
+        } catch (err) {
+            this.logger.log(ctx, `Error adding purge message to queue: ${err}`);
+
+            await this.pg.none(
+                'UPDATE "user" SET activated = true WHERE id = $1',
+                id,
+            );
+
+            throw new InternalServerErrorException(
+                'An error occurred while trying to deactivate your account. Please try again later.',
+            );
+        }
     }
 }

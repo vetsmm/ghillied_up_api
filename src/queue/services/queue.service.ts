@@ -8,6 +8,7 @@ import { ActivityMessageDto } from '../../shared/queue/activity-message.dto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DevicePushToken, PushNotificationSettings } from '@prisma/client';
+import { UserPurgeDto } from '../../user/dtos/user-purge.dto';
 
 @Injectable()
 export class QueueService {
@@ -22,20 +23,15 @@ export class QueueService {
 
     public async publicAccountPurge(
         ctx: RequestContext,
-        userId: string,
+        purgeMessage: UserPurgeDto,
     ): Promise<snsTypes.PublishResponse> {
         this.logger.log(ctx, `${this.publicAccountPurge.name} was called`);
-
-        const message = {
-            requestId: ctx.requestID,
-            userId: userId,
-        };
 
         const snsResponse: snsTypes.PublishResponse =
             await this.snsService.publish({
                 MessageGroupId: `${uuidv4()}`,
-                MessageDeduplicationId: `user-${userId}`,
-                Message: JSON.stringify(message),
+                MessageDeduplicationId: `user-${purgeMessage.userId}`,
+                Message: JSON.stringify(purgeMessage),
                 TopicArn: this.configService.get<string>(
                     'aws.sns.accountPurgeArn',
                 ),

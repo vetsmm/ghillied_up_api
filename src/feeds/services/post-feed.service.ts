@@ -205,6 +205,7 @@ export class PostFeedService {
             const ghillie = ghillies.find((g) => g.id === item.ghillieId);
             item.ghillieName = ghillie?.name;
             item.ghillieImageUrl = ghillie?.imageUrl || null;
+            item.ghillieStatus = ghillie?.status;
 
             // Hydrate in the user
             const postedBy = users.find((u: any) => u.id === item.postedById);
@@ -214,6 +215,11 @@ export class PostFeedService {
             item.ownerSlug = postedBy?.slug;
         });
 
-        return plainToInstance(PostFeedDto, feedItems);
+        // Filter out any items that have a ghillie that is not active
+        const items = feedItems.filter(
+            (item) => item.ghillieStatus === GhillieStatus.ACTIVE,
+        );
+
+        return plainToInstance(PostFeedDto, items);
     }
 }

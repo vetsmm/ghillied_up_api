@@ -146,7 +146,7 @@ model FlagGhillie {
   id              String       @id @default(cuid())
   createdDate     DateTime     @default(now()) @map("created_date")
   details         String?
-  ghillie         Ghillie      @relation(fields: [ghillieId], references: [id])
+  ghillie         Ghillie      @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
   ghillieId       String       @map("ghillie_id")
   category        FlagCategory @default(OTHER)
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)

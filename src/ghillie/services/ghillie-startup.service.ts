@@ -35,8 +35,7 @@ export class GhillieStartupService implements OnApplicationBootstrap {
     }
 
     private async loadInitialGhillies() {
-        this.logger.log(null, 'Loading initial ghillies');
-
+        let ghillieCreated = false;
         // loop over the ServiceBranch enum
         for (const defaultGhillie of DEFAULT_GHILLIES) {
             const ghillie = await this.pg.oneOrNone(
@@ -46,7 +45,12 @@ export class GhillieStartupService implements OnApplicationBootstrap {
             if (!ghillie) {
                 // if not, create it
                 await this.createGhillie(defaultGhillie);
+                ghillieCreated = true;
             }
+        }
+
+        if (ghillieCreated) {
+            this.logger.log(null, 'Created default ghillies');
         }
     }
 

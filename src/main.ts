@@ -28,6 +28,8 @@ async function bootstrap() {
     app.use(RequestIdMiddleware);
     app.enableCors();
 
+    const appConfig = app.get(ConfigService);
+
     if (environment.production) {
         const config = new DocumentBuilder()
             .setTitle('Ghillied Up')
@@ -39,7 +41,6 @@ async function bootstrap() {
         const document = SwaggerModule.createDocument(app, config);
         SwaggerModule.setup('swagger-ui', app, document);
 
-        const appConfig = app.get(ConfigService);
         const client = new PrismaClient();
         Sentry.init({
             dsn: appConfig.get('sentryDsn'),
@@ -66,7 +67,7 @@ async function bootstrap() {
     );
     const port = process.env.PORT || 3333;
     await app.listen(port);
-    Logger.log(`🚀 Application is running on: http://${ip.address()}:${port}`);
+    Logger.log(`🚀 Application - ENV:${appConfig.get('appEnv')} -  is running on: http://${ip.address()}:${port}`);
 }
 
 bootstrap();

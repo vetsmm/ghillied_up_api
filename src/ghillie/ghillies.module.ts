@@ -9,6 +9,7 @@ import { FlagGhillieService } from '../flags/services/flag-ghillie.service';
 import { FlagGhillieController } from '../flags/controllers/flag-ghillie.controller';
 import { GhillieAssetsService } from '../files/services/ghillie-assets.service';
 import { GhillieStartupService } from './services/ghillie-startup.service';
+import { QueueService } from '../queue/services/queue.service';
 
 @Module({
     providers: [
@@ -20,6 +21,7 @@ import { GhillieStartupService } from './services/ghillie-startup.service';
         AppLogger,
         GhillieAssetsService,
         GhillieStartupService,
+        QueueService,
     ],
     controllers: [GhillieController, FlagGhillieController],
     exports: [GhillieService, FlagGhillieService],

@@ -8,6 +8,7 @@ import { IDatabase } from 'pg-promise';
 import { FlatActivity } from 'getstream';
 import { PostFeedDto } from '../dtos/post-feed.dto';
 import { plainToInstance } from 'class-transformer';
+import { GhillieStatus } from '@prisma/client';
 
 @Injectable()
 export class PostFeedService {
@@ -118,6 +119,18 @@ export class PostFeedService {
         perPage = 25,
     ) {
         this.logger.log(ctx, `${this.getGhilliePostFeed.name} was called`);
+
+        const ghillie = await this.prisma.ghillie.findUnique({
+            where: { id: ghillieId },
+        });
+
+        if (!ghillie) {
+            throw new Error('Ghillie not found');
+        }
+
+        if (ghillie.status !== GhillieStatus.ACTIVE) {
+            throw new Error('Ghillie is not active');
+        }
 
         try {
             const activities = await this.streamService.getGhillieFeed(

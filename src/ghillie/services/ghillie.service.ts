@@ -35,6 +35,7 @@ import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
 import { GhillieAssetsService } from '../../files/services/ghillie-assets.service';
 import { AssetTypes } from '../../files/dtos/asset.types';
+import { QueueService } from '../../queue/services/queue.service';
 
 @Injectable()
 export class GhillieService {
@@ -44,6 +45,7 @@ export class GhillieService {
         private readonly ghillieAclService: GhillieAclService,
         private readonly streamService: GetStreamService,
         private readonly ghillieAssetsService: GhillieAssetsService,
+        private readonly queueService: QueueService,
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(GhillieService.name);
@@ -191,7 +193,7 @@ export class GhillieService {
 
         const ghillie = await this.prisma.ghillie.findFirst({
             where: {
-                AND: [{ id: id }, { status: GhillieStatus.ACTIVE }],
+                id: id,
             },
             include: {
                 topics: true,
@@ -442,9 +444,10 @@ export class GhillieService {
             this.logger.warn(ctx, `Error deleting ghillie logo: ${err}`);
         }
 
-        await this.prisma.ghillie.delete({
-            where: {
-                id: id,
+        await this.prisma.ghillie.update({
+            where: { id: id },
+            data: {
+                status: GhillieStatus.ARCHIVED,
             },
         });
     }
@@ -509,11 +512,6 @@ export class GhillieService {
 
         if (!ghillie) {
             throw new NotFoundException('Ghillie not found');
-        }
-        if (ghillie.status !== GhillieStatus.ACTIVE) {
-            throw new BadRequestException(
-                'Ghillie is not join-able at this time',
-            );
         }
 
         const ghillieMember = await this.prisma.ghillieMembers.findFirst({

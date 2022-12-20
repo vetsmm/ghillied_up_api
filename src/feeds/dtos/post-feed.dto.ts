@@ -1,4 +1,5 @@
 import {
+    GhillieStatus,
     PostStatus,
     ReactionType,
     ServiceBranch,
@@ -49,6 +50,8 @@ export class PostFeedDto {
     currentUserReactionType: ReactionType | null;
     @Expose()
     ghillieName: string;
+    @Expose()
+    ghillieStatus: GhillieStatus;
     @Expose()
     ghillieImageUrl: string | null;
     @Expose()

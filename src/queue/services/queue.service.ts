@@ -20,6 +20,36 @@ export class QueueService {
         this.logger.setContext(QueueService.name);
     }
 
+    public async publicAccountPurge(
+        ctx: RequestContext,
+        userId: string,
+    ): Promise<snsTypes.PublishResponse> {
+        this.logger.log(ctx, `${this.publicAccountPurge.name} was called`);
+
+        const message = {
+            requestId: ctx.requestID,
+            userId: userId,
+        };
+
+        const snsResponse: snsTypes.PublishResponse =
+            await this.snsService.publish({
+                MessageGroupId: `${uuidv4()}`,
+                MessageDeduplicationId: `user-${userId}`,
+                Message: JSON.stringify(message),
+                TopicArn: this.configService.get<string>(
+                    'aws.sns.accountPurgeArn',
+                ),
+            });
+
+        this.logger.log(
+            ctx,
+            `${this.publicAccountPurge.name} snsResponse: ${JSON.stringify(
+                snsResponse,
+            )}`,
+        );
+        return snsResponse;
+    }
+
     public async publishActivity<T>(
         ctx: RequestContext,
         activityType: ActivityType,

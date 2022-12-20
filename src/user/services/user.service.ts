@@ -668,6 +668,7 @@ export class UserService {
         }
 
         const ghillieId = await this.getGhillieIdByName(branchGhillieName);
+        console.log('ghillieId', ghillieId);
 
         await this.prisma.ghillieMembers.create({
             data: {
@@ -722,9 +723,10 @@ export class UserService {
     private async getGhillieIdByName(
         name: string,
     ): Promise<string | undefined> {
-        return await this.pg.oneOrNone<string>(
+        const ghillie = await this.pg.oneOrNone(
             'SELECT id FROM ghillie WHERE name = $1',
             name,
         );
+        return ghillie.id;
     }
 }

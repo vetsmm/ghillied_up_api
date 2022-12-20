@@ -191,7 +191,7 @@ export class GhillieService {
 
         const ghillie = await this.prisma.ghillie.findFirst({
             where: {
-                AND: [{ id: id }, { status: GhillieStatus.ACTIVE }],
+                id: id,
             },
             include: {
                 topics: true,
@@ -442,9 +442,10 @@ export class GhillieService {
             this.logger.warn(ctx, `Error deleting ghillie logo: ${err}`);
         }
 
-        await this.prisma.ghillie.delete({
-            where: {
-                id: id,
+        await this.prisma.ghillie.update({
+            where: { id: id },
+            data: {
+                status: GhillieStatus.ARCHIVED,
             },
         });
     }
@@ -509,11 +510,6 @@ export class GhillieService {
 
         if (!ghillie) {
             throw new NotFoundException('Ghillie not found');
-        }
-        if (ghillie.status !== GhillieStatus.ACTIVE) {
-            throw new BadRequestException(
-                'Ghillie is not join-able at this time',
-            );
         }
 
         const ghillieMember = await this.prisma.ghillieMembers.findFirst({

@@ -17,7 +17,7 @@ import { PostAclService } from './post-acl.service';
 import { CreatePostInputDto } from '../dtos/create-post-input.dto';
 import { PostDetailDto } from '../dtos/post-detail.dto';
 import {
-    GhillieRole,
+    GhillieRole, GhillieStatus,
     MemberStatus,
     Post,
     PostStatus,
@@ -69,6 +69,11 @@ export class PostService {
 
         if (!ghillieUser) {
             throw new Error('You are not a member of this Ghillie');
+        }
+
+        // Check if ghillie is active
+        if (ghillieUser.ghillie.status !== GhillieStatus.ACTIVE) {
+            throw new Error('Ghillie is not active');
         }
 
         // Check if the ghillie is readOnly, if it is make sure the user is an admin

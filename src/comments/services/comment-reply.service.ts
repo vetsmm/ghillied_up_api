@@ -9,7 +9,7 @@ import {
 import { CreateCommentReplyDto } from '../dtos/create-comment-reply.dto';
 import { ReactionAPIResponse } from 'getstream';
 import {
-    CommentStatus,
+    CommentStatus, GhillieStatus,
     MemberStatus,
     NotificationType,
     PostComment,
@@ -74,6 +74,7 @@ export class CommentReplyService {
         const ghillieMember = await this.pg.oneOrNone(
             `SELECT *
              FROM ghillie_members
+             JOIN ghillie g on g.id = ghillie_members.ghillie_id
              WHERE user_id = $1
                AND member_status = $2
                AND ghillie_id = (SELECT ghillie_id
@@ -85,6 +86,12 @@ export class CommentReplyService {
         if (!ghillieMember) {
             throw new Error(
                 'User is not a member of the ghillie and cannot comment on this post',
+            );
+        }
+
+        if (ghillieMember.ghillie.status !== GhillieStatus.ACTIVE) {
+            throw new Error(
+                'Ghillie is not active and cannot comment on this post',
             );
         }
 

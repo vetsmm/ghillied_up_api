@@ -22,6 +22,7 @@ import { IDatabase } from 'pg-promise';
 import { CommentAclService } from './comment-acl.service';
 import {
     CommentStatus,
+    GhillieStatus,
     MemberStatus,
     NotificationType,
     Post,
@@ -80,11 +81,21 @@ export class ParentCommentService {
                 userId: ctx.user.id,
                 memberStatus: MemberStatus.ACTIVE,
             },
+            include: {
+                ghillie: true,
+            },
         });
 
         if (!ghillieMember) {
             throw new Error(
                 'User is not a member of the ghillie and cannot comment on this post',
+            );
+        }
+
+        // CHeck if ghillie is active
+        if (ghillieMember.ghillie.status !== GhillieStatus.ACTIVE) {
+            throw new Error(
+                'Ghillie is not active and cannot comment on this post',
             );
         }
 

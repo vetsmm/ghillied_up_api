@@ -72,7 +72,7 @@ export class CommentReplyService {
         }
 
         const ghillieMember = await this.pg.oneOrNone(
-            `SELECT *
+            `SELECT *, g.status as "ghillieStatus"
              FROM ghillie_members
              JOIN ghillie g on g.id = ghillie_members.ghillie_id
              WHERE user_id = $1
@@ -89,7 +89,7 @@ export class CommentReplyService {
             );
         }
 
-        if (ghillieMember.ghillie.status !== GhillieStatus.ACTIVE) {
+        if (ghillieMember.ghillieStatus !== GhillieStatus.ACTIVE) {
             throw new Error(
                 'Ghillie is not active and cannot comment on this post',
             );

@@ -31,8 +31,8 @@ export class LoggingInterceptor implements NestInterceptor {
 
                 const resData = { method, statusCode, responseTime };
 
-                // If the request is coming from /health, we don't want to log it
-                if (request.url !== '/health') {
+                // If the request is coming from /, we don't want to log it
+                if (request.url !== '/') {
                     this.appLogger.log(ctx, 'Request completed', { resData });
                 }
             }),

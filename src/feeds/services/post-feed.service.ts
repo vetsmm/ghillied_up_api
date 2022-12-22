@@ -8,7 +8,7 @@ import { IDatabase } from 'pg-promise';
 import { FlatActivity } from 'getstream';
 import { PostFeedDto } from '../dtos/post-feed.dto';
 import { plainToInstance } from 'class-transformer';
-import { GhillieStatus } from '@prisma/client';
+import { GhillieStatus, UserStatus } from '@prisma/client';
 
 @Injectable()
 export class PostFeedService {
@@ -182,23 +182,30 @@ export class PostFeedService {
             [activities.map((a: any) => a.data?.postedById)],
         );
 
-        const feedItems: PostFeedDto[] = activities.map((a: any) => {
-            const currentUserReaction =
-                a.own_reactions.POST_REACTION?.find(
-                    (r) => r.user_id === ctx.user.id,
-                ) || null;
-            const totalReactions = a.reaction_counts.POST_REACTION || 0;
-            const totalComments = a.reaction_counts.POST_COMMENT || 0;
-            return {
-                ...a.data,
-                currentUserReactionId:
-                    currentUserReaction?.data?.reactionId || null,
-                currentUserReactionType:
-                    currentUserReaction?.data?.reactionType || null,
-                postCommentsCount: totalComments,
-                postReactionsCount: totalReactions,
-            } as PostFeedDto;
-        });
+        const feedItems: PostFeedDto[] = activities
+            .filter(
+                (a: any) =>
+                    users.find((u: any) => u.id === a.actor) &&
+                    users.find((u: any) => u.id === a.actor).status ===
+                        UserStatus.ACTIVE,
+            )
+            .map((a: any) => {
+                const currentUserReaction =
+                    a.own_reactions.POST_REACTION?.find(
+                        (r) => r.user_id === ctx.user.id,
+                    ) || null;
+                const totalReactions = a.reaction_counts.POST_REACTION || 0;
+                const totalComments = a.reaction_counts.POST_COMMENT || 0;
+                return {
+                    ...a.data,
+                    currentUserReactionId:
+                        currentUserReaction?.data?.reactionId || null,
+                    currentUserReactionType:
+                        currentUserReaction?.data?.reactionType || null,
+                    postCommentsCount: totalComments,
+                    postReactionsCount: totalReactions,
+                } as PostFeedDto;
+            });
 
         feedItems.forEach((item: PostFeedDto) => {
             // Hydrate in the ghillie

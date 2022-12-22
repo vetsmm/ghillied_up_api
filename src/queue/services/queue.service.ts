@@ -21,25 +21,27 @@ export class QueueService {
         this.logger.setContext(QueueService.name);
     }
 
-    public async publicAccountPurge(
+    public async publishAccountPurge(
         ctx: RequestContext,
         purgeMessage: UserPurgeDto,
     ): Promise<snsTypes.PublishResponse> {
-        this.logger.log(ctx, `${this.publicAccountPurge.name} was called`);
+        this.logger.log(ctx, `${this.publishAccountPurge.name} was called`);
+        const purgeArn = this.configService.get<string>(
+            'aws.sns.accountPurgeArn',
+        );
+        const message = JSON.stringify(purgeMessage);
 
         const snsResponse: snsTypes.PublishResponse =
             await this.snsService.publish({
-                MessageGroupId: `${uuidv4()}`,
-                MessageDeduplicationId: `user-${purgeMessage.userId}`,
-                Message: JSON.stringify(purgeMessage),
-                TopicArn: this.configService.get<string>(
-                    'aws.sns.accountPurgeArn',
-                ),
+                MessageGroupId: `account-purge-${uuidv4()}`,
+                MessageDeduplicationId: `${uuidv4()}`,
+                Message: message,
+                TopicArn: purgeArn,
             });
 
         this.logger.log(
             ctx,
-            `${this.publicAccountPurge.name} snsResponse: ${JSON.stringify(
+            `${this.publishAccountPurge.name} snsResponse: ${JSON.stringify(
                 snsResponse,
             )}`,
         );

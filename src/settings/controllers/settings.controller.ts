@@ -28,6 +28,7 @@ import { DeviceTokenInputDto } from '../dtos/device-token-input.dto';
 import { SettingsService } from '../services/settings.service';
 import { UserPushNotificationSettingsDto } from '../dtos/settings/user-push-notification-settings.dto';
 import { UserPushNotificationsInputDto } from '../dtos/settings/user-push-notifications-input.dto';
+import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
 
 @ApiTags('User Settings')
 @Controller('settings')
@@ -39,7 +40,7 @@ export class SettingsController {
     this.logger.setContext(SettingsController.name);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, ActiveUserGuard)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   @Post('device-token')
@@ -67,7 +68,7 @@ export class SettingsController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, ActiveUserGuard)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   @Get('push-notifications')
@@ -96,7 +97,7 @@ export class SettingsController {
   }
 
   // Update settings for current user
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, ActiveUserGuard)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   @Put('push-notifications')

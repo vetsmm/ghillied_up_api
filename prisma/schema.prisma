@@ -234,6 +234,7 @@ model User {
   authorities              UserAuthority[]           @default([ROLE_USER]) @map("authorities")
   createdDate              DateTime                  @default(now()) @map("created_date")
   updatedDate              DateTime                  @updatedAt @map("updated_date")
+  status                   UserStatus                @default(ACTIVE)
   joinedGhilliess          GhillieMembers[]
   commentReactions         CommentReaction[]
   flagComments             FlagComment[]
@@ -439,4 +440,11 @@ enum NotificationType {
   POST
   POST_REACTION
   POST_COMMENT_REACTION
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
 }

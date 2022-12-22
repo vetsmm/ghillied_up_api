@@ -33,6 +33,7 @@ import { Authorities } from '../../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
 import { ParentCommentService } from '../services/parent-comment.service';
 import { ParentCommentDto } from '../dtos/parent-comment.dto';
+import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
 
 @ApiTags('Parent Comments')
 @Controller('parent-comments')
@@ -44,7 +45,7 @@ export class ParentCommentController {
         this.logger.setContext(ParentCommentController.name);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post()
@@ -68,7 +69,7 @@ export class ParentCommentController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get(':id')
@@ -89,7 +90,7 @@ export class ParentCommentController {
         return await this.parentCommentService.getParentCommentById(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Patch(':id')
@@ -115,7 +116,7 @@ export class ParentCommentController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Delete(':id')
@@ -139,7 +140,7 @@ export class ParentCommentController {
     }
 
     // get all post comments
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('feed/:postId')

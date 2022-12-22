@@ -42,6 +42,7 @@ import { PostDetailDto } from '../dtos/post-detail.dto';
 import { UpdatePostInputDto } from '../dtos/update-post-input.dto';
 import { PostListingDto } from '../dtos/post-listing.dto';
 import { PostBookmarkService } from '../services/post-bookmark.service';
+import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
 
 @ApiTags('posts')
 @Controller('posts')
@@ -55,7 +56,7 @@ export class PostController {
     }
 
     // create post
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post()
@@ -85,7 +86,7 @@ export class PostController {
     }
 
     // update post
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Patch(':id')
@@ -114,7 +115,7 @@ export class PostController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get(':id')
@@ -143,7 +144,7 @@ export class PostController {
     }
 
     // get all posts
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('for-ghillie/:ghillieId')
@@ -189,7 +190,7 @@ export class PostController {
     }
 
     // get all posts
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('my/all')
@@ -226,7 +227,7 @@ export class PostController {
     }
 
     // get all posts
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post('all')
@@ -258,7 +259,7 @@ export class PostController {
     }
 
     // delete post only by an admin
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Delete(':id')
@@ -281,7 +282,7 @@ export class PostController {
         await this.postService.hardDeletePost(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/bookmark')
@@ -304,7 +305,7 @@ export class PostController {
         await this.bookmarkService.bookmarkPost(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/unbookmark')

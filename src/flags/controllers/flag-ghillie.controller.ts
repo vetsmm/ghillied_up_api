@@ -27,6 +27,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AuthoritiesGuard } from '../../auth/guards/authorities.guard';
 import { Authorities } from '../../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
+import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
 
 @ApiTags('Flag Ghillie')
 @Controller('flags/ghillie')
@@ -38,7 +39,7 @@ export class FlagGhillieController {
     this.logger.setContext(FlagGhillieController.name);
   }
 
-  @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+  @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   @Post()

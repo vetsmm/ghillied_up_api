@@ -2,7 +2,7 @@ import {
     Body,
     ClassSerializerInterceptor,
     Controller, Delete,
-    Get,
+    Get, HttpCode,
     HttpStatus,
     Param,
     Patch, Post,
@@ -34,6 +34,7 @@ import {
     ReqContext,
 } from '../../shared';
 import { UserAuthority } from '@prisma/client';
+import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
 
 @ApiTags('users')
 @Controller('users')
@@ -45,7 +46,7 @@ export class UserController {
         this.logger.setContext(UserController.name);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('me')
@@ -82,7 +83,7 @@ export class UserController {
         status: HttpStatus.UNAUTHORIZED,
         type: BaseApiErrorResponse,
     })
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_ADMIN)
     async getUsers(
         @ReqContext() ctx: RequestContext,
@@ -99,6 +100,7 @@ export class UserController {
         return { data: users, meta: { count } };
     }
 
+    @UseGuards(JwtAuthGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_ADMIN)
     @UseInterceptors(ClassSerializerInterceptor)
     @Get(':id')
@@ -123,7 +125,7 @@ export class UserController {
         return { data: user, meta: {} };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Patch('self')
     @ApiOperation({
@@ -149,23 +151,20 @@ export class UserController {
         return { data: user, meta: {} };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
     @Post('deactivate')
     @ApiOperation({
         summary: 'initiates an account purge',
     })
     @ApiResponse({
-        status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(UserOutput),
-    })
-    @ApiResponse({
         status: HttpStatus.NOT_FOUND,
         type: BaseApiErrorResponse,
     })
-    @UseInterceptors(ClassSerializerInterceptor)
+    @HttpCode(HttpStatus.OK)
     @Authorities(UserAuthority.ROLE_USER)
-    async deactivateUserSelf(ctx: RequestContext): Promise<void> {
+    async deactivateUserSelf(@ReqContext() ctx: RequestContext): Promise<void> {
         this.logger.log(
             ctx,
             `An account purge was initiated for USER=${ctx.user.id}`,

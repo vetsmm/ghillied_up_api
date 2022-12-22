@@ -27,6 +27,7 @@ import { AuthoritiesGuard } from '../../auth/guards/authorities.guard';
 import { Authorities } from '../../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
 import { FlagPostService } from '../services/flag-post.service';
+import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
 
 @ApiTags('Flag Post')
 @Controller('flags/post')
@@ -38,7 +39,7 @@ export class FlagPostController {
     this.logger.setContext(FlagPostController.name);
   }
 
-  @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+  @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   @Post()

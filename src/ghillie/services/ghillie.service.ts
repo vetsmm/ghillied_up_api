@@ -538,6 +538,7 @@ export class GhillieService {
             );
         }
 
+        // Delete the user from all ghillies
         await this.prisma.ghillieMembers.delete({
             where: {
                 userId_ghillieId: {

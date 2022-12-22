@@ -34,9 +34,10 @@ export class MailService {
                 },
             })
             .then(() => {
-                this.logger.debug(
+                const emailMask = email.replace(/^(.{3}).*@(.*)$/, '$1...@$2');
+                this.logger.log(
                     ctx,
-                    `Successfully sent activation email to ${username}`,
+                    `Successfully sent activation email to ${emailMask}`,
                 );
             })
             .catch((err) => {

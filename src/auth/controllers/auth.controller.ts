@@ -180,6 +180,7 @@ export class AuthController {
     })
     @HttpCode(HttpStatus.OK)
     @UseGuards(JwtRefreshGuard)
+    @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     async refreshToken(
         @ReqContext() ctx: RequestContext,

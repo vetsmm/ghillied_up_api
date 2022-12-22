@@ -37,6 +37,6 @@ export class LocalStrategy extends PassportStrategy(Strategy, STRATEGY_LOCAL) {
 
         // Passport automatically creates a users object, based on the value we return from the validate() method,
         // and assigns it to the Request object as req.users
-        return await this.authService.validateUser(ctx, username, password);
+        return await this.authService.authenticateUser(ctx, username, password);
     }
 }

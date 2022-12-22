@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { UserAuthority } from '@prisma/client';
+import { UserAuthority, UserStatus } from '@prisma/client';
 import { Expose } from 'class-transformer';
 import { BaseUserOutputDto } from '../base-user-output.dto';
 
@@ -31,6 +31,10 @@ export class UserOutput extends BaseUserOutputDto {
     @Expose()
     @ApiProperty()
     activated: boolean;
+
+    @Expose()
+    @ApiProperty()
+    status: UserStatus;
 
     @Expose()
     @ApiProperty()

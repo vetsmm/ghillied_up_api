@@ -135,7 +135,7 @@ describe('AuthService', () => {
                 'validateUsernamePassword',
             ).mockImplementation(() => userOutput);
 
-            expect(await service.validateUser(ctx, 'jhon', 'somepass')).toEqual(
+            expect(await service.authenticateUser(ctx, 'jhon', 'somepass')).toEqual(
                 userOutput,
             );
             expect(mockedUserService.validateUsernamePassword).toBeCalledWith(
@@ -154,7 +154,7 @@ describe('AuthService', () => {
             });
 
             await expect(
-                service.validateUser(ctx, 'jhon', 'somepass'),
+                service.authenticateUser(ctx, 'jhon', 'somepass'),
             ).rejects.toThrowError(UnauthorizedException);
         });
 
@@ -165,7 +165,7 @@ describe('AuthService', () => {
             ).mockImplementation(() => ({ ...userOutput, activated: false }));
 
             await expect(
-                service.validateUser(ctx, 'jhon', 'somepass'),
+                service.authenticateUser(ctx, 'jhon', 'somepass'),
             ).rejects.toThrowError(UnauthorizedException);
         });
     });

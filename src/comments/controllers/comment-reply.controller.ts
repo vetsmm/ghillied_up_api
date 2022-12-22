@@ -33,6 +33,7 @@ import { ParentCommentDto } from '../dtos/parent-comment.dto';
 import { CommentReplyService } from '../services/comment-reply.service';
 import { ChildCommentDto } from '../dtos/child-comment.dto';
 import { CreateCommentReplyDto } from '../dtos/create-comment-reply.dto';
+import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
 
 @ApiTags('Comment Replies')
 @Controller('comment-replies')
@@ -44,7 +45,7 @@ export class CommentReplyController {
         this.logger.setContext(CommentReplyController.name);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post(':parentCommentId')
@@ -70,7 +71,7 @@ export class CommentReplyController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Patch(':id')
@@ -96,7 +97,7 @@ export class CommentReplyController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Delete(':id')
@@ -119,7 +120,7 @@ export class CommentReplyController {
         await this.commentReplyService.deletePostComment(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('feed/:parentCommentId')

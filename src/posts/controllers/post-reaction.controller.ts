@@ -31,6 +31,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AuthoritiesGuard } from '../../auth/guards/authorities.guard';
 import { Authorities } from '../../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
+import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
 
 @ApiTags('post-reactions')
 @Controller('post-reactions')
@@ -42,7 +43,7 @@ export class PostReactionController {
     this.logger.setContext(PostReactionController.name);
   }
 
-  @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+  @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   @Post()
@@ -66,7 +67,7 @@ export class PostReactionController {
     await this.postReactionService.reactToPost(ctx, postReactionDto);
   }
 
-  @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+  @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   @Get(':postId/reactions')

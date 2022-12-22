@@ -31,6 +31,7 @@ import { AuthoritiesGuard } from '../../auth/guards/authorities.guard';
 import { Authorities } from '../../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
 import { CommentReactionService } from '../services/comment-reaction.service';
+import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
 
 @ApiTags('comment-reactions')
 @Controller('comment-reactions')
@@ -42,7 +43,7 @@ export class CommentReactionController {
         this.logger.setContext(CommentReactionController.name);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post('/parent')
@@ -69,7 +70,7 @@ export class CommentReactionController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post('/child')
@@ -96,7 +97,7 @@ export class CommentReactionController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get(':commentId/reactions')

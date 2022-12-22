@@ -20,7 +20,7 @@ import {
     RequestContext,
     UserAccessTokenClaims,
 } from '../../shared';
-import { UserAuthority } from '@prisma/client';
+import { UserAuthority, UserStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -34,12 +34,12 @@ export class AuthService {
         this.logger.setContext(AuthService.name);
     }
 
-    async validateUser(
+    async authenticateUser(
         ctx: RequestContext,
         username: string,
         pass: string,
     ): Promise<UserAccessTokenClaims> {
-        this.logger.log(ctx, `${this.validateUser.name} was called`);
+        this.logger.log(ctx, `${this.authenticateUser.name} was called`);
 
         // The userService will throw Unauthorized in case of invalid username/password.
         const user = await this.userService.validateUsernamePassword(
@@ -48,6 +48,16 @@ export class AuthService {
             pass,
         );
 
+        await this.validateUser(ctx, user.username);
+
+        return user;
+    }
+
+    async validateUser(ctx: RequestContext, username: string): Promise<void> {
+        this.logger.log(ctx, `${this.validateUser.name} was called`);
+
+        const user = await this.userService.findByUsername(ctx, username);
+
         // Prevent disabled users from logging in.
         if (!user.activated) {
             throw new UnauthorizedException(
@@ -55,7 +65,20 @@ export class AuthService {
             );
         }
 
-        return user;
+        switch (user.status) {
+            case UserStatus.BANNED:
+                throw new UnauthorizedException(
+                    'This users account has been banned',
+                );
+            case UserStatus.DELETED:
+                throw new UnauthorizedException(
+                    'This users account has been deleted',
+                );
+            case UserStatus.SUSPENDED:
+                throw new UnauthorizedException(
+                    'This users account has been suspended',
+                );
+        }
     }
 
     async login(ctx: RequestContext): Promise<AuthTokenOutput> {

@@ -25,7 +25,13 @@ import slugify from 'slugify';
 import { plainToInstance } from 'class-transformer';
 import { UserOutputAnonymousDto } from '../dtos/anonymous/user-output-anonymous.dto';
 import { ConfigService } from '@nestjs/config';
-import { GhillieRole, MemberStatus, ServiceStatus, User } from '@prisma/client';
+import {
+    GhillieRole,
+    MemberStatus,
+    ServiceStatus,
+    User,
+    UserStatus,
+} from '@prisma/client';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { StreamUserDto } from '../dtos/stream-user.dto';
 import { SocialInterface } from '../../auth/interfaces/social.interface';
@@ -737,28 +743,26 @@ export class UserService {
     async deactivateUser(ctx: RequestContext, id: string) {
         this.logger.log(ctx, `${this.deactivateUser.name} was called`);
 
-        // Deactivate the user so they cant perform more actions, while the purge is happening
-        const user = await this.prisma.user.update({
-            where: { id },
-            data: {
-                activated: false,
-            },
-        });
+        const user: User = await this.pg.one(
+            'UPDATE "user" SET status = $1 WHERE id = $2 RETURNING *',
+            [UserStatus.DELETED, id],
+        );
 
         try {
-            await this.queueService.publicAccountPurge(ctx, {
+            await this.queueService.publishAccountPurge(ctx, {
                 requestId: ctx.requestID,
                 userId: id,
+                username: user.username,
                 email: user.email,
                 startTime: new Date(),
             });
         } catch (err) {
             this.logger.log(ctx, `Error adding purge message to queue: ${err}`);
 
-            await this.pg.none(
-                'UPDATE "user" SET activated = true WHERE id = $1',
+            await this.pg.none('UPDATE "user" SET status = $1 WHERE id = $2', [
+                UserStatus.ACTIVE,
                 id,
-            );
+            ]);
 
             throw new InternalServerErrorException(
                 'An error occurred while trying to deactivate your account. Please try again later.',

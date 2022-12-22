@@ -31,6 +31,7 @@ import { UserAuthority } from '@prisma/client';
 import { PostFeedDto } from '../dtos/post-feed.dto';
 import { BookmarkPostFeedDto } from '../dtos/bookmark-post-feed.dto';
 import { BookmarkPostFeedService } from '../services/bookmark-post-feed.service';
+import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
 
 @ApiTags('feeds')
 @Controller('feeds')
@@ -43,7 +44,7 @@ export class FeedController {
         this.logger.setContext(FeedController.name);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('user')
@@ -72,7 +73,7 @@ export class FeedController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('user/personal')
@@ -106,7 +107,7 @@ export class FeedController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('user/bookmarks')
@@ -140,7 +141,7 @@ export class FeedController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('hashtag/:tagName')
@@ -171,7 +172,7 @@ export class FeedController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('ghillie/:ghillieId')

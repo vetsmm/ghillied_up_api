@@ -32,6 +32,7 @@ import { NotificationService } from '../services/notification.service';
 import { ReadNotificationsInputDto } from '../dtos/read-notifications-input.dto';
 import { UnreadNotificationsDto } from '../dtos/unread-notifications.dto';
 import { NotificationDto } from '../dtos/notification.dto';
+import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
 
 @ApiTags('notifications')
 @Controller('notifications')
@@ -43,7 +44,7 @@ export class NotificationController {
         this.logger.setContext(NotificationController.name);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get()
@@ -77,7 +78,7 @@ export class NotificationController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post('mark-as-read')
@@ -102,7 +103,7 @@ export class NotificationController {
         await this.notificationService.markNotificationsAsRead(ctx, body);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post('mark-all-as-read')
@@ -129,7 +130,7 @@ export class NotificationController {
         await this.notificationService.markAllNotificationsAsRead(ctx);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard)
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('unread-count')

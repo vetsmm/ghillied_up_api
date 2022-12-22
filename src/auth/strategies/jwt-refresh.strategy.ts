@@ -5,13 +5,18 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import { STRATEGY_JWT_REFRESH } from '../constants/strategy.constant';
 import { UserRefreshTokenClaims } from '../../shared';
+import { AuthService } from '../services/auth.service';
+import { Request } from 'express';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(
     Strategy,
     STRATEGY_JWT_REFRESH,
 ) {
-    constructor(private readonly configService: ConfigService) {
+    constructor(
+        private readonly configService: ConfigService,
+        private authService: AuthService,
+    ) {
         super({
             jwtFromRequest: ExtractJwt.fromBodyField('refreshToken'),
             secretOrKey: configService.get<string>('jwt.publicKey'),
@@ -20,7 +25,11 @@ export class JwtRefreshStrategy extends PassportStrategy(
     }
 
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-    async validate(payload: any): Promise<UserRefreshTokenClaims> {
+    async validate(
+        request: Request,
+        payload: any,
+    ): Promise<UserRefreshTokenClaims> {
+        await this.authService.validateUser(null, payload.username);
         // Passport automatically creates a users object, based on the value we return from the validate() method,
         // and assigns it to the Request object as req.users
         return { id: payload.sub };

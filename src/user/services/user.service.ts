@@ -370,7 +370,9 @@ export class UserService {
                 'auth.activationCodeExpiryInMs',
             )
         ) {
-            throw new ForbiddenException('Activation code is expired');
+            throw new ForbiddenException(
+                'Activation code is expired, please resend.',
+            );
         }
 
         const updatedUser = await this.prisma.user.update({

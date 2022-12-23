@@ -21,6 +21,10 @@ export class MailService {
         email: string,
         activationCode: number,
     ) {
+        const expirationInMs = this.configService.get<number>(
+            'auth.activationCodeExpiryInMs',
+        );
+        const expirationInMinutes = Math.floor(expirationInMs / 1000 / 60);
         await this.mailerService
             .sendMail({
                 to: email,
@@ -31,6 +35,7 @@ export class MailService {
                     // ✏️ filling curly brackets with content
                     username: username,
                     activationCode: activationCode,
+                    expirationInMinutes: expirationInMinutes,
                 },
             })
             .then(() => {

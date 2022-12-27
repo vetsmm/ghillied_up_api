@@ -115,6 +115,7 @@ export class GhillieStartupService implements OnApplicationBootstrap {
                 readOnly: false,
                 publicImageId: publicImage.id,
                 imageUrl: publicImage.url,
+                isInternal: true,
             };
 
             await this.pg.none(

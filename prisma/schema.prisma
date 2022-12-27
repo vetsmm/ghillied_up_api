@@ -24,15 +24,15 @@ model CommentReaction {
 }
 
 model FlagComment {
-  id              String       @id @default(cuid())
-  createdDate     DateTime     @default(now()) @map("created_date")
-  details         String?
-  postComment     PostComment  @relation(fields: [postCommentId], references: [id], onDelete: Cascade)
-  postCommentId   String       @map("post_comment_id")
-  category        FlagCategory @default(OTHER)
-  createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  createdByUserId String       @map("created_by_user_id")
-  activityId      String?      @unique @map("activity_id")
+  id                 String           @id @default(cuid())
+  createdDate        DateTime         @default(now()) @map("created_date")
+  details            String?
+  postComment        PostComment      @relation(fields: [postCommentId], references: [id], onDelete: Cascade)
+  postCommentId      String           @map("post_comment_id")
+  category           FlagCategory     @default(OTHER)
+  createdBy          User             @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUserId    String           @map("created_by_user_id")
+  activityId         String?          @unique @map("activity_id")
   flag_report_status FlagReportStatus @default(NEW) @map("flag_report_status")
 
   @@unique([postCommentId, createdByUserId])
@@ -53,7 +53,7 @@ model PostComment {
   createdById     String            @map("created_by_id")
   post            Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
   postId          String            @map("post_id")
-  commentHeight   Int               @default(0) @map("comment_height")// The height of the comment in the comment tree
+  commentHeight   Int               @default(0) @map("comment_height") // The height of the comment in the comment tree
   childCommentIds String[]          @map("child_comment_ids") // The ids of the child comments. The parent will always be null
   flags           FlagComment[]
   commentReaction CommentReaction[]
@@ -89,15 +89,15 @@ model PostTag {
 }
 
 model FlagPost {
-  id              String       @id @default(cuid())
-  createdDate     DateTime     @default(now()) @map("created_date")
-  details         String?
-  post            Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId          String       @map("post_id")
-  category        FlagCategory @default(OTHER)
-  createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  createdByUserId String       @map("created_by_user_id")
-  activityId      String?      @unique @map("activity_id")
+  id                 String           @id @default(cuid())
+  createdDate        DateTime         @default(now()) @map("created_date")
+  details            String?
+  post               Post             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId             String           @map("post_id")
+  category           FlagCategory     @default(OTHER)
+  createdBy          User             @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUserId    String           @map("created_by_user_id")
+  activityId         String?          @unique @map("activity_id")
   flag_report_status FlagReportStatus @default(NEW) @map("flag_report_status")
 
   @@unique([postId, createdByUserId])
@@ -106,36 +106,36 @@ model FlagPost {
 }
 
 model PostBookmark {
-    id              String       @id @default(cuid())
-    createdDate     DateTime     @default(now()) @map("created_date")
-    post            Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
-    postId          String       @map("post_id")
-    user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-    userId          String       @map("user_id")
-    activityId      String?      @unique @map("activity_id")
+  id          String   @id @default(cuid())
+  createdDate DateTime @default(now()) @map("created_date")
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId      String   @map("post_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String   @map("user_id")
+  activityId  String?  @unique @map("activity_id")
 
-    @@unique([postId, userId])
-    @@map("post_bookmark")
+  @@unique([postId, userId])
+  @@map("post_bookmark")
 }
 
 model Post {
-  id           String         @id @default(cuid())
-  uid          String         @unique
-  title        String
-  content      String
-  status       PostStatus     @default(ACTIVE)
-  ghillie      Ghillie        @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
-  ghillieId    String         @map("ghillie_id")
-  tags         PostTag[]
-  postedBy     User           @relation(fields: [postedById], references: [id], onDelete: Cascade)
-  postedById   String         @map("posted_by_id")
-  postComments PostComment[]
-  flagPosts    FlagPost[]
-  createdDate  DateTime       @default(now()) @map("created_date")
-  updatedDate  DateTime       @updatedAt @map("updated_date")
-  edited       Boolean        @default(false)
-  postReaction PostReaction[]
-  activityId   String?        @unique @map("activity_id")
+  id            String         @id @default(cuid())
+  uid           String         @unique
+  title         String
+  content       String
+  status        PostStatus     @default(ACTIVE)
+  ghillie       Ghillie        @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
+  ghillieId     String         @map("ghillie_id")
+  tags          PostTag[]
+  postedBy      User           @relation(fields: [postedById], references: [id], onDelete: Cascade)
+  postedById    String         @map("posted_by_id")
+  postComments  PostComment[]
+  flagPosts     FlagPost[]
+  createdDate   DateTime       @default(now()) @map("created_date")
+  updatedDate   DateTime       @updatedAt @map("updated_date")
+  edited        Boolean        @default(false)
+  postReaction  PostReaction[]
+  activityId    String?        @unique @map("activity_id")
   postBookmarks PostBookmark[]
 
   @@index([title, status, uid])
@@ -143,15 +143,15 @@ model Post {
 }
 
 model FlagGhillie {
-  id              String       @id @default(cuid())
-  createdDate     DateTime     @default(now()) @map("created_date")
-  details         String?
-  ghillie         Ghillie      @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
-  ghillieId       String       @map("ghillie_id")
-  category        FlagCategory @default(OTHER)
-  createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  createdByUserId String       @map("created_by_user_id")
-  activityId      String?      @unique @map("activity_id")
+  id                 String           @id @default(cuid())
+  createdDate        DateTime         @default(now()) @map("created_date")
+  details            String?
+  ghillie            Ghillie          @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
+  ghillieId          String           @map("ghillie_id")
+  category           FlagCategory     @default(OTHER)
+  createdBy          User             @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUserId    String           @map("created_by_user_id")
+  activityId         String?          @unique @map("activity_id")
   flag_report_status FlagReportStatus @default(NEW) @map("flag_report_status")
 
   @@unique([ghillieId, createdByUserId])
@@ -188,26 +188,55 @@ model Topic {
 }
 
 model Ghillie {
-  id              String           @id @default(cuid())
-  name            String           @unique
-  slug            String           @unique
-  about           String?
-  status          GhillieStatus    @default(ACTIVE)
-  createdDate     DateTime         @default(now()) @map("created_date")
-  updatedDate     DateTime         @updatedAt @map("updated_date")
-  createdBy       User             @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
-  createdByUserId String           @map("created_by_user_id")
-  readOnly        Boolean          @default(false) @map("read_only")
-  imageUrl        String?          @map("image_url")
-  publicImage     PublicFile?      @relation(fields: [publicImageId], references: [id], onDelete: SetNull)
-  publicImageId   String?          @unique @map("public_image_id")
-  members         GhillieMembers[]
-  topics          Topic[]
-  posts           Post[]
-  flagGhillies    FlagGhillie[]
+  id               String            @id @default(cuid())
+  name             String            @unique
+  slug             String            @unique
+  about            String?
+  status           GhillieStatus     @default(ACTIVE)
+  createdDate      DateTime          @default(now()) @map("created_date")
+  updatedDate      DateTime          @updatedAt @map("updated_date")
+  createdBy        User              @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUserId  String            @map("created_by_user_id")
+  readOnly         Boolean           @default(false) @map("read_only")
+  imageUrl         String?           @map("image_url")
+  publicImage      PublicFile?       @relation(fields: [publicImageId], references: [id], onDelete: SetNull)
+  publicImageId    String?           @unique @map("public_image_id")
+  isSponsored      Boolean           @default(false) @map("is_sponsored")
+  isPromoted       Boolean           @default(false) @map("is_promoted")
+  isInternal       Boolean           @default(false) @map("is_internal")
+  isPrivate        Boolean           @default(false) @map("is_private")
+  category         GhillieCategory   @default(CUSTOM)
+  inviteCode       String?           @unique @map("invite_code")
+  adminInviteOnly  Boolean           @default(false) @map("admin_invite_only")
+  members          GhillieMembers[]
+  topics           Topic[]
+  posts            Post[]
+  flagGhillies     FlagGhillie[]
+  PromotedGhillie  PromotedGhillie?
+  SponsoredGhillie SponsoredGhillie?
 
-  @@index([name, slug, status, readOnly])
+  @@index([name, slug, status, readOnly, isSponsored, isPromoted, isInternal, isPrivate, category])
   @@map("ghillie")
+}
+
+model PromotedGhillie {
+  id        String   @id @default(cuid())
+  ghillie   Ghillie  @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
+  ghillieId String   @unique @map("ghillie_id")
+  startTime DateTime @default(now()) @map("start_time")
+  endTime   DateTime @updatedAt @map("end_time")
+
+  @@map("promoted_ghillies")
+}
+
+model SponsoredGhillie {
+  id        String   @id @default(cuid())
+  ghillie   Ghillie  @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
+  ghillieId String   @unique @map("ghillie_id")
+  startTime DateTime @default(now()) @map("start_time")
+  endTime   DateTime @updatedAt @map("end_time")
+
+  @@map("sponsored_ghillies")
 }
 
 model User {
@@ -447,4 +476,14 @@ enum UserStatus {
   SUSPENDED
   BANNED
   DELETED
+}
+
+enum GhillieCategory {
+  UNIT
+  BASE
+  SOCIAL
+  COMPANY
+  INDUSTRY
+  CUSTOM
+  EDUCATIONAL
 }

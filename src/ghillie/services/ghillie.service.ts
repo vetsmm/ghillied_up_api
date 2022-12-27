@@ -1144,6 +1144,7 @@ export class GhillieService {
         const ghillies = await this.prisma.ghillie.findMany({
             where: {
                 status: GhillieStatus.ACTIVE,
+                isPrivate: false,
             },
             skip: 0,
             take: 10,
@@ -1195,6 +1196,7 @@ export class GhillieService {
         const ghillies = await this.prisma.ghillie.findMany({
             where: {
                 status: GhillieStatus.ACTIVE,
+                isPrivate: false,
             },
             skip: 0,
             take: 10,
@@ -1240,6 +1242,7 @@ export class GhillieService {
         const ghillies = await this.prisma.ghillie.findMany({
             where: {
                 status: GhillieStatus.ACTIVE,
+                isPrivate: false,
             },
             skip: 0,
             take: 10,

@@ -425,13 +425,13 @@ export class GhillieController {
     async joinGhillieWithInviteCode(
         @ReqContext() ctx: RequestContext,
         @Param('inviteCode') inviteCode: string,
-    ): Promise<void> {
+    ): Promise<GhillieDetailDto> {
         this.logger.log(
             ctx,
             `${this.joinGhillieWithInviteCode.name} was called`,
         );
 
-        await this.ghillieService.joinGhillieWithInviteCode(ctx, inviteCode);
+        return await this.ghillieService.joinGhillieWithInviteCode(ctx, inviteCode);
     }
 
     @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)

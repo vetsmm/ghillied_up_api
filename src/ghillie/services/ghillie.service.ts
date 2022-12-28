@@ -501,7 +501,7 @@ export class GhillieService {
         await this.createGhillieMember(ctx, ghillie.id);
     }
 
-    async joinGhillieWithInviteCode(ctx: RequestContext, inviteCode: string) {
+    async joinGhillieWithInviteCode(ctx: RequestContext, inviteCode: string): Promise<GhillieDetailDto> {
         this.logger.log(ctx, `${this.joinGhillie.name} was called`);
 
         const ghillie: Ghillie = await this.pg.oneOrNone(
@@ -513,7 +513,7 @@ export class GhillieService {
 
         if (!ghillie) {
             throw new NotFoundException(
-                'No Ghillie found with that invite code',
+                'No Ghillie was found with that invite code',
             );
         }
         if (ghillie.status !== GhillieStatus.ACTIVE) {
@@ -523,6 +523,11 @@ export class GhillieService {
         }
 
         await this.createGhillieMember(ctx, ghillie.id);
+
+        return plainToInstance(GhillieDetailDto, ghillie, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
     }
 
     async createGhillieMember(ctx: RequestContext, ghillieId: string) {
@@ -651,7 +656,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to transfer ownership of this ghillie",
+                'You\'re not allowed to transfer ownership of this ghillie',
             );
         }
 
@@ -729,7 +734,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add moderators to this ghillie",
+                'You\'re not allowed to add moderators to this ghillie',
             );
         }
 
@@ -791,7 +796,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add moderators to this ghillie",
+                'You\'re not allowed to add moderators to this ghillie',
             );
         }
 
@@ -846,7 +851,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieModerator, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to moderate users from this ghillie",
+                'You\'re not allowed to moderate users from this ghillie',
             );
         }
 
@@ -903,7 +908,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieModerator, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to moderate users from this ghillie",
+                'You\'re not allowed to moderate users from this ghillie',
             );
         }
 
@@ -946,7 +951,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add topics to this ghillie",
+                'You\'re not allowed to add topics to this ghillie',
             );
         }
 
@@ -1028,7 +1033,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add topics to this ghillie",
+                'You\'re not allowed to add topics to this ghillie',
             );
         }
 
@@ -1208,8 +1213,7 @@ export class GhillieService {
                                             FROM ghillie_members AS gmu
                                             WHERE gmu.ghillie_id = g.id
                                               AND gmu.user_id = $1
-                                              AND gmu.member_status = 'ACTIVE'
-                                            )                                                      AS "_memberMeta"
+                                              AND gmu.member_status = 'ACTIVE')                           AS "_memberMeta"
                            FROM ghillie AS g
                                     LEFT JOIN ghillie_members AS gm ON gm.ghillie_id = g.id
                                     LEFT JOIN ghillie_members AS gmu
@@ -1596,7 +1600,7 @@ export class GhillieService {
         let seed = new Date().getTime();
 
         // Use the seed to initialize the Math.random function
-        Math.random = function () {
+        Math.random = function() {
             const x = Math.sin(seed++) * 10000;
             return x - Math.floor(x);
         };

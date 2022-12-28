@@ -1199,6 +1199,7 @@ export class GhillieService {
         // We are going to make heavy use of postgres prepared statements for performance optimization via cached execution plans
         return await this.pg
             .task('combined-ghillies-query', async (t) => {
+                // TODO: Fix gmu.memberStatus = Active and remove it from the query
                 const users = await t.manyOrNone({
                     name: 'get-users-ghillies',
                     text: `SELECT DISTINCT g.*,
@@ -1600,22 +1601,18 @@ export class GhillieService {
             return x - Math.floor(x);
         };
 
-        // Use Math.random to generate a random 6 character string
         let str = '';
         for (let i = 0; i < 6; i++) {
-            // Generate a random number between 0 and 61
-            const num = Math.floor(Math.random() * 62);
+            // Generate a random number between 0 and 35
+            const num = Math.floor(Math.random() * 36);
 
             // Convert the number to a character, using the following mapping:
             // 0-9: '0'-'9'
             // 10-35: 'A'-'Z'
-            // 36-61: 'a'-'z'
             if (num < 10) {
                 str += String.fromCharCode(num + 48);
-            } else if (num < 36) {
-                str += String.fromCharCode(num + 55);
             } else {
-                str += String.fromCharCode(num + 61);
+                str += String.fromCharCode(num + 55);
             }
         }
 

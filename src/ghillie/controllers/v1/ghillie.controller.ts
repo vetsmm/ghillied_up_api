@@ -43,6 +43,7 @@ import { TopicNamesDto } from '../../dtos/topic/topic-names.dto';
 import { TopicIdsDto } from '../../dtos/topic/topic-ids.dto';
 import ImageFilesInterceptor from '../../../shared/interceptors/image-file.interceptor';
 import { ActiveUserGuard } from '../../../auth/guards/active-user.guard';
+import { CombinedGhilliesDto } from '../../dtos/ghillie/combined-ghillies.dto';
 
 @ApiTags('ghillies')
 @Controller('ghillies')
@@ -308,6 +309,28 @@ export class GhillieController {
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
+    @Get('bulk/combined')
+    @ApiOperation({
+        summary: 'Get newest ghillies',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: CombinedGhilliesDto,
+    })
+    @HttpCode(HttpStatus.OK)
+    async getCombinedGhillies(
+        @ReqContext() ctx: RequestContext,
+        @Query('limit') limit = 10,
+    ): Promise<CombinedGhilliesDto> {
+        this.logger.log(ctx, `${this.getNewestGhillies.name} was called`);
+
+        return await this.ghillieService.getCombinedGhillies(ctx, limit);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @Authorities(UserAuthority.ROLE_USER)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
     @Post('all')
     @ApiOperation({
         summary: 'Get all Ghillies w/ filters',
@@ -381,6 +404,59 @@ export class GhillieController {
         this.logger.log(ctx, `${this.joinGhillie.name} was called`);
 
         await this.ghillieService.joinGhillie(ctx, id);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @Authorities(UserAuthority.ROLE_USER, UserAuthority.ROLE_VERIFIED_MILITARY)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Put('join/:inviteCode')
+    @ApiOperation({
+        summary: 'Join a Ghillie by invite code',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        type: BaseApiErrorResponse,
+    })
+    @HttpCode(HttpStatus.OK)
+    async joinGhillieWithInviteCode(
+        @ReqContext() ctx: RequestContext,
+        @Param('inviteCode') inviteCode: string,
+    ): Promise<void> {
+        this.logger.log(
+            ctx,
+            `${this.joinGhillieWithInviteCode.name} was called`,
+        );
+
+        await this.ghillieService.joinGhillieWithInviteCode(ctx, inviteCode);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @Authorities(UserAuthority.ROLE_USER, UserAuthority.ROLE_VERIFIED_MILITARY)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Put(':id/generate-invite-code')
+    @ApiOperation({
+        summary: 'Generate a new invite code for a Ghillie',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        type: BaseApiErrorResponse,
+    })
+    @HttpCode(HttpStatus.OK)
+    async generateInviteCode(
+        @ReqContext() ctx: RequestContext,
+        @Param('id') id: string,
+    ): Promise<void> {
+        this.logger.log(ctx, `${this.generateInviteCode.name} was called`);
+
+        await this.ghillieService.generateInviteCode(ctx, id);
     }
 
     // Leave a Ghillie

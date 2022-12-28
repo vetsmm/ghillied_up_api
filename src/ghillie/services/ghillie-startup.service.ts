@@ -13,13 +13,11 @@ import {
 import * as cuid from 'cuid';
 import * as path from 'path';
 import * as fs from 'fs';
-import { User, UserAuthority } from '@prisma/client';
+import { GhillieCategory, User, UserAuthority } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class GhillieStartupService implements OnApplicationBootstrap {
-    defaultGhillies = [];
-
     constructor(
         private readonly logger: AppLogger,
         private readonly streamService: GetStreamService,
@@ -120,7 +118,7 @@ export class GhillieStartupService implements OnApplicationBootstrap {
 
             await this.pg.none(
                 `INSERT INTO ghillie (id, "name", slug, about, created_by_user_id, "read_only", created_date,
-                                      updated_date, public_image_id, image_url)
+                                      updated_date, public_image_id, image_url, is_internal)
                  VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), $7, $8)`,
                 [
                     cuid(),
@@ -131,6 +129,7 @@ export class GhillieStartupService implements OnApplicationBootstrap {
                     ghillieData.readOnly,
                     ghillieData.publicImageId,
                     ghillieData.imageUrl,
+                    ghillieData.isInternal,
                 ],
             );
 

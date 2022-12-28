@@ -1201,7 +1201,7 @@ export class GhillieService {
             .task('combined-ghillies-query', async (t) => {
                 const users = await t.manyOrNone({
                     name: 'get-users-ghillies',
-                    text: `SELECT DISTINCT *,
+                    text: `SELECT DISTINCT g.*,
                                            (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
                                            (SELECT DISTINCT jsonb_agg(gmu)
                                             FROM ghillie_members AS gmu
@@ -1274,7 +1274,7 @@ export class GhillieService {
                 });
                 const newest = await t.manyOrNone({
                     name: 'get-newest-ghillies',
-                    text: `SELECT DISTINCT *,
+                    text: `SELECT DISTINCT g.*,
                                            (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
                                            (SELECT jsonb_agg(gmu)
                                             FROM ghillie_members AS gmu
@@ -1294,7 +1294,7 @@ export class GhillieService {
                 });
                 const internal = await t.manyOrNone({
                     name: 'get-internal-ghillies',
-                    text: `SELECT DISTINCT *,
+                    text: `SELECT DISTINCT g.*,
                                            (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
                                            (SELECT jsonb_agg(gmu)
                                             FROM ghillie_members AS gmu
@@ -1313,7 +1313,7 @@ export class GhillieService {
                 });
                 const promoted = await t.manyOrNone({
                     name: 'get-promoted-ghillies',
-                    text: `SELECT DISTINCT *,
+                    text: `SELECT DISTINCT g.*,
                                            (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
                                            (SELECT jsonb_agg(gmu)
                                             FROM ghillie_members AS gmu
@@ -1333,7 +1333,7 @@ export class GhillieService {
                 });
                 const sponsored = await t.manyOrNone({
                     name: 'get-sponsored-ghillies',
-                    text: `SELECT DISTINCT *,
+                    text: `SELECT DISTINCT g.*,
                                            (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
                                            (SELECT jsonb_agg(gmu)
                                             FROM ghillie_members AS gmu

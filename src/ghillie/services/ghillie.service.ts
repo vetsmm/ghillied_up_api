@@ -26,7 +26,7 @@ import {
 } from '@prisma/client';
 import { CreateGhillieInputDto } from '../dtos/ghillie/create-ghillie-input.dto';
 import slugify from 'slugify';
-import { plainToInstance } from 'class-transformer';
+import { plainToClass, plainToInstance } from 'class-transformer';
 import { GhillieDetailDto } from '../dtos/ghillie/ghillie-detail.dto';
 import { GhillieAclService } from './ghillie-acl.service';
 import { UpdateGhillieDto } from '../dtos/ghillie/update-ghillie.dto';
@@ -35,6 +35,7 @@ import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
 import { GhillieAssetsService } from '../../files/services/ghillie-assets.service';
 import { AssetTypes } from '../../files/dtos/asset.types';
+import { CombinedGhilliesDto } from '../dtos/ghillie/combined-ghillies.dto';
 
 @Injectable()
 export class GhillieService {
@@ -103,6 +104,9 @@ export class GhillieService {
                             trim: true,
                         }),
                         about: createGhillieDto.about,
+                        adminInviteOnly: createGhillieDto.adminInviteOnly,
+                        isPrivate: createGhillieDto.isPrivate,
+                        category: createGhillieDto.category,
                         createdByUserId: ctx.user.id,
                         readOnly: createGhillieDto?.readOnly ?? false,
                         topics: {
@@ -268,6 +272,12 @@ export class GhillieService {
             });
         }
 
+        if (query.category) {
+            where.AND.push({
+                category: query.category,
+            });
+        }
+
         const { findManyArgs, toConnection, toResponse } = parsePaginationArgs({
             first: query.take - 1,
             after: query.cursor ? query.cursor : undefined,
@@ -279,6 +289,7 @@ export class GhillieService {
                 where: {
                     ...where,
                     status: GhillieStatus.ACTIVE,
+                    isPrivate: false,
                 },
                 include: {
                     topics: true,
@@ -377,6 +388,18 @@ export class GhillieService {
             ghillie.about = updateGhillieDto.about;
         }
 
+        if (updateGhillieDto.isPrivate !== undefined) {
+            ghillie.isPrivate = updateGhillieDto.isPrivate;
+        }
+
+        if (updateGhillieDto.adminInviteOnly !== undefined) {
+            ghillie.adminInviteOnly = updateGhillieDto.adminInviteOnly;
+        }
+
+        if (updateGhillieDto.category !== undefined) {
+            ghillie.category = updateGhillieDto.category;
+        }
+
         const updatedGhillie = await this.prisma.ghillie.update({
             where: { id: id },
             data: {
@@ -453,11 +476,12 @@ export class GhillieService {
     async joinGhillie(ctx: RequestContext, id: string): Promise<void> {
         this.logger.log(ctx, `${this.joinGhillie.name} was called`);
 
-        const ghillie = await this.prisma.ghillie.findUnique({
-            where: {
-                id: id,
-            },
-        });
+        const ghillie: Ghillie = await this.pg.oneOrNone(
+            `SELECT *
+             FROM ghillie
+             WHERE id = $1`,
+            [id],
+        );
 
         if (!ghillie) {
             throw new NotFoundException('Ghillie not found');
@@ -468,16 +492,50 @@ export class GhillieService {
             );
         }
 
+        if (ghillie.isPrivate) {
+            throw new BadRequestException(
+                'Ghillie is private and requires an invite',
+            );
+        }
+
+        await this.createGhillieMember(ctx, ghillie.id);
+    }
+
+    async joinGhillieWithInviteCode(ctx: RequestContext, inviteCode: string) {
+        this.logger.log(ctx, `${this.joinGhillie.name} was called`);
+
+        const ghillie: Ghillie = await this.pg.oneOrNone(
+            `SELECT *
+             FROM ghillie
+             WHERE invite_code = $1`,
+            [inviteCode],
+        );
+
+        if (!ghillie) {
+            throw new NotFoundException(
+                'No Ghillie found with that invite code',
+            );
+        }
+        if (ghillie.status !== GhillieStatus.ACTIVE) {
+            throw new BadRequestException(
+                'Ghillie is not join-able at this time',
+            );
+        }
+
+        await this.createGhillieMember(ctx, ghillie.id);
+    }
+
+    async createGhillieMember(ctx: RequestContext, ghillieId: string) {
         const ghillieMember = await this.prisma.ghillieMembers.upsert({
             where: {
                 userId_ghillieId: {
                     userId: ctx.user.id,
-                    ghillieId: id,
+                    ghillieId: ghillieId,
                 },
             },
             update: {},
             create: {
-                ghillieId: id,
+                ghillieId: ghillieId,
                 userId: ctx.user.id,
                 joinDate: new Date(),
                 memberStatus: MemberStatus.ACTIVE,
@@ -496,7 +554,7 @@ export class GhillieService {
             );
         }
 
-        await this.streamService.followGhillie(id, ctx.user.id);
+        await this.streamService.followGhillie(ghillieId, ctx.user.id);
     }
 
     async leaveGhillie(ctx: RequestContext, id: string) {
@@ -1122,6 +1180,196 @@ export class GhillieService {
         }
     }
 
+    async getCombinedGhillies(
+        ctx: RequestContext,
+        limit: number,
+    ): Promise<CombinedGhilliesDto> {
+        this.logger.log(ctx, `${this.getCombinedGhillies.name} was called`);
+
+        const actor: Actor = ctx.user;
+        const isAllowed = this.ghillieAclService
+            .forActor(actor)
+            .canDoAction(Action.Read);
+        if (!isAllowed) {
+            throw new UnauthorizedException(
+                'You are not allowed to view Ghillies',
+            );
+        }
+
+        // We are going to make heavy use of postgres prepared statements for performance optimization via cached execution plans
+        return await this.pg
+            .task('combined-ghillies-query', async (t) => {
+                const users = await t.manyOrNone({
+                    name: 'get-users-ghillies',
+                    text: `SELECT DISTINCT *,
+                                           (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
+                                           (SELECT DISTINCT jsonb_agg(gmu)
+                                            FROM ghillie_members AS gmu
+                                            WHERE gmu.ghillie_id = g.id
+                                              AND gmu.user_id = $1
+                                              AND gmu.member_status = 'ACTIVE'
+                                            )                                                      AS "_memberMeta"
+                           FROM ghillie AS g
+                                    LEFT JOIN ghillie_members AS gm ON gm.ghillie_id = g.id
+                                    LEFT JOIN ghillie_members AS gmu
+                                              ON gmu.ghillie_id = g.id AND gmu.user_id = $1 AND
+                                                 gmu.member_status = 'ACTIVE'
+                           WHERE status = $2
+                             AND id IN (SELECT ghillie_id
+                                        FROM ghillie_members
+                                        WHERE user_id = $3
+                                          AND member_status = $4)
+                           LIMIT $5 OFFSET 0`,
+                    values: [
+                        ctx.user.id,
+                        GhillieStatus.ACTIVE,
+                        ctx.user.id,
+                        MemberStatus.ACTIVE,
+                        limit,
+                    ],
+                });
+                const popularByMembers = await t.manyOrNone({
+                    name: 'get-popular-ghillies-by-members',
+                    text: `SELECT DISTINCT g.*,
+                                           (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
+                                           (SELECT jsonb_agg(gmu)
+                                            FROM ghillie_members AS gmu
+                                            WHERE gmu.ghillie_id = g.id
+                                              AND gmu.user_id = $1)                                       AS "_memberMeta"
+                           FROM ghillie AS g
+                                    LEFT JOIN ghillie_members AS gm ON gm.ghillie_id = g.id
+                                    LEFT JOIN ghillie_members AS gmu
+                                              ON gmu.ghillie_id = g.id AND gmu.user_id = $1 AND
+                                                 gmu.member_status = 'ACTIVE'
+                           WHERE g.status = $2
+                             AND g.is_private = $3
+                             AND g.is_internal = false
+                           ORDER BY "_totalMembers" DESC
+                           LIMIT $4 OFFSET 0`,
+                    values: [ctx.user.id, GhillieStatus.ACTIVE, false, limit],
+                });
+                const popularByTrending = await t.manyOrNone({
+                    name: 'get-popular-ghillies-by-trending',
+                    text: `SELECT DISTINCT g.*,
+                                           (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
+                                           (SELECT COUNT(*)
+                                            FROM post
+                                            WHERE ghillie_id = g.id
+                                              AND created_date > NOW() - INTERVAL '24 hours')             AS "_postCount",
+                                           (SELECT jsonb_agg(gmu)
+                                            FROM ghillie_members AS gmu
+                                            WHERE gmu.ghillie_id = g.id
+                                              AND gmu.user_id = $1)                                       AS "_memberMeta"
+                           FROM ghillie AS g
+                                    LEFT JOIN ghillie_members AS gm ON gm.ghillie_id = g.id
+                                    LEFT JOIN post AS p ON p.ghillie_id = g.id
+                                    LEFT JOIN ghillie_members AS gmu
+                                              ON gmu.ghillie_id = g.id AND gmu.user_id = $1 AND
+                                                 gmu.member_status = 'ACTIVE'
+                           WHERE g.status = $2
+                             AND g.is_private = $3
+                           ORDER BY "_postCount" DESC
+                           LIMIT $4 OFFSET 0`,
+                    values: [ctx.user.id, GhillieStatus.ACTIVE, false, limit],
+                });
+                const newest = await t.manyOrNone({
+                    name: 'get-newest-ghillies',
+                    text: `SELECT DISTINCT *,
+                                           (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
+                                           (SELECT jsonb_agg(gmu)
+                                            FROM ghillie_members AS gmu
+                                            WHERE gmu.ghillie_id = g.id
+                                              AND gmu.user_id = $1)                                       AS "_memberMeta"
+                           FROM ghillie AS g
+                                    LEFT JOIN ghillie_members AS gm ON gm.ghillie_id = g.id
+                                    LEFT JOIN ghillie_members AS gmu
+                                              ON gmu.ghillie_id = g.id AND gmu.user_id = $1 AND
+                                                 gmu.member_status = 'ACTIVE'
+                           WHERE status = $2
+                             AND is_private = $3
+                             AND is_internal = false
+                           ORDER BY created_date DESC
+                           LIMIT $4 OFFSET 0`,
+                    values: [ctx.user.id, GhillieStatus.ACTIVE, false, limit],
+                });
+                const internal = await t.manyOrNone({
+                    name: 'get-internal-ghillies',
+                    text: `SELECT DISTINCT *,
+                                           (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
+                                           (SELECT jsonb_agg(gmu)
+                                            FROM ghillie_members AS gmu
+                                            WHERE gmu.ghillie_id = g.id
+                                              AND gmu.user_id = $1)                                       AS "_memberMeta"
+                           FROM ghillie AS g
+                                    LEFT JOIN ghillie_members AS gm ON gm.ghillie_id = g.id
+                                    LEFT JOIN ghillie_members AS gmu
+                                              ON gmu.ghillie_id = g.id AND gmu.user_id = $1 AND
+                                                 gmu.member_status = 'ACTIVE'
+                           WHERE status = $2
+                             AND is_private = $3
+                             AND is_internal = true
+                           LIMIT $4 OFFSET 0`,
+                    values: [ctx.user.id, GhillieStatus.ACTIVE, false, 20],
+                });
+                const promoted = await t.manyOrNone({
+                    name: 'get-promoted-ghillies',
+                    text: `SELECT DISTINCT *,
+                                           (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
+                                           (SELECT jsonb_agg(gmu)
+                                            FROM ghillie_members AS gmu
+                                            WHERE gmu.ghillie_id = g.id
+                                              AND gmu.user_id = $1)                                       AS "_memberMeta"
+                           FROM ghillie AS g
+                                    LEFT JOIN ghillie_members AS gm ON gm.ghillie_id = g.id
+                                    LEFT JOIN ghillie_members AS gmu
+                                              ON gmu.ghillie_id = g.id AND gmu.user_id = $1 AND
+                                                 gmu.member_status = 'ACTIVE'
+                           WHERE status = $2
+                             AND is_private = $3
+                             AND is_internal = false
+                             AND is_promoted = true
+                           LIMIT $4 OFFSET 0`,
+                    values: [ctx.user.id, GhillieStatus.ACTIVE, false, 20],
+                });
+                const sponsored = await t.manyOrNone({
+                    name: 'get-sponsored-ghillies',
+                    text: `SELECT DISTINCT *,
+                                           (SELECT COUNT(*) FROM ghillie_members WHERE ghillie_id = g.id) AS "_totalMembers",
+                                           (SELECT jsonb_agg(gmu)
+                                            FROM ghillie_members AS gmu
+                                            WHERE gmu.ghillie_id = g.id
+                                              AND gmu.user_id = $1)                                       AS "_memberMeta"
+                           FROM ghillie AS g
+                                    LEFT JOIN ghillie_members AS gm ON gm.ghillie_id = g.id
+                                    LEFT JOIN ghillie_members AS gmu
+                                              ON gmu.ghillie_id = g.id AND gmu.user_id = $1 AND
+                                                 gmu.member_status = 'ACTIVE'
+                           WHERE status = $2
+                             AND is_private = $3
+                             AND is_internal = false
+                             AND is_sponsored = true
+                           LIMIT $4 OFFSET 0`,
+                    values: [ctx.user.id, GhillieStatus.ACTIVE, false, 20],
+                });
+
+                return {
+                    users,
+                    popularByMembers,
+                    popularByTrending,
+                    newest,
+                    internal,
+                    promoted,
+                    sponsored,
+                };
+            })
+            .then((data) => {
+                return plainToClass(CombinedGhilliesDto, data, {
+                    excludeExtraneousValues: true,
+                    enableImplicitConversion: true,
+                });
+            });
+    }
+
     async getPopularGhilliesByMembers(
         ctx: RequestContext,
         limit: number,
@@ -1268,5 +1516,123 @@ export class GhillieService {
             excludeExtraneousValues: true,
             enableImplicitConversion: true,
         });
+    }
+
+    async generateInviteCode(ctx: RequestContext, id: string) {
+        this.logger.log(ctx, `${this.generateInviteCode.name} was called`);
+
+        const ghillieMember = await this.pg.oneOrNone(
+            'SELECT * FROM ghillie_members WHERE ghillie_id = $1 AND user_id = $2',
+            [id, ctx.user.id],
+        );
+
+        if (!ghillieMember) {
+            throw new UnauthorizedException(
+                'You are not allowed to update this ghillie',
+            );
+        }
+
+        const isAllowed =
+            ghillieMember.role === GhillieRole.OWNER ||
+            ctx.user.authorities.includes('ROLE_ADMIN');
+        if (!isAllowed) {
+            throw new UnauthorizedException(
+                'You are not authorized to update this ghillie',
+            );
+        }
+
+        const ghillie = await this.pg.oneOrNone(
+            `SELECT *
+             FROM ghillie
+             WHERE ghillie.id = $1`,
+            [id],
+        );
+
+        if (!ghillie) {
+            throw new NotFoundException('Ghillie not found');
+        }
+
+        if (ghillie.inviteCode) {
+            return plainToInstance(GhillieDetailDto, ghillie, {
+                excludeExtraneousValues: true,
+                enableImplicitConversion: true,
+            });
+        }
+
+        const generatedCode = await this.generateRandomInviteCode();
+
+        const updatedGhillie = await this.prisma.ghillie.update({
+            where: { id: id },
+            data: {
+                inviteCode: generatedCode,
+            },
+            include: {
+                topics: true,
+                _count: {
+                    select: {
+                        members: true,
+                    },
+                },
+                members: {
+                    where: {
+                        userId: ctx.user.id,
+                    },
+                },
+            },
+        });
+
+        return plainToInstance(GhillieDetailDto, updatedGhillie, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
+    }
+
+    // generate a unique 6 character/digit invite code, this should not have to call the database
+    // to check for uniqueness, but it does for now
+    private async generateRandomInviteCode(): Promise<string> {
+        // Use the JavaScript Date object to generate a unique seed
+        // for the random number generator
+        let seed = new Date().getTime();
+
+        // Use the seed to initialize the Math.random function
+        Math.random = function () {
+            const x = Math.sin(seed++) * 10000;
+            return x - Math.floor(x);
+        };
+
+        // Use Math.random to generate a random 6 character string
+        let str = '';
+        for (let i = 0; i < 6; i++) {
+            // Generate a random number between 0 and 61
+            const num = Math.floor(Math.random() * 62);
+
+            // Convert the number to a character, using the following mapping:
+            // 0-9: '0'-'9'
+            // 10-35: 'A'-'Z'
+            // 36-61: 'a'-'z'
+            if (num < 10) {
+                str += String.fromCharCode(num + 48);
+            } else if (num < 36) {
+                str += String.fromCharCode(num + 55);
+            } else {
+                str += String.fromCharCode(num + 61);
+            }
+        }
+
+        // check if the invite code is unique
+        const foundGhillie = this.pg.oneOrNone(
+            `SELECT *
+             FROM ghillie
+             WHERE invite_code = $1`,
+            [str],
+        );
+
+        if (foundGhillie) {
+            // if not unique, try again
+            return this.generateRandomInviteCode();
+        }
+
+        // if unique, return the invite code
+        return str;
     }
 }

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNumber, IsOptional, IsString } from 'class-validator';
-import { GhillieStatus } from '@prisma/client';
+import { GhillieCategory, GhillieStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 
 export class GhillieSearchCriteria {
@@ -35,4 +35,8 @@ export class GhillieSearchCriteria {
     @ApiProperty()
     @IsOptional()
     topicIds?: Array<string>;
+
+    @ApiProperty()
+    @IsOptional()
+    category?: GhillieCategory;
 }

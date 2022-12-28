@@ -1,6 +1,7 @@
-import { IsArray, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ToBoolean } from '../../../shared';
+import { GhillieCategory } from '@prisma/client';
 
 export class UpdateGhillieDto {
     @ApiProperty({
@@ -33,4 +34,20 @@ export class UpdateGhillieDto {
     @IsArray()
     @IsOptional()
     topicNames?: string[];
+
+    @ApiProperty({
+        type: Boolean,
+    })
+    @ToBoolean()
+    readonly adminInviteOnly?: boolean;
+
+    @ApiProperty({
+        type: Boolean,
+    })
+    @ToBoolean()
+    readonly isPrivate?: boolean;
+
+    @ApiProperty()
+    @IsEnum(GhillieCategory)
+    readonly category?: GhillieCategory;
 }

@@ -1624,7 +1624,7 @@ export class GhillieService {
         }
 
         // check if the invite code is unique
-        const foundGhillie = this.pg.oneOrNone(
+        const foundGhillie = await this.pg.oneOrNone(
             `SELECT *
              FROM ghillie
              WHERE invite_code = $1`,

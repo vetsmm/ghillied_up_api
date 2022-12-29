@@ -44,11 +44,11 @@ export class GhillieDetailDto {
 
     @ApiProperty()
     @Expose()
-    createdAt: Date;
+    createdDate: Date;
 
     @ApiProperty()
     @Expose()
-    updatedAt: Date;
+    updatedDate: Date;
 
     @ApiProperty()
     @Expose()
@@ -64,12 +64,12 @@ export class GhillieDetailDto {
     @Transform(
         (value) => {
             return value.obj.members !== undefined &&
-            value.obj.members.length > 0
+                value.obj.members.length > 0
                 ? {
-                    joinDate: value.obj.members[0].joinDate,
-                    memberStatus: value.obj.members[0].memberStatus,
-                    role: value.obj.members[0].role,
-                }
+                      joinDate: value.obj.members[0].joinDate,
+                      memberStatus: value.obj.members[0].memberStatus,
+                      role: value.obj.members[0].role,
+                  }
                 : null;
         },
         { toClassOnly: true },

@@ -501,7 +501,10 @@ export class GhillieService {
         await this.createGhillieMember(ctx, ghillie.id);
     }
 
-    async joinGhillieWithInviteCode(ctx: RequestContext, inviteCode: string): Promise<GhillieDetailDto> {
+    async joinGhillieWithInviteCode(
+        ctx: RequestContext,
+        inviteCode: string,
+    ): Promise<GhillieDetailDto> {
         this.logger.log(ctx, `${this.joinGhillie.name} was called`);
 
         const ghillie: Ghillie = await this.pg.oneOrNone(
@@ -656,7 +659,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to transfer ownership of this ghillie',
+                "You're not allowed to transfer ownership of this ghillie",
             );
         }
 
@@ -734,7 +737,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to add moderators to this ghillie',
+                "You're not allowed to add moderators to this ghillie",
             );
         }
 
@@ -796,7 +799,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to add moderators to this ghillie',
+                "You're not allowed to add moderators to this ghillie",
             );
         }
 
@@ -851,7 +854,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieModerator, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to moderate users from this ghillie',
+                "You're not allowed to moderate users from this ghillie",
             );
         }
 
@@ -908,7 +911,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieModerator, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to moderate users from this ghillie',
+                "You're not allowed to moderate users from this ghillie",
             );
         }
 
@@ -928,12 +931,12 @@ export class GhillieService {
     }
 
     async addTopics(ctx: RequestContext, id: string, topicNames: string[]) {
-        // Get the ghillie from id
-        const foundGhillie = await this.prisma.ghillie.findUnique({
-            where: {
-                id: id,
-            },
-        });
+        this.logger.debug(ctx, `Adding topics from ghillie ${id}`);
+
+        const foundGhillie = await this.pg.oneOrNone(
+            'SELECT * FROM ghillie WHERE id = $1',
+            [id],
+        );
 
         if (!foundGhillie) {
             throw new NotFoundException('Ghillie not found');
@@ -951,7 +954,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to add topics to this ghillie',
+                "You're not allowed to add topics to this ghillie",
             );
         }
 
@@ -1009,13 +1012,13 @@ export class GhillieService {
         });
     }
 
-    async removeTopics(ctx: RequestContext, id: string, topicIds: string[]) {
-        // Get the ghillie from id
-        const foundGhillie = await this.prisma.ghillie.findUnique({
-            where: {
-                id: id,
-            },
-        });
+    async removeTopics(ctx: RequestContext, id: string, topicNames: string[]) {
+        this.logger.debug(ctx, `Removing topics from ghillie ${id}`);
+
+        const foundGhillie = await this.pg.oneOrNone(
+            'SELECT * FROM ghillie WHERE id = $1',
+            [id],
+        );
 
         if (!foundGhillie) {
             throw new NotFoundException('Ghillie not found');
@@ -1033,7 +1036,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to add topics to this ghillie',
+                "You're not allowed to add topics to this ghillie",
             );
         }
 
@@ -1043,8 +1046,8 @@ export class GhillieService {
                 ...foundGhillie,
                 topics: {
                     deleteMany: {
-                        id: {
-                            in: topicIds,
+                        name: {
+                            in: topicNames,
                         },
                     },
                 },
@@ -1600,7 +1603,7 @@ export class GhillieService {
         let seed = new Date().getTime();
 
         // Use the seed to initialize the Math.random function
-        Math.random = function() {
+        Math.random = function () {
             const x = Math.sin(seed++) * 10000;
             return x - Math.floor(x);
         };

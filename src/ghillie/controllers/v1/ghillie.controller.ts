@@ -39,8 +39,6 @@ import { UserAuthority } from '@prisma/client';
 import { UpdateGhillieDto } from '../../dtos/ghillie/update-ghillie.dto';
 import { GhillieOwnershipTransferDto } from '../../dtos/members/ghillie-ownership-transfer.dto';
 import { GhillieUserDto } from '../../dtos/members/ghillie-user.dto';
-import { TopicNamesDto } from '../../dtos/topic/topic-names.dto';
-import { TopicIdsDto } from '../../dtos/topic/topic-ids.dto';
 import ImageFilesInterceptor from '../../../shared/interceptors/image-file.interceptor';
 import { ActiveUserGuard } from '../../../auth/guards/active-user.guard';
 import { CombinedGhilliesDto } from '../../dtos/ghillie/combined-ghillies.dto';
@@ -431,7 +429,10 @@ export class GhillieController {
             `${this.joinGhillieWithInviteCode.name} was called`,
         );
 
-        return await this.ghillieService.joinGhillieWithInviteCode(ctx, inviteCode);
+        return await this.ghillieService.joinGhillieWithInviteCode(
+            ctx,
+            inviteCode,
+        );
     }
 
     @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
@@ -632,7 +633,7 @@ export class GhillieController {
     })
     @ApiResponse({
         status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(GhillieDetailDto),
+        type: GhillieDetailDto,
     })
     @ApiResponse({
         status: HttpStatus.NOT_FOUND,
@@ -641,20 +642,11 @@ export class GhillieController {
     async addTopics(
         @ReqContext() ctx: RequestContext,
         @Param('id') id: string,
-        @Body() addTopicsDto: TopicNamesDto,
-    ): Promise<BaseApiResponse<GhillieDetailDto>> {
+        @Body() topicNames: string[],
+    ): Promise<GhillieDetailDto> {
         this.logger.log(ctx, `${this.addTopics.name} was called`);
 
-        const ghillieDetail = await this.ghillieService.addTopics(
-            ctx,
-            id,
-            addTopicsDto.topicNames,
-        );
-
-        return {
-            data: ghillieDetail,
-            meta: {},
-        };
+        return await this.ghillieService.addTopics(ctx, id, topicNames);
     }
 
     // Delete topics
@@ -664,11 +656,11 @@ export class GhillieController {
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/delete-topics')
     @ApiOperation({
-        summary: 'Deletes topics to a Ghillie',
+        summary: 'Deletes topics from a Ghillie',
     })
     @ApiResponse({
         status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(GhillieDetailDto),
+        type: GhillieDetailDto,
     })
     @ApiResponse({
         status: HttpStatus.NOT_FOUND,
@@ -677,19 +669,10 @@ export class GhillieController {
     async deleteTopics(
         @ReqContext() ctx: RequestContext,
         @Param('id') id: string,
-        @Body() deleteTopicsDto: TopicIdsDto,
-    ): Promise<BaseApiResponse<GhillieDetailDto>> {
-        this.logger.log(ctx, `${this.addTopics.name} was called`);
+        @Body() topicNames: string[],
+    ): Promise<GhillieDetailDto> {
+        this.logger.log(ctx, `${this.deleteTopics.name} was called`);
 
-        const ghillieDetail = await this.ghillieService.removeTopics(
-            ctx,
-            id,
-            deleteTopicsDto.topicIds,
-        );
-
-        return {
-            data: ghillieDetail,
-            meta: {},
-        };
+        return await this.ghillieService.removeTopics(ctx, id, topicNames);
     }
 }

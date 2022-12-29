@@ -27,26 +27,30 @@ export class UpdateGhillieDto {
     readOnly?: boolean;
 
     @ApiProperty({
+        type: [String],
         description: 'Ghillie topicNames',
         example: ['topic1', 'topic2'],
     })
     @IsArray()
     @IsOptional()
-    topicNames?: string[];
+    topicNames?: string[] = [];
 
     @ApiProperty({
         type: Boolean,
     })
     @IsBoolean()
+    @IsOptional()
     readonly adminInviteOnly?: boolean;
 
     @ApiProperty({
         type: Boolean,
     })
     @IsBoolean()
+    @IsOptional()
     readonly isPrivate?: boolean;
 
     @ApiProperty()
     @IsEnum(GhillieCategory)
+    @IsOptional()
     readonly category?: GhillieCategory;
 }

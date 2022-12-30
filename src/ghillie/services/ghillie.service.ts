@@ -232,6 +232,59 @@ export class GhillieService {
         return ghillieDetail;
     }
 
+    async getGhillieByInviteCode(ctx: RequestContext, inviteCode: string) {
+        this.logger.log(ctx, `${this.getGhillieByInviteCode.name} was called`);
+
+        const actor: Actor = ctx.user;
+        const isAllowed = this.ghillieAclService
+            .forActor(actor)
+            .canDoAction(Action.Read);
+
+        if (!isAllowed) {
+            throw new UnauthorizedException(
+                'You are not allowed to view a ghillie',
+            );
+        }
+
+        const ghillie = await this.prisma.ghillie.findFirst({
+            where: {
+                inviteCode: inviteCode,
+            },
+            include: {
+                topics: true,
+                _count: {
+                    select: {
+                        members: true,
+                    },
+                },
+                members: {
+                    where: {
+                        userId: ctx.user.id,
+                    },
+                },
+            },
+        });
+
+        if (!ghillie) {
+            throw new NotFoundException('Ghillie not found or is not active');
+        }
+
+        const totalMembers = await this.prisma.ghillieMembers.count({
+            where: {
+                ghillieId: ghillie.id,
+            },
+        });
+
+        const ghillieDetail = plainToInstance(GhillieDetailDto, ghillie, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
+
+        ghillieDetail.totalMembers = totalMembers;
+
+        return ghillieDetail;
+    }
+
     async getGhillies(
         ctx: RequestContext,
         query: GhillieSearchCriteria,

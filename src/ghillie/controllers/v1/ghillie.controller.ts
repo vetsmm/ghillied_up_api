@@ -166,6 +166,31 @@ export class GhillieController {
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
+    @Get('invite-code/:inviteCode')
+    @ApiOperation({
+        summary: 'Get single Ghillie',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: GhillieDetailDto,
+    })
+    @HttpCode(HttpStatus.OK)
+    async getGhillieByInviteCode(
+        @ReqContext() ctx: RequestContext,
+        @Param('inviteCode') inviteCode: string,
+    ): Promise<GhillieDetailDto> {
+        this.logger.log(ctx, `${this.getGhillieByInviteCode.name} was called`);
+
+        return await this.ghillieService.getGhillieByInviteCode(
+            ctx,
+            inviteCode,
+        );
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @Authorities(UserAuthority.ROLE_USER)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
     @Get()
     @ApiOperation({
         summary: 'Get all Ghillies',

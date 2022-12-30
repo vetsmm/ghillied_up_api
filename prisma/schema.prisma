@@ -215,7 +215,7 @@ model Ghillie {
   PromotedGhillie  PromotedGhillie?
   SponsoredGhillie SponsoredGhillie?
 
-  @@index([name, slug, status, readOnly, isSponsored, isPromoted, isInternal, isPrivate, category])
+  @@index([name, slug, status, readOnly, isSponsored, isPromoted, isInternal, isPrivate, category, inviteCode])
   @@map("ghillie")
 }
 

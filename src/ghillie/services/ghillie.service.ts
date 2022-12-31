@@ -36,6 +36,7 @@ import { IDatabase } from 'pg-promise';
 import { GhillieAssetsService } from '../../files/services/ghillie-assets.service';
 import { AssetTypes } from '../../files/dtos/asset.types';
 import { CombinedGhilliesDto } from '../dtos/ghillie/combined-ghillies.dto';
+import * as cuid from 'cuid';
 
 @Injectable()
 export class GhillieService {
@@ -48,6 +49,75 @@ export class GhillieService {
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(GhillieService.name);
+    }
+
+    async getOrCreateTopics(
+        ctx: RequestContext,
+        topicNames: string[],
+    ): Promise<Topic[]> {
+        this.logger.debug(ctx, `${this.getOrCreateTopics.name} was called`);
+
+        const existingTopics = await this.pg.manyOrNone(
+            `SELECT *
+             FROM topic
+             WHERE name IN ($1:csv)
+                OR slug IN ($2:csv)`,
+            [
+                topicNames,
+                topicNames.map((name) =>
+                    slugify(name, {
+                        replacement: '-',
+                        lower: true,
+                        strict: true,
+                        trim: true,
+                    }),
+                ),
+            ],
+        );
+
+        // create topics that don't exist
+        const newTopics = await this.pg.tx(async (t) => {
+            const topicsToCreate = topicNames
+                .filter((name) => {
+                    return !existingTopics.some((topic) => topic.name === name);
+                })
+                .map((name) => {
+                    return {
+                        id: cuid(),
+                        name,
+                        slug: slugify(name, {
+                            replacement: '-',
+                            lower: true,
+                            strict: true,
+                            trim: true,
+                        }),
+                        createdByUserId: ctx.user.id,
+                        createdDate: new Date(),
+                        updatedDate: new Date(),
+                    };
+                });
+
+            const queries = topicsToCreate.map((topic) => {
+                return t.none(
+                    `INSERT INTO topic (id, "name", slug, created_by_user_id, created_date, updated_date)
+                     VALUES ($1, $2, $3, $4, $5, $6)
+                     ON CONFLICT DO NOTHING
+                     RETURNING *`,
+                    [
+                        topic.id,
+                        topic.name,
+                        topic.slug,
+                        topic.createdByUserId,
+                        topic.createdDate,
+                        topic.updatedDate,
+                    ],
+                );
+            });
+
+            return t.batch(queries);
+        });
+
+        return [...existingTopics, ...newTopics];
     }
 
     async createGhillie(
@@ -72,25 +142,10 @@ export class GhillieService {
             const ghillie = await this.prisma.$transaction(async (prisma) => {
                 let topics = [] as Array<Topic>;
                 if (createGhillieDto.topicNames) {
-                    topics = await Promise.all(
-                        createGhillieDto?.topicNames?.map(async (topicName) => {
-                            return await prisma.topic.upsert({
-                                where: {
-                                    name: topicName,
-                                },
-                                update: {},
-                                create: {
-                                    name: topicName,
-                                    slug: slugify(topicName, {
-                                        replacement: '-',
-                                        lower: true,
-                                        strict: true,
-                                        trim: true,
-                                    }),
-                                    createdByUserId: ctx.user.id,
-                                },
-                            });
-                        }),
+                    // find all topics that exist with same name or slug
+                    topics = await this.getOrCreateTopics(
+                        ctx,
+                        createGhillieDto.topicNames,
                     );
                 }
 
@@ -712,7 +767,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to transfer ownership of this ghillie",
+                'You\'re not allowed to transfer ownership of this ghillie',
             );
         }
 
@@ -790,7 +845,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add moderators to this ghillie",
+                'You\'re not allowed to add moderators to this ghillie',
             );
         }
 
@@ -852,7 +907,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add moderators to this ghillie",
+                'You\'re not allowed to add moderators to this ghillie',
             );
         }
 
@@ -907,7 +962,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieModerator, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to moderate users from this ghillie",
+                'You\'re not allowed to moderate users from this ghillie',
             );
         }
 
@@ -964,7 +1019,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieModerator, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to moderate users from this ghillie",
+                'You\'re not allowed to moderate users from this ghillie',
             );
         }
 
@@ -1007,13 +1062,19 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add topics to this ghillie",
+                'You\'re not allowed to add topics to this ghillie',
             );
         }
 
         const ghillie = await this.prisma.$transaction(async (prisma) => {
             const topics = await Promise.all(
                 topicNames?.map(async (topicName) => {
+                    const slug = slugify(topicName, {
+                        replacement: '-',
+                        lower: true,
+                        strict: true,
+                        trim: true,
+                    });
                     return await prisma.topic.upsert({
                         where: {
                             name: topicName,
@@ -1021,12 +1082,7 @@ export class GhillieService {
                         update: {},
                         create: {
                             name: topicName,
-                            slug: slugify(topicName, {
-                                replacement: '-',
-                                lower: true,
-                                strict: true,
-                                trim: true,
-                            }),
+                            slug: slug,
                             createdByUserId: ctx.user.id,
                         },
                     });
@@ -1089,7 +1145,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add topics to this ghillie",
+                'You\'re not allowed to add topics to this ghillie',
             );
         }
 
@@ -1656,7 +1712,7 @@ export class GhillieService {
         let seed = new Date().getTime();
 
         // Use the seed to initialize the Math.random function
-        Math.random = function () {
+        Math.random = function() {
             const x = Math.sin(seed++) * 10000;
             return x - Math.floor(x);
         };

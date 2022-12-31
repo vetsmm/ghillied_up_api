@@ -77,12 +77,19 @@ export class GhillieAssetsService extends BaseS3Service {
         const { key, url } = response;
         try {
             // These can be done async
-            this.pg.none('DELETE FROM public_file WHERE id = $1', [
-                publicFileId,
-            ]);
-            this.deleteFile(ctx, publicFileId);
+            this.pg
+                .none('DELETE FROM public_file WHERE id = $1', [publicFileId])
+                .catch((err) => {
+                    this.logger.error(
+                        ctx,
+                        `Error Deleting Ghillie Image From Database: ${err}`,
+                    );
+                });
+            this.deleteFile(ctx, publicFileId).catch((err) =>
+                this.logger.error(ctx, `Error Deleting Ghillie Image: ${err}`),
+            );
         } catch (err) {
-            this.logger.warn(ctx, err);
+            this.logger.warn(ctx, `Error Deleting Old Ghillie Image: ${err}`);
         }
 
         try {
@@ -95,7 +102,12 @@ export class GhillieAssetsService extends BaseS3Service {
             this.logger.error(ctx, `Error Uploading Ghillie Image: ${error}`);
 
             // perform async
-            this.deleteFile(ctx, key);
+            this.deleteFile(ctx, key).catch((err) => {
+                this.logger.error(
+                    ctx,
+                    `Error Deleting New Ghillie Image: ${err}`,
+                );
+            });
             throw error;
         }
     }

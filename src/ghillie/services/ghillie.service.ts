@@ -98,7 +98,7 @@ export class GhillieService {
                 });
 
             const queries = topicsToCreate.map((topic) => {
-                return t.none(
+                return t.any(
                     `INSERT INTO topic (id, "name", slug, created_by_user_id, created_date, updated_date)
                      VALUES ($1, $2, $3, $4, $5, $6)
                      ON CONFLICT DO NOTHING
@@ -139,16 +139,16 @@ export class GhillieService {
         let publicFile: PublicFile;
 
         try {
-            const ghillie = await this.prisma.$transaction(async (prisma) => {
-                let topics = [] as Array<Topic>;
-                if (createGhillieDto.topicNames) {
-                    // find all topics that exist with same name or slug
-                    topics = await this.getOrCreateTopics(
-                        ctx,
-                        createGhillieDto.topicNames,
-                    );
-                }
+            let topics = [] as Array<Topic>;
+            if (createGhillieDto.topicNames) {
+                // find all topics that exist with same name or slug
+                topics = await this.getOrCreateTopics(
+                    ctx,
+                    createGhillieDto.topicNames,
+                );
+            }
 
+            const ghillie = await this.prisma.$transaction(async (prisma) => {
                 const ghillie: Ghillie = await prisma.ghillie.create({
                     data: {
                         name: createGhillieDto.name,
@@ -767,7 +767,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to transfer ownership of this ghillie',
+                "You're not allowed to transfer ownership of this ghillie",
             );
         }
 
@@ -845,7 +845,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to add moderators to this ghillie',
+                "You're not allowed to add moderators to this ghillie",
             );
         }
 
@@ -907,7 +907,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to add moderators to this ghillie',
+                "You're not allowed to add moderators to this ghillie",
             );
         }
 
@@ -962,7 +962,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieModerator, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to moderate users from this ghillie',
+                "You're not allowed to moderate users from this ghillie",
             );
         }
 
@@ -1019,7 +1019,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieModerator, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to moderate users from this ghillie',
+                "You're not allowed to moderate users from this ghillie",
             );
         }
 
@@ -1062,7 +1062,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to add topics to this ghillie',
+                "You're not allowed to add topics to this ghillie",
             );
         }
 
@@ -1145,7 +1145,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                'You\'re not allowed to add topics to this ghillie',
+                "You're not allowed to add topics to this ghillie",
             );
         }
 
@@ -1712,7 +1712,7 @@ export class GhillieService {
         let seed = new Date().getTime();
 
         // Use the seed to initialize the Math.random function
-        Math.random = function() {
+        Math.random = function () {
             const x = Math.sin(seed++) * 10000;
             return x - Math.floor(x);
         };

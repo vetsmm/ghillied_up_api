@@ -89,11 +89,11 @@ export class AuthService {
 
     async activateUser(
         ctx: RequestContext,
-        activationDto: AuthVerifyEmailInputDto,
+        activationCode: number,
     ): Promise<AuthTokenOutput> {
         this.logger.log(ctx, `${this.activateUser.name} was called`);
 
-        const user = await this.userService.activateUser(ctx, activationDto);
+        const user = await this.userService.activateUser(ctx, activationCode);
         if (!user) {
             throw new UnauthorizedException('Invalid activation code');
         }

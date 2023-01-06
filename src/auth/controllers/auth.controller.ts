@@ -36,6 +36,7 @@ import {
     ReqContext,
     AuthVerifyEmailInputDto,
     AuthPasswordResetVerifyKeyDto,
+    AuthVerifyCodeInputDto,
 } from '../../shared';
 import { JwtRefreshGuard } from '../guards/jwt-refresh.guard';
 import { LocalAuthGuard } from '../guards/local-auth.guard';
@@ -82,10 +83,34 @@ export class AuthController {
 
         const authTokenOutput = await this.authService.activateUser(
             ctx,
-            emailInputDto,
+            emailInputDto.activationCode,
         );
 
         return { data: authTokenOutput, meta: {} };
+    }
+
+    @Post('/activate/code')
+    @ApiOperation({
+        summary: 'Activate users API',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: SwaggerBaseApiResponse(AuthTokenOutput),
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+    })
+    @HttpCode(HttpStatus.OK)
+    async activateWithCodeOnly(
+        @ReqContext() ctx: RequestContext,
+        @Body() codeInput: AuthVerifyCodeInputDto,
+    ): Promise<AuthTokenOutput> {
+        this.logger.log(ctx, `${this.activate.name} was called`);
+
+        return await this.authService.activateUser(
+            ctx,
+            codeInput.activationCode,
+        );
     }
 
     // resend activation email

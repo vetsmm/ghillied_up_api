@@ -36,6 +36,7 @@ export class MailService {
                     username: username,
                     activationCode: activationCode,
                     expirationInMinutes: expirationInMinutes,
+                    activationLink: `https://ghilliedup.com/auth/activate/${activationCode}`,
                 },
             })
             .then(() => {
@@ -65,6 +66,7 @@ export class MailService {
                 context: {
                     username: user.username,
                     resetKey: user.resetKey,
+                    resetLink: `https://ghilliedup.com/auth/password-reset/${user.resetKey}`,
                 },
             })
             .then(() => {

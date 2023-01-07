@@ -319,48 +319,15 @@ export class UserService {
 
     async activateUser(
         ctx: RequestContext,
-        activationDto: AuthVerifyEmailInputDto,
+        activationCode: number,
     ): Promise<UserOutput> {
         this.logger.log(ctx, `${this.activateUser.name} was called`);
 
-        let user;
-        if (activationDto.email) {
-            user = await this.prisma.user.findFirst({
-                where: {
-                    AND: [
-                        {
-                            email: {
-                                equals: activationDto.email,
-                                mode: 'insensitive',
-                            },
-                        },
-                        {
-                            activationCode: {
-                                equals: activationDto.activationCode,
-                            },
-                        },
-                    ],
-                },
-            });
-        } else {
-            user = await this.prisma.user.findFirst({
-                where: {
-                    AND: [
-                        {
-                            username: {
-                                equals: activationDto.username,
-                                mode: 'insensitive',
-                            },
-                        },
-                        {
-                            activationCode: {
-                                equals: activationDto.activationCode,
-                            },
-                        },
-                    ],
-                },
-            });
-        }
+        const user = await this.prisma.user.findFirst({
+            where: {
+                activationCode: { equals: activationCode },
+            },
+        });
 
         if (!user) throw new NotFoundException('Activation code is invalid');
 
@@ -453,10 +420,7 @@ export class UserService {
         return this.prisma.user
             .findFirst({
                 where: {
-                    AND: [
-                        { email: { equals: input.email, mode: 'insensitive' } },
-                        { resetKey: { equals: input.resetKey } },
-                    ],
+                    resetKey: { equals: input.resetKey },
                 },
             })
             .then(async (user) => {
@@ -593,10 +557,7 @@ export class UserService {
         return this.prisma.user
             .findFirst({
                 where: {
-                    AND: [
-                        { resetKey: { equals: input.resetKey } },
-                        { email: { equals: input.email, mode: 'insensitive' } },
-                    ],
+                    resetKey: { equals: input.resetKey },
                 },
             })
             .then((user) => {

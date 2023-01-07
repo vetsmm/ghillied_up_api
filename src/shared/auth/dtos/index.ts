@@ -10,3 +10,4 @@ export * from './auth-resend-verify-email-input.dto';
 export * from './auth-verify-email-input.dto';
 export * from './auth-reset-key-input.dto';
 export * from './auth-password-reset-verify-key.dto';
+export * from './auth-verify-code-input.dto';

@@ -85,6 +85,10 @@ export class PostDetailDto {
 
     @ApiProperty()
     @Expose()
+    isPinned: boolean;
+
+    @ApiProperty()
+    @Expose()
     @Transform((value) => value.obj._count?.postComments, { toClassOnly: true })
     numberOfComments?: number = 0;
 
@@ -98,7 +102,7 @@ export class PostDetailDto {
     @Transform(
         (value) => {
             return value.obj.postReaction !== undefined &&
-                value.obj.postReaction.length > 0
+            value.obj.postReaction.length > 0
                 ? value.obj.postReaction.reactionType
                 : null;
         },

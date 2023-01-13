@@ -17,7 +17,8 @@ import { PostAclService } from './post-acl.service';
 import { CreatePostInputDto } from '../dtos/create-post-input.dto';
 import { PostDetailDto } from '../dtos/post-detail.dto';
 import {
-    GhillieRole, GhillieStatus,
+    GhillieRole,
+    GhillieStatus,
     MemberStatus,
     Post,
     PostStatus,
@@ -470,6 +471,84 @@ export class PostService {
         return dto;
     }
 
+    async pinPost(ctx: RequestContext, id: string) {
+        this.logger.log(ctx, `${this.pinPost.name} was called`);
+
+        const post = await this.prisma.post.findFirst({
+            where: {
+                id,
+            },
+        });
+
+        if (!post) {
+            throw new NotFoundException('Post not found');
+        }
+
+        const ghillieUser = await this.prisma.ghillieMembers.findFirst({
+            where: {
+                AND: [{ userId: ctx.user.id }, { ghillieId: post.ghillieId }],
+            },
+        });
+
+        // Must be a member, active, and be either a moderator or admin
+        if (
+            !ghillieUser ||
+            ghillieUser.memberStatus !== MemberStatus.ACTIVE ||
+            ghillieUser.role === GhillieRole.MEMBER
+        ) {
+            throw new Error('You are not allowed to pin posts in this Ghillie');
+        }
+
+        return await this.prisma.post.update({
+            where: {
+                id,
+            },
+            data: {
+                isPinned: true,
+            },
+        });
+    }
+
+    async unpinPost(ctx: RequestContext, id: string) {
+        this.logger.log(ctx, `${this.unpinPost.name} was called`);
+
+        const post = await this.prisma.post.findFirst({
+            where: {
+                id,
+            },
+        });
+
+        if (!post) {
+            throw new NotFoundException('Post not found');
+        }
+
+        const ghillieUser = await this.prisma.ghillieMembers.findFirst({
+            where: {
+                AND: [{ userId: ctx.user.id }, { ghillieId: post.ghillieId }],
+            },
+        });
+
+        // Must be a member, active, and be either a moderator or admin
+        if (
+            !ghillieUser ||
+            ghillieUser.memberStatus !== MemberStatus.ACTIVE ||
+            ghillieUser.role === GhillieRole.MEMBER
+        ) {
+            throw new Error(
+                'You are not allowed to unpin posts in this Ghillie',
+            );
+        }
+
+        return await this.prisma.post.update({
+            where: {
+                id,
+            },
+            data: {
+                isPinned: false,
+            },
+        });
+    }
+
     async getAllPosts(
         ctx: RequestContext,
         criteria: PostSearchCriteria,
@@ -740,5 +819,83 @@ export class PostService {
             return matches.map((match) => match.replace('#', ''));
         }
         return [];
+    }
+
+    async getPinnedPosts(
+        ctx: RequestContext,
+        ghillieId: string,
+        take: number,
+        cursor?: Prisma.PostWhereUniqueInput,
+    ): Promise<{
+        posts: Array<PostListingDto>;
+        pageInfo: PageInfo;
+    }> {
+        this.logger.log(ctx, `${this.getPostsForGhillie.name} was called`);
+
+        const { findManyArgs, toConnection } = parsePaginationArgs({
+            first: take - 1,
+            after: cursor ? cursor.id : undefined,
+        });
+
+        // reverse order chronological order from createdDate
+        const posts = await this.prisma.post.findMany({
+            ...findManyArgs,
+            where: {
+                AND: [
+                    { status: PostStatus.ACTIVE },
+                    { ghillieId: ghillieId },
+                    { isPinned: true },
+                ],
+            },
+            orderBy: {
+                createdDate: 'desc',
+            },
+            include: {
+                tags: true,
+                postedBy: true,
+                ghillie: true,
+                _count: {
+                    select: {
+                        postComments: true,
+                        postReaction: true,
+                    },
+                },
+                postReaction: {
+                    where: {
+                        createdById: ctx.user.id,
+                    },
+                },
+            },
+        });
+
+        if (posts.length === 0) {
+            return {
+                posts: [] as Array<PostListingDto>,
+                pageInfo: toConnection(posts).pageInfo,
+            };
+        }
+
+        const ghillieUser = await this.prisma.ghillieMembers.findFirst({
+            where: {
+                AND: [{ userId: ctx.user.id }, { ghillieId: ghillieId }],
+            },
+        });
+
+        if (!ghillieUser) {
+            throw new Error('You are not a member of this Ghillie');
+        }
+        if (ghillieUser.memberStatus !== MemberStatus.ACTIVE) {
+            throw new Error(
+                'You are not allowed to view posts in this Ghillie',
+            );
+        }
+
+        return {
+            posts: plainToInstance(PostListingDto, posts, {
+                excludeExtraneousValues: true,
+                enableImplicitConversion: true,
+            }),
+            pageInfo: toConnection(posts).pageInfo,
+        };
     }
 }

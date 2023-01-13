@@ -43,6 +43,7 @@ import { UpdatePostInputDto } from '../dtos/update-post-input.dto';
 import { PostListingDto } from '../dtos/post-listing.dto';
 import { PostBookmarkService } from '../services/post-bookmark.service';
 import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
+import { PostNonFeedDto } from '../../feeds/dtos/post-non-feed.dto';
 
 @ApiTags('posts')
 @Controller('posts')
@@ -179,8 +180,8 @@ export class PostController {
             take,
             cursor
                 ? {
-                    id: cursor,
-                }
+                      id: cursor,
+                  }
                 : undefined,
         );
         return {
@@ -193,18 +194,12 @@ export class PostController {
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('pinned/:ghillieId')
-    @ApiQuery({
-        name: 'cursor',
-        type: String,
-        description: 'Paging Cursor',
-        required: false,
-    })
     @ApiOperation({
         summary: 'Gets all Posts for a ghillie',
     })
     @ApiResponse({
         status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse([PostListingDto]),
+        type: [PostNonFeedDto],
     })
     @ApiResponse({
         status: HttpStatus.BAD_REQUEST,
@@ -214,24 +209,9 @@ export class PostController {
     async getPinnedPosts(
         @ReqContext() ctx: RequestContext,
         @Param('ghillieId') ghillieId: string,
-        @Query('take', ParseIntPipe) take: number,
-        @Query('cursor') cursor?: string,
-    ): Promise<{ data: Array<PostListingDto>; meta: PageInfo }> {
+    ): Promise<PostNonFeedDto[]> {
         this.logger.log(ctx, `${this.getPinnedPosts.name} was called`);
-        const { posts, pageInfo } = await this.postService.getPinnedPosts(
-            ctx,
-            ghillieId,
-            take,
-            cursor
-                ? {
-                      id: cursor,
-                }
-                : undefined,
-        );
-        return {
-            data: posts,
-            meta: pageInfo,
-        };
+        return await this.postService.getPinnedPosts(ctx, ghillieId);
     }
 
     // get all posts
@@ -332,7 +312,7 @@ export class PostController {
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/bookmark')
     @ApiOperation({
-        summary: 'Adds a Post to the current user\'s bookmarks',
+        summary: "Adds a Post to the current user's bookmarks",
     })
     @ApiResponse({
         status: HttpStatus.OK,
@@ -401,7 +381,7 @@ export class PostController {
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/unbookmark')
     @ApiOperation({
-        summary: 'Adds a Post to the current user\'s bookmarks',
+        summary: "Adds a Post to the current user's bookmarks",
     })
     @ApiResponse({
         status: HttpStatus.OK,

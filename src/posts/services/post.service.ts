@@ -34,6 +34,7 @@ import { ActivityType } from '../../shared/queue/activity-type';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { PostFeedVerb } from '../../shared/feed/feed.types';
 import { OpenGraphService } from '../../open-graph/open-graph.service';
+import { PostNonFeedDto } from '../../feeds/dtos/post-non-feed.dto';
 
 @Injectable()
 export class PostService {
@@ -499,6 +500,20 @@ export class PostService {
             throw new Error('You are not allowed to pin posts in this Ghillie');
         }
 
+        const pinnedPostCount = await this.prisma.post.count({
+            where: {
+                AND: [
+                    { ghillieId: post.ghillieId },
+                    { isPinned: true },
+                    { status: PostStatus.ACTIVE },
+                ],
+            },
+        });
+
+        if (pinnedPostCount >= 10) {
+            throw new Error('You cannot pin more than 10 posts in a Ghillie');
+        }
+
         return await this.prisma.post.update({
             where: {
                 id,
@@ -824,22 +839,11 @@ export class PostService {
     async getPinnedPosts(
         ctx: RequestContext,
         ghillieId: string,
-        take: number,
-        cursor?: Prisma.PostWhereUniqueInput,
-    ): Promise<{
-        posts: Array<PostListingDto>;
-        pageInfo: PageInfo;
-    }> {
+    ): Promise<PostNonFeedDto[]> {
         this.logger.log(ctx, `${this.getPostsForGhillie.name} was called`);
-
-        const { findManyArgs, toConnection } = parsePaginationArgs({
-            first: take - 1,
-            after: cursor ? cursor.id : undefined,
-        });
 
         // reverse order chronological order from createdDate
         const posts = await this.prisma.post.findMany({
-            ...findManyArgs,
             where: {
                 AND: [
                     { status: PostStatus.ACTIVE },
@@ -869,10 +873,7 @@ export class PostService {
         });
 
         if (posts.length === 0) {
-            return {
-                posts: [] as Array<PostListingDto>,
-                pageInfo: toConnection(posts).pageInfo,
-            };
+            return [] as Array<PostNonFeedDto>;
         }
 
         const ghillieUser = await this.prisma.ghillieMembers.findFirst({
@@ -890,12 +891,9 @@ export class PostService {
             );
         }
 
-        return {
-            posts: plainToInstance(PostListingDto, posts, {
-                excludeExtraneousValues: true,
-                enableImplicitConversion: true,
-            }),
-            pageInfo: toConnection(posts).pageInfo,
-        };
+        return plainToInstance(PostNonFeedDto, posts, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
     }
 }

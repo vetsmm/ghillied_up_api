@@ -129,6 +129,7 @@ model Post {
   tags          PostTag[]
   postedBy      User           @relation(fields: [postedById], references: [id], onDelete: Cascade)
   postedById    String         @map("posted_by_id")
+  isPinned      Boolean        @default(false) @map("is_pinned")
   postComments  PostComment[]
   flagPosts     FlagPost[]
   createdDate   DateTime       @default(now()) @map("created_date")
@@ -138,7 +139,7 @@ model Post {
   activityId    String?        @unique @map("activity_id")
   postBookmarks PostBookmark[]
 
-  @@index([title, status, uid])
+  @@index([title, status, uid, isPinned])
   @@map("post")
 }
 

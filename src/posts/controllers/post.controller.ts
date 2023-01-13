@@ -179,8 +179,53 @@ export class PostController {
             take,
             cursor
                 ? {
+                    id: cursor,
+                }
+                : undefined,
+        );
+        return {
+            data: posts,
+            meta: pageInfo,
+        };
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Get('pinned/:ghillieId')
+    @ApiQuery({
+        name: 'cursor',
+        type: String,
+        description: 'Paging Cursor',
+        required: false,
+    })
+    @ApiOperation({
+        summary: 'Gets all Posts for a ghillie',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        type: SwaggerBaseApiResponse([PostListingDto]),
+    })
+    @ApiResponse({
+        status: HttpStatus.BAD_REQUEST,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_USER, UserAuthority.ROLE_VERIFIED_MILITARY)
+    async getPinnedPosts(
+        @ReqContext() ctx: RequestContext,
+        @Param('ghillieId') ghillieId: string,
+        @Query('take', ParseIntPipe) take: number,
+        @Query('cursor') cursor?: string,
+    ): Promise<{ data: Array<PostListingDto>; meta: PageInfo }> {
+        this.logger.log(ctx, `${this.getPinnedPosts.name} was called`);
+        const { posts, pageInfo } = await this.postService.getPinnedPosts(
+            ctx,
+            ghillieId,
+            take,
+            cursor
+                ? {
                       id: cursor,
-                  }
+                }
                 : undefined,
         );
         return {
@@ -287,7 +332,7 @@ export class PostController {
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/bookmark')
     @ApiOperation({
-        summary: "Adds a Post to the current user's bookmarks",
+        summary: 'Adds a Post to the current user\'s bookmarks',
     })
     @ApiResponse({
         status: HttpStatus.OK,
@@ -308,9 +353,55 @@ export class PostController {
     @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
+    @Put(':id/pin')
+    @ApiOperation({
+        summary: 'Adds a Post to the Ghillies pinned posts',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_USER)
+    async pinPost(
+        @ReqContext() ctx: RequestContext,
+        @Param('id') id: string,
+    ): Promise<void> {
+        this.logger.log(ctx, `${this.pinPost.name} was called`);
+        await this.postService.pinPost(ctx, id);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Put(':id/unpin')
+    @ApiOperation({
+        summary: 'Removes a Post from the Ghillies pinned posts',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_USER)
+    async unpinPost(
+        @ReqContext() ctx: RequestContext,
+        @Param('id') id: string,
+    ): Promise<void> {
+        this.logger.log(ctx, `${this.unpinPost.name} was called`);
+        await this.postService.unpinPost(ctx, id);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/unbookmark')
     @ApiOperation({
-        summary: "Adds a Post to the current user's bookmarks",
+        summary: 'Adds a Post to the current user\'s bookmarks',
     })
     @ApiResponse({
         status: HttpStatus.OK,

@@ -12,7 +12,7 @@ import {
     Get,
     HttpCode,
     HttpStatus,
-    Param,
+    Param, Patch,
     Post,
     Put,
     Query,
@@ -42,6 +42,8 @@ import { GhillieUserDto } from '../../dtos/members/ghillie-user.dto';
 import ImageFilesInterceptor from '../../../shared/interceptors/image-file.interceptor';
 import { ActiveUserGuard } from '../../../auth/guards/active-user.guard';
 import { CombinedGhilliesDto } from '../../dtos/ghillie/combined-ghillies.dto';
+import { GhillieMemberSettingsUpdateDto } from '../../dtos/members/ghillie-member-settings-update.dto';
+import { GhillieMemberDto } from '../../dtos/members/ghillie-member.dto';
 
 @ApiTags('ghillies')
 @Controller('ghillies')
@@ -134,6 +136,28 @@ export class GhillieController {
         this.logger.log(ctx, `${this.updateGhillieLogo.name} was called`);
 
         return await this.ghillieService.updateGhillieLogo(ctx, id, image);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @Patch(':id/member-settings')
+    @ApiOperation({
+        summary: "Update a Ghillie Member's Settings logo",
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_ADMIN)
+    async updateMemberSettings(
+        @ReqContext() ctx: RequestContext,
+        @Param('id') id: string,
+        @Body() memberSettings: GhillieMemberSettingsUpdateDto,
+    ): Promise<GhillieMemberDto> {
+        this.logger.log(ctx, `${this.updateMemberSettings.name} was called`);
+
+        return await this.ghillieService.updateMemberSettings(
+            ctx,
+            id,
+            memberSettings,
+        );
     }
 
     @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)

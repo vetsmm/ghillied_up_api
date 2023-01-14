@@ -37,6 +37,9 @@ import { GhillieAssetsService } from '../../files/services/ghillie-assets.servic
 import { AssetTypes } from '../../files/dtos/asset.types';
 import { CombinedGhilliesDto } from '../dtos/ghillie/combined-ghillies.dto';
 import * as cuid from 'cuid';
+import { GhillieMemberSettingsUpdateDto } from '../dtos/members/ghillie-member-settings-update.dto';
+import { GhillieMemberDto } from '../dtos/members/ghillie-member.dto';
+import { GhillieMemberSettings } from '../dtos/members/ghillie-member-settings';
 
 @Injectable()
 export class GhillieService {
@@ -767,7 +770,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to transfer ownership of this ghillie",
+                'You\'re not allowed to transfer ownership of this ghillie',
             );
         }
 
@@ -845,7 +848,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add moderators to this ghillie",
+                'You\'re not allowed to add moderators to this ghillie',
             );
         }
 
@@ -907,7 +910,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add moderators to this ghillie",
+                'You\'re not allowed to add moderators to this ghillie',
             );
         }
 
@@ -962,7 +965,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieModerator, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to moderate users from this ghillie",
+                'You\'re not allowed to moderate users from this ghillie',
             );
         }
 
@@ -1019,7 +1022,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieModerator, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to moderate users from this ghillie",
+                'You\'re not allowed to moderate users from this ghillie',
             );
         }
 
@@ -1062,7 +1065,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add topics to this ghillie",
+                'You\'re not allowed to add topics to this ghillie',
             );
         }
 
@@ -1145,7 +1148,7 @@ export class GhillieService {
             .canDoAction(Action.GhillieManage, ghillieMember);
         if (!isAllowed) {
             throw new UnauthorizedException(
-                "You're not allowed to add topics to this ghillie",
+                'You\'re not allowed to add topics to this ghillie',
             );
         }
 
@@ -1635,6 +1638,53 @@ export class GhillieService {
         });
     }
 
+    async updateMemberSettings(
+        ctx: RequestContext,
+        ghillieId: string,
+        memberSettings: GhillieMemberSettingsUpdateDto,
+    ): Promise<GhillieMemberDto> {
+        this.logger.debug(ctx, `${this.updateMemberSettings.name} was called`);
+
+        const ghillieMember = await this.prisma.ghillieMembers.findUnique({
+            where: {
+                userId_ghillieId: {
+                    ghillieId,
+                    userId: ctx.user.id,
+                },
+            },
+        });
+
+        if (!ghillieMember) {
+            throw new UnauthorizedException(
+                'You are not a member of this ghillie',
+            );
+        }
+
+        const updateSettings: GhillieMemberSettings = {};
+
+        if (memberSettings.newPostNotifications) {
+            updateSettings.newPostNotifications =
+                memberSettings.newPostNotifications;
+        }
+
+        const updatedGhillieMember = await this.prisma.ghillieMembers.update({
+            where: {
+                userId_ghillieId: {
+                    ghillieId,
+                    userId: ctx.user.id,
+                },
+            },
+            data: {
+                ...updateSettings,
+            },
+        });
+
+        return plainToInstance(GhillieMemberDto, updatedGhillieMember, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
+    }
+
     async generateInviteCode(ctx: RequestContext, id: string) {
         this.logger.log(ctx, `${this.generateInviteCode.name} was called`);
 
@@ -1712,7 +1762,7 @@ export class GhillieService {
         let seed = new Date().getTime();
 
         // Use the seed to initialize the Math.random function
-        Math.random = function () {
+        Math.random = function() {
             const x = Math.sin(seed++) * 10000;
             return x - Math.floor(x);
         };

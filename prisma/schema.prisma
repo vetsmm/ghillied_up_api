@@ -161,13 +161,14 @@ model FlagGhillie {
 }
 
 model GhillieMembers {
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId       String       @map("user_id")
-  ghillie      Ghillie      @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
-  ghillieId    String       @map("ghillie_id")
-  joinDate     DateTime     @default(now()) @map("join_date")
-  memberStatus MemberStatus @default(ACTIVE) @map("member_status")
-  role         GhillieRole  @default(MEMBER)
+  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId               String       @map("user_id")
+  ghillie              Ghillie      @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
+  ghillieId            String       @map("ghillie_id")
+  joinDate             DateTime     @default(now()) @map("join_date")
+  memberStatus         MemberStatus @default(ACTIVE) @map("member_status")
+  role                 GhillieRole  @default(MEMBER)
+  newPostNotifications Boolean      @default(true) @map("new_post_notifications")
 
   @@id([userId, ghillieId])
   @@index([memberStatus, role])

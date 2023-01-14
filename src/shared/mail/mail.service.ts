@@ -60,7 +60,7 @@ export class MailService {
         await this.mailerService
             .sendMail({
                 to: user.email,
-                from: '"Support Team" <support@ghilliedup.com>',
+                from: '"Ghillied Up Support" <support@ghilliedup.com>',
                 subject: 'Reset your password',
                 template: './resetPasswordEmail',
                 context: {

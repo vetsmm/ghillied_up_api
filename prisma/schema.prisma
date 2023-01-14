@@ -119,28 +119,41 @@ model PostBookmark {
 }
 
 model Post {
-  id            String         @id @default(cuid())
-  uid           String         @unique
-  title         String
-  content       String
-  status        PostStatus     @default(ACTIVE)
-  ghillie       Ghillie        @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
-  ghillieId     String         @map("ghillie_id")
-  tags          PostTag[]
-  postedBy      User           @relation(fields: [postedById], references: [id], onDelete: Cascade)
-  postedById    String         @map("posted_by_id")
-  isPinned      Boolean        @default(false) @map("is_pinned")
-  postComments  PostComment[]
-  flagPosts     FlagPost[]
-  createdDate   DateTime       @default(now()) @map("created_date")
-  updatedDate   DateTime       @updatedAt @map("updated_date")
-  edited        Boolean        @default(false)
-  postReaction  PostReaction[]
-  activityId    String?        @unique @map("activity_id")
-  postBookmarks PostBookmark[]
+  id                 String               @id @default(cuid())
+  uid                String               @unique
+  title              String
+  content            String
+  status             PostStatus           @default(ACTIVE)
+  ghillie            Ghillie              @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
+  ghillieId          String               @map("ghillie_id")
+  tags               PostTag[]
+  postedBy           User                 @relation(fields: [postedById], references: [id], onDelete: Cascade)
+  postedById         String               @map("posted_by_id")
+  isPinned           Boolean              @default(false) @map("is_pinned")
+  postComments       PostComment[]
+  flagPosts          FlagPost[]
+  createdDate        DateTime             @default(now()) @map("created_date")
+  updatedDate        DateTime             @updatedAt @map("updated_date")
+  edited             Boolean              @default(false)
+  postReaction       PostReaction[]
+  activityId         String?              @unique @map("activity_id")
+  postBookmarks      PostBookmark[]
+  PostSubscribedUser PostSubscribedUser[]
 
   @@index([title, status, uid, isPinned])
   @@map("post")
+}
+
+model PostSubscribedUser {
+  id          String   @id @default(cuid())
+  createdDate DateTime @default(now()) @map("created_date")
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId      String   @map("post_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String   @map("user_id")
+
+  @@unique([postId, userId])
+  @@map("post_subscribed_user")
 }
 
 model FlagGhillie {
@@ -281,6 +294,7 @@ model User {
   pushTokens               DevicePushToken[]
   PushNotificationSettings PushNotificationSettings?
   postBookmarks            PostBookmark[]
+  PostSubscribedUser       PostSubscribedUser[]
 
   @@index([email, username, slug])
   @@map("user")

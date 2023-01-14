@@ -22,4 +22,8 @@ export class GhillieMemberDto {
     @ApiProperty()
     @Expose()
     role: GhillieRole;
+
+    @ApiProperty()
+    @Expose()
+    newPostNotifications?: boolean;
 }

@@ -439,6 +439,12 @@ export class PostService {
                         createdById: ctx.user.id,
                     },
                 },
+                postSubscribedUsers: {
+                    where: {
+                        userId: ctx.user.id,
+                        postId: id,
+                    },
+                },
             },
         });
 
@@ -894,6 +900,85 @@ export class PostService {
         return plainToInstance(PostNonFeedDto, posts, {
             excludeExtraneousValues: true,
             enableImplicitConversion: true,
+        });
+    }
+
+    async subscribe(ctx: RequestContext, id: string) {
+        this.logger.debug(
+            ctx,
+            `${this.subscribe.name} was called with id: ${id}`,
+        );
+
+        const post = await this.prisma.post.findUnique({
+            where: {
+                id: id,
+            },
+        });
+
+        const ghillieUser = await this.prisma.ghillieMembers.findFirst({
+            where: {
+                AND: [{ userId: ctx.user.id }, { ghillieId: post.ghillieId }],
+            },
+        });
+
+        if (!ghillieUser) {
+            throw new Error('You are not a member of this Ghillie');
+        }
+        if (ghillieUser.memberStatus !== MemberStatus.ACTIVE) {
+            throw new Error(
+                'You are not allowed to view posts in this Ghillie',
+            );
+        }
+
+        await this.prisma.postSubscribedUser.upsert({
+            where: {
+                userId_postId: {
+                    userId: ctx.user.id,
+                    postId: id,
+                },
+            },
+            create: {
+                postId: id,
+                userId: ctx.user.id,
+            },
+            update: {},
+        });
+    }
+
+    async unsubscribe(ctx: RequestContext, id: string) {
+        this.logger.debug(
+            ctx,
+            `${this.unsubscribe.name} was called with id: ${id}`,
+        );
+
+        const post = await this.prisma.post.findUnique({
+            where: {
+                id: id,
+            },
+        });
+
+        const ghillieUser = await this.prisma.ghillieMembers.findFirst({
+            where: {
+                AND: [{ userId: ctx.user.id }, { ghillieId: post.ghillieId }],
+            },
+        });
+
+        if (!ghillieUser) {
+            throw new Error('You are not a member of this Ghillie');
+        }
+        if (ghillieUser.memberStatus !== MemberStatus.ACTIVE) {
+            throw new Error(
+                'You are not allowed to view posts in this Ghillie',
+            );
+        }
+
+        await this.prisma.postSubscribedUser.delete({
+            where: {
+                userId_postId: {
+                    userId: ctx.user.id,
+                    postId: id,
+                },
+            },
         });
     }
 }

@@ -104,6 +104,8 @@ export class ParentCommentService {
             createPostCommentInput,
         );
 
+        await this.subscribeToPostComment(ctx, comment.postId);
+
         return plainToInstance(CommentDetailDto, comment, {
             excludeExtraneousValues: true,
             enableImplicitConversion: true,
@@ -615,6 +617,33 @@ export class ParentCommentService {
 
             throw new NotFoundException(
                 `Comment with id: ${id} does not exist`,
+            );
+        }
+    }
+
+    private async subscribeToPostComment(ctx: RequestContext, postId: string) {
+        this.logger.debug(
+            ctx,
+            `${this.subscribeToPostComment.name} was called`,
+        );
+        try {
+            await this.prisma.postSubscribedUser.upsert({
+                where: {
+                    userId_postId: {
+                        userId: ctx.user.id,
+                        postId: postId,
+                    },
+                },
+                create: {
+                    postId: postId,
+                    userId: ctx.user.id,
+                },
+                update: {},
+            });
+        } catch (error) {
+            this.logger.error(
+                ctx,
+                `Failed to subscribe to post comment after commenting - ${error.message}`,
             );
         }
     }

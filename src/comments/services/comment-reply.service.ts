@@ -9,7 +9,8 @@ import {
 import { CreateCommentReplyDto } from '../dtos/create-comment-reply.dto';
 import { ReactionAPIResponse } from 'getstream';
 import {
-    CommentStatus, GhillieStatus,
+    CommentStatus,
+    GhillieStatus,
     MemberStatus,
     NotificationType,
     PostComment,
@@ -190,6 +191,8 @@ export class CommentReplyService {
                 `Error while creating comment reply notification: ${error}`,
             );
         }
+        await this.subscribeToPostComment(ctx, parentComment.postId);
+
         const response = plainToInstance(ChildCommentDto, childComment, {
             excludeExtraneousValues: true,
             enableImplicitConversion: true,
@@ -500,5 +503,32 @@ export class CommentReplyService {
                 reaction.reactionType,
             ]),
         );
+    }
+
+    private async subscribeToPostComment(ctx: RequestContext, postId: string) {
+        this.logger.debug(
+            ctx,
+            `${this.subscribeToPostComment.name} was called`,
+        );
+        try {
+            await this.prisma.postSubscribedUser.upsert({
+                where: {
+                    userId_postId: {
+                        userId: ctx.user.id,
+                        postId: postId,
+                    },
+                },
+                create: {
+                    postId: postId,
+                    userId: ctx.user.id,
+                },
+                update: {},
+            });
+        } catch (error) {
+            this.logger.error(
+                ctx,
+                `Failed to subscribe to post comment after commenting - ${error.message}`,
+            );
+        }
     }
 }

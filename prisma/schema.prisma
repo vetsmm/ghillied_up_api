@@ -138,21 +138,20 @@ model Post {
   postReaction       PostReaction[]
   activityId         String?              @unique @map("activity_id")
   postBookmarks      PostBookmark[]
-  PostSubscribedUser PostSubscribedUser[]
+  postSubscribedUsers PostSubscribedUser[]
 
   @@index([title, status, uid, isPinned])
   @@map("post")
 }
 
 model PostSubscribedUser {
-  id          String   @id @default(cuid())
   createdDate DateTime @default(now()) @map("created_date")
   post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   postId      String   @map("post_id")
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String   @map("user_id")
 
-  @@unique([postId, userId])
+  @@id([userId, postId])
   @@map("post_subscribed_user")
 }
 
@@ -294,7 +293,7 @@ model User {
   pushTokens               DevicePushToken[]
   PushNotificationSettings PushNotificationSettings?
   postBookmarks            PostBookmark[]
-  PostSubscribedUser       PostSubscribedUser[]
+  postSubscribedUsers       PostSubscribedUser[]
 
   @@index([email, username, slug])
   @@map("user")

@@ -119,6 +119,46 @@ export class PostController {
     @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
+    @Put(':id/subscribe')
+    @ApiOperation({
+        summary: 'Subscribes to a Post',
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_USER)
+    async subscribeToPost(
+        @ReqContext() ctx: RequestContext,
+        @Param('id') id: string,
+    ): Promise<void> {
+        this.logger.log(ctx, `${this.subscribeToPost.name} was called`);
+        await this.postService.subscribe(ctx, id);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Put(':id/unsubscribe')
+    @ApiOperation({
+        summary: 'Unsubscribes to a Post',
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_USER)
+    async unsubscribeToPost(
+        @ReqContext() ctx: RequestContext,
+        @Param('id') id: string,
+    ): Promise<void> {
+        this.logger.log(ctx, `${this.unsubscribeToPost.name} was called`);
+        await this.postService.unsubscribe(ctx, id);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
     @Get(':id')
     @ApiOperation({
         summary: 'Gets a Post by id',

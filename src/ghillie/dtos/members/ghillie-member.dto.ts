@@ -25,5 +25,5 @@ export class GhillieMemberDto {
 
     @ApiProperty()
     @Expose()
-    newPostNotifications?: boolean;
+    newPostNotifications: boolean;
 }

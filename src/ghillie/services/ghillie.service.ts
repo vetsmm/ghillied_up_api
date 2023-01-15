@@ -39,7 +39,6 @@ import { CombinedGhilliesDto } from '../dtos/ghillie/combined-ghillies.dto';
 import * as cuid from 'cuid';
 import { GhillieMemberSettingsUpdateDto } from '../dtos/members/ghillie-member-settings-update.dto';
 import { GhillieMemberDto } from '../dtos/members/ghillie-member.dto';
-import { GhillieMemberSettings } from '../dtos/members/ghillie-member-settings';
 
 @Injectable()
 export class GhillieService {
@@ -1638,10 +1637,37 @@ export class GhillieService {
         });
     }
 
+    async getMemberSettings(
+        ctx: RequestContext,
+        ghillieId: string,
+    ): Promise<GhillieMemberDto> {
+        this.logger.debug(ctx, `${this.getMemberSettings.name} was called`);
+
+        const ghillieMember = await this.prisma.ghillieMembers.findUnique({
+            where: {
+                userId_ghillieId: {
+                    ghillieId,
+                    userId: ctx.user.id,
+                },
+            },
+        });
+
+        if (!ghillieMember) {
+            throw new UnauthorizedException(
+                'You are not a member of this ghillie',
+            );
+        }
+
+        return plainToInstance(GhillieMemberDto, ghillieMember, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
+    }
+
     async updateMemberSettings(
         ctx: RequestContext,
         ghillieId: string,
-        memberSettings: GhillieMemberSettingsUpdateDto,
+        updatedSettings: GhillieMemberSettingsUpdateDto,
     ): Promise<GhillieMemberDto> {
         this.logger.debug(ctx, `${this.updateMemberSettings.name} was called`);
 
@@ -1660,13 +1686,6 @@ export class GhillieService {
             );
         }
 
-        const updateSettings: GhillieMemberSettings = {};
-
-        if (memberSettings.newPostNotifications) {
-            updateSettings.newPostNotifications =
-                memberSettings.newPostNotifications;
-        }
-
         const updatedGhillieMember = await this.prisma.ghillieMembers.update({
             where: {
                 userId_ghillieId: {
@@ -1674,9 +1693,7 @@ export class GhillieService {
                     userId: ctx.user.id,
                 },
             },
-            data: {
-                ...updateSettings,
-            },
+            data: updatedSettings,
         });
 
         return plainToInstance(GhillieMemberDto, updatedGhillieMember, {

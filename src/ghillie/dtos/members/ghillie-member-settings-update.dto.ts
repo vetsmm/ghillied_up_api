@@ -1,9 +1,9 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsOptional } from 'class-validator';
 
 export class GhillieMemberSettingsUpdateDto {
-    @IsOptional()
+    @ApiProperty()
     @IsBoolean()
-    @ApiPropertyOptional()
-    readonly newPostNotifications?: boolean;
+    @IsOptional()
+    newPostNotifications?: boolean;
 }

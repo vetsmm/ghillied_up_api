@@ -12,7 +12,8 @@ import {
     Get,
     HttpCode,
     HttpStatus,
-    Param, Patch,
+    Param,
+    Patch,
     Post,
     Put,
     Query,
@@ -124,7 +125,7 @@ export class GhillieController {
     )
     @Put(':id/logo')
     @ApiOperation({
-        summary: "Update a Ghillie's logo",
+        summary: 'Update a Ghillie\'s logo',
     })
     @HttpCode(HttpStatus.OK)
     @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_ADMIN)
@@ -142,7 +143,7 @@ export class GhillieController {
     @ApiBearerAuth()
     @Patch(':id/member-settings')
     @ApiOperation({
-        summary: "Update a Ghillie Member's Settings logo",
+        summary: 'Update a Ghillie Member\'s Settings',
     })
     @HttpCode(HttpStatus.OK)
     @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_ADMIN)
@@ -158,6 +159,23 @@ export class GhillieController {
             id,
             memberSettings,
         );
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @Get(':id/member-settings')
+    @ApiOperation({
+        summary: 'Get a Ghillie Member\'s Settings',
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_ADMIN)
+    async getMemberSettings(
+        @ReqContext() ctx: RequestContext,
+        @Param('id') id: string,
+    ): Promise<GhillieMemberDto> {
+        this.logger.log(ctx, `${this.getMemberSettings.name} was called`);
+
+        return await this.ghillieService.getMemberSettings(ctx, id);
     }
 
     @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)

@@ -12,9 +12,9 @@ import {
     CommentDetailDto,
     CreateCommentDto,
     RequestContext,
+    sendSentryError,
     UpdateCommentDto,
 } from '../../shared';
-import { QueueService } from '../../queue/services/queue.service';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NotificationService } from '../../notifications/services/notification.service';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
@@ -31,12 +31,13 @@ import {
     User,
 } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
-import { ActivityType } from '../../shared/queue/activity-type';
 import { ReactionAPIResponse } from 'getstream';
 import { ParentCommentDto } from '../dtos/parent-comment.dto';
 import { ChildCommentDto } from '../dtos/child-comment.dto';
 import Immutable from 'immutable';
-import { getMilitaryString } from '../../shared/utils/military-utils';
+import { getMilitaryString } from '../../shared';
+import { PushNotificationService } from '../../push-notifications/services/push-notification.service';
+import stringUtils from '../../shared/utils/string-utils';
 
 @Injectable()
 export class ParentCommentService {
@@ -44,9 +45,9 @@ export class ParentCommentService {
         private readonly prisma: PrismaService,
         private readonly logger: AppLogger,
         private readonly aclService: CommentAclService,
-        private readonly queueService: QueueService,
         private readonly streamService: GetStreamService,
         private readonly notificationService: NotificationService,
+        private readonly pushNotificationService: PushNotificationService,
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(ParentCommentService.name);
@@ -102,6 +103,7 @@ export class ParentCommentService {
         const comment = await this.createParentComment(
             ctx,
             createPostCommentInput,
+            ghillieMember.ghillie?.imageUrl,
         );
 
         await this.subscribeToPostComment(ctx, comment.postId);
@@ -222,32 +224,47 @@ export class ParentCommentService {
             throw new Error('You are not allowed to delete this comment');
         }
 
-        // delete all children
-        await this.prisma.$transaction(async (prisma) => {
-            await prisma.postComment.deleteMany({
-                where: {
-                    id: {
-                        in: comment.childCommentIds,
-                    },
-                },
-            });
+        this.streamService
+            .deletePostComment(comment.activityId)
+            .then(() => {
+                // delete from DB
+                this.prisma
+                    .$transaction(async (prisma) => {
+                        await prisma.postComment.deleteMany({
+                            where: {
+                                id: {
+                                    in: comment.childCommentIds,
+                                },
+                            },
+                        });
 
-            // delete the parent comment
-            await prisma.postComment.delete({
-                where: {
-                    id: commentId,
-                },
+                        // delete the parent comment
+                        await prisma.postComment.delete({
+                            where: {
+                                id: commentId,
+                            },
+                        });
+                    })
+                    .then(() => {
+                        this.logger.log(
+                            ctx,
+                            `Post comment ${commentId} was deleted w/ children`,
+                        );
+                    })
+                    .catch((error) => {
+                        this.logger.error(
+                            ctx,
+                            `Error deleting post comment and children in database: ${error}`,
+                        );
+                    });
+            })
+            .catch((error) => {
+                this.logger.error(
+                    ctx,
+                    `Failed to delete comment from feed - ${error.message}`,
+                    error,
+                );
             });
-        });
-
-        try {
-            await this.streamService.deletePostComment(comment.activityId);
-        } catch (error) {
-            this.logger.error(
-                ctx,
-                `Failed to delete comment from feed - ${error.message}`,
-            );
-        }
     }
 
     async getParentCommentFeed(
@@ -416,6 +433,7 @@ export class ParentCommentService {
     private async createParentComment(
         ctx: RequestContext,
         createPostCommentInput: CreateCommentDto,
+        ghillieImageUrl?: string,
     ): Promise<PostComment> {
         this.logger.log(ctx, `${this.createParentComment.name} was called`);
 
@@ -446,13 +464,6 @@ export class ParentCommentService {
             ctx,
             createPostCommentInput.postId,
         );
-        this.queueService.publishActivity(
-            ctx,
-            ActivityType.POST_COMMENT,
-            comment,
-            undefined,
-            postOwnerId,
-        );
 
         try {
             const user: User = await this.pg.oneOrNone(
@@ -466,6 +477,55 @@ export class ParentCommentService {
                 user.branch,
                 user.serviceStatus,
             )} commented on your post`;
+
+            if (postOwnerId !== ctx.user.id) {
+                this.prisma.pushNotificationSettings
+                    .findUnique({
+                        where: {
+                            userId: postOwnerId,
+                        },
+                    })
+                    .then((settings) => {
+                        if (settings?.postComments) {
+                            this.pushNotificationService
+                                .pushToUser(ctx, postOwnerId, {
+                                    title: 'Someone commented on your post',
+                                    message: notificationMessage,
+                                    imageUrl: ghillieImageUrl,
+                                    data: {
+                                        notificationType:
+                                            NotificationType.POST_COMMENT,
+                                        activityId: comment.id,
+                                        routingId: comment.postId,
+                                    },
+                                })
+                                .then((res) => {
+                                    if (res.failureCount > 0) {
+                                        res.responses.forEach((r) => {
+                                            if (r.error) {
+                                                this.logger.error(
+                                                    ctx,
+                                                    `Error sending push notification: ${r.error.message}`,
+                                                    r.error,
+                                                );
+                                                sendSentryError(ctx, r.error, {
+                                                    commentId: comment.id,
+                                                    postId: comment.postId,
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                        }
+                    })
+                    .catch((err) => {
+                        this.logger.error(
+                            ctx,
+                            `Error getting push notification settings for user ${err}`,
+                            err,
+                        );
+                    });
+            }
 
             const notification =
                 await this.notificationService.createNotification(ctx, {
@@ -524,37 +584,51 @@ export class ParentCommentService {
             },
         };
 
-        await this.streamService
-            .addPostComment({
-                kind: 'POST_COMMENT',
-                // The ID of the activity (post) the reaction refers to
-                postActivityId: comment.post.activityId,
-                data: {
-                    sourceId: comment.id,
-                    postOwnerId: comment.post.postedById,
-                    commentingUserId: comment.createdById,
-                    time: new Date().toISOString(),
-                    commentId: comment.id,
-                    reactionCount: 0,
-                    postId: comment.postId,
-                    content: comment.content,
-                    status: comment.status,
-                },
-                reactionAddOptions: {
-                    userId: comment.createdById,
-                    ...reactionAddOptions,
-                },
-            })
-            .then(async (res: ReactionAPIResponse) => {
-                await this.prisma.postComment.update({
-                    where: {
-                        id: comment.id,
-                    },
+        try {
+            const res: ReactionAPIResponse =
+                await this.streamService.addPostComment({
+                    kind: 'POST_COMMENT',
+                    // The ID of the activity (post) the reaction refers to
+                    postActivityId: comment.post.activityId,
                     data: {
-                        activityId: res.id,
+                        sourceId: comment.id,
+                        postOwnerId: comment.post.postedById,
+                        commentingUserId: comment.createdById,
+                        time: new Date().toISOString(),
+                        commentId: comment.id,
+                        reactionCount: 0,
+                        postId: comment.postId,
+                        content: comment.content,
+                        status: comment.status,
+                    },
+                    reactionAddOptions: {
+                        userId: comment.createdById,
+                        ...reactionAddOptions,
                     },
                 });
+
+            await this.prisma.postComment.update({
+                where: {
+                    id: comment.id,
+                },
+                data: {
+                    activityId: res.id,
+                },
             });
+        } catch (err) {
+            this.logger.error(
+                ctx,
+                `Error while sending comment: ${comment.id} to stream rolling back: ${err}`,
+            );
+
+            await this.prisma.postComment.delete({
+                where: {
+                    id: comment.id,
+                },
+            });
+
+            throw err;
+        }
     }
 
     async getParentCommentById(ctx: RequestContext, id: string) {
@@ -626,25 +700,35 @@ export class ParentCommentService {
             ctx,
             `${this.subscribeToPostComment.name} was called`,
         );
-        try {
-            await this.prisma.postSubscribedUser.upsert({
+        this.prisma.pushNotificationSettings
+            .findUnique({
                 where: {
-                    userId_postId: {
-                        userId: ctx.user.id,
-                        postId: postId,
-                    },
-                },
-                create: {
-                    postId: postId,
                     userId: ctx.user.id,
                 },
-                update: {},
+            })
+            .then((settings) => {
+                if (settings?.postActivity) {
+                    this.prisma.postSubscribedUser
+                        .upsert({
+                            where: {
+                                userId_postId: {
+                                    userId: ctx.user.id,
+                                    postId: postId,
+                                },
+                            },
+                            create: {
+                                postId: postId,
+                                userId: ctx.user.id,
+                            },
+                            update: {},
+                        })
+                        .catch((error) => {
+                            this.logger.error(
+                                ctx,
+                                `Failed to subscribe to post comment - ${error.message}`,
+                            );
+                        });
+                }
             });
-        } catch (error) {
-            this.logger.error(
-                ctx,
-                `Failed to subscribe to post comment after commenting - ${error.message}`,
-            );
-        }
     }
 }

@@ -340,6 +340,7 @@ model DevicePushToken {
   userId      String        @map("user_id")
   createdDate DateTime      @default(now()) @map("created_date")
   platform    PhonePlatform
+  isDisabled  Boolean       @default(false) @map("is_disabled")
 
   @@unique([token, userId])
   @@map("device_push_token")

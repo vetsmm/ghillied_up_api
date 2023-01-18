@@ -13,9 +13,10 @@ import { NotificationService } from '../notifications/services/notification.serv
 import { PostBookmarkService } from './services/post-bookmark.service';
 import { OpenGraphService } from '../open-graph/open-graph.service';
 import { HttpModule } from '@nestjs/axios';
+import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
 
 @Module({
-    imports: [HttpModule],
+    imports: [HttpModule, PushNotificationsModule],
     providers: [
         JwtAuthStrategy,
         PrismaService,

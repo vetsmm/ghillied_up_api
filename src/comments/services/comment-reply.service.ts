@@ -4,6 +4,7 @@ import {
     Actor,
     AppLogger,
     RequestContext,
+    sendSentryError,
     UpdateCommentDto,
 } from '../../shared';
 import { CreateCommentReplyDto } from '../dtos/create-comment-reply.dto';
@@ -17,9 +18,7 @@ import {
     ReactionType,
     User,
 } from '@prisma/client';
-import { ActivityType } from '../../shared/queue/activity-type';
 import { plainToInstance } from 'class-transformer';
-import { QueueService } from '../../queue/services/queue.service';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NotificationService } from '../../notifications/services/notification.service';
 import { CommentAclService } from './comment-acl.service';
@@ -28,7 +27,8 @@ import { IDatabase } from 'pg-promise';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChildCommentDto } from '../dtos/child-comment.dto';
 import Immutable from 'immutable';
-import { getMilitaryString } from '../../shared/utils/military-utils';
+import { getMilitaryString } from '../../shared';
+import { PushNotificationService } from '../../push-notifications/services/push-notification.service';
 
 @Injectable()
 export class CommentReplyService {
@@ -36,7 +36,7 @@ export class CommentReplyService {
         private readonly prisma: PrismaService,
         private readonly logger: AppLogger,
         private readonly aclService: CommentAclService,
-        private readonly queueService: QueueService,
+        private readonly pushNotificationService: PushNotificationService,
         private readonly streamService: GetStreamService,
         private readonly notificationService: NotificationService,
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
@@ -72,17 +72,22 @@ export class CommentReplyService {
             throw new Error('Parent comment does not exist.');
         }
 
-        const ghillieMember = await this.pg.oneOrNone(
-            `SELECT *, g.status as "ghillieStatus"
-             FROM ghillie_members
-             JOIN ghillie g on g.id = ghillie_members.ghillie_id
-             WHERE user_id = $1
-               AND member_status = $2
-               AND ghillie_id = (SELECT ghillie_id
-                                 FROM post
-                                 WHERE id = $3)`,
-            [ctx.user.id, MemberStatus.ACTIVE, parentComment.postId],
-        );
+        const ghillieMember = await this.prisma.ghillieMembers.findFirst({
+            where: {
+                ghillie: {
+                    posts: {
+                        some: {
+                            id: parentComment.postId,
+                        },
+                    },
+                },
+                userId: ctx.user.id,
+                memberStatus: MemberStatus.ACTIVE,
+            },
+            include: {
+                ghillie: true,
+            },
+        });
 
         if (!ghillieMember) {
             throw new Error(
@@ -90,7 +95,7 @@ export class CommentReplyService {
             );
         }
 
-        if (ghillieMember.ghillieStatus !== GhillieStatus.ACTIVE) {
+        if (ghillieMember.ghillie.status !== GhillieStatus.ACTIVE) {
             throw new Error(
                 'Ghillie is not active and cannot comment on this post',
             );
@@ -142,25 +147,66 @@ export class CommentReplyService {
             },
         );
 
-        this.queueService.publishActivity(
-            ctx,
-            ActivityType.POST_COMMENT_REPLY,
-            childComment,
-            `comment-reply-${parentComment.id}`,
-            parentComment.createdById,
-        );
-
         try {
             const user: User = await this.pg.oneOrNone(
                 `SELECT *
-                    FROM "user"
-                    WHERE id = $1`,
+                 FROM "user"
+                 WHERE id = $1`,
                 [ctx.user.id],
             );
             const notificationMessage = `${getMilitaryString(
                 user.branch,
                 user.serviceStatus,
             )} replied to your comment`;
+
+            if (ctx.user.id !== parentComment.createdById) {
+                this.prisma.pushNotificationSettings
+                    .findUnique({
+                        where: {
+                            userId: parentComment.createdById,
+                        },
+                    })
+                    .then((settings) => {
+                        if (settings?.postComments) {
+                            this.pushNotificationService
+                                .pushToUser(ctx, parentComment.createdById, {
+                                    title: 'Someone replied to your comment',
+                                    message: notificationMessage,
+                                    imageUrl: ghillieMember.ghillie.imageUrl,
+                                    data: {
+                                        notificationType:
+                                            NotificationType.POST_COMMENT_REACTION,
+                                        activityId: childComment.id,
+                                        routingId: parentComment.postId,
+                                    },
+                                })
+                                .then((res) => {
+                                    if (res.failureCount > 0) {
+                                        res.responses.forEach((r) => {
+                                            if (r.error) {
+                                                this.logger.error(
+                                                    ctx,
+                                                    `Error sending push notification: ${r.error.message}`,
+                                                    r.error,
+                                                );
+                                                sendSentryError(ctx, r.error, {
+                                                    parentCommentId,
+                                                    childCommentId:
+                                                        childComment.id,
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                        }
+                    })
+                    .catch((err) => {
+                        this.logger.error(
+                            ctx,
+                            `Error getting push notification settings for user ${err}`,
+                        );
+                    });
+            }
 
             const notification =
                 await this.notificationService.createNotification(ctx, {
@@ -333,6 +379,12 @@ export class CommentReplyService {
                         activityId: res.id,
                     },
                 });
+            })
+            .catch((err) => {
+                this.logger.error(
+                    ctx,
+                    `Error while creating child comment: ${err}`,
+                );
             });
     }
 
@@ -349,12 +401,11 @@ export class CommentReplyService {
             );
         }
 
-        const comment = await this.pg.oneOrNone(
-            `SELECT *
-             FROM post_comment
-             WHERE id = $1`,
-            [commentId],
-        );
+        const comment = await this.prisma.postComment.findUnique({
+            where: {
+                id: commentId,
+            },
+        });
 
         if (!comment) {
             throw new Error('Comment does not exist');
@@ -368,15 +419,36 @@ export class CommentReplyService {
             throw new Error('You are not allowed to delete this comment');
         }
 
-        await this.pg.none(
-            `DELETE
-             FROM post_comment
-             WHERE id = $1`,
-            [commentId],
-        );
-
         try {
-            await this.streamService.deletePostComment(comment.activityId);
+            this.streamService
+                .deletePostComment(comment.activityId)
+                .then(() => {
+                    this.prisma.postComment
+                        .delete({
+                            where: {
+                                id: commentId,
+                            },
+                        })
+                        .then(() => {
+                            this.logger.log(
+                                ctx,
+                                `Comment ${commentId} deleted successfully`,
+                            );
+                        })
+                        .catch((err) => {
+                            this.logger.error(
+                                ctx,
+                                `Error while deleting comment from database: ${err}`,
+                            );
+                        });
+                })
+                .catch((err) => {
+                    this.logger.error(
+                        ctx,
+                        `Error while deleting comment from feed`,
+                        err,
+                    );
+                });
         } catch (error) {
             this.logger.error(
                 ctx,
@@ -510,25 +582,35 @@ export class CommentReplyService {
             ctx,
             `${this.subscribeToPostComment.name} was called`,
         );
-        try {
-            await this.prisma.postSubscribedUser.upsert({
+        this.prisma.pushNotificationSettings
+            .findUnique({
                 where: {
-                    userId_postId: {
-                        userId: ctx.user.id,
-                        postId: postId,
-                    },
-                },
-                create: {
-                    postId: postId,
                     userId: ctx.user.id,
                 },
-                update: {},
+            })
+            .then((settings) => {
+                if (settings?.postActivity) {
+                    this.prisma.postSubscribedUser
+                        .upsert({
+                            where: {
+                                userId_postId: {
+                                    userId: ctx.user.id,
+                                    postId: postId,
+                                },
+                            },
+                            create: {
+                                postId: postId,
+                                userId: ctx.user.id,
+                            },
+                            update: {},
+                        })
+                        .catch((error) => {
+                            this.logger.error(
+                                ctx,
+                                `Failed to subscribe to post comment - ${error.message}`,
+                            );
+                        });
+                }
             });
-        } catch (error) {
-            this.logger.error(
-                ctx,
-                `Failed to subscribe to post comment after commenting - ${error.message}`,
-            );
-        }
     }
 }

@@ -9,12 +9,14 @@ import {
     ISendFirebaseMessageDto,
 } from '../dtos/firebase-message.dto';
 import { PushNotificationRepository } from '../repository/push-notification.repository';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PushNotificationService {
     constructor(
         private readonly logger: AppLogger,
         private readonly pushNotificationRepository: PushNotificationRepository,
+        private readonly configService: ConfigService,
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(PushNotificationService.name);
@@ -22,10 +24,8 @@ export class PushNotificationService {
         firebase.initializeApp({
             credential: firebase.credential.cert({
                 projectId: 'ghillied-up',
-                clientEmail:
-                    'firebase-adminsdk-w79m0@ghillied-up.iam.gserviceaccount.com',
-                privateKey:
-                    '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCt/qYKJS2kbyEm\nR2At81avfyuqHREtrp/+0+ZxIy9ToYMlvJ7/cJrbCDbpQWS73QhB/MwPKpPrWpEc\n58Ucj179xVrKfH1YyE9DcAsOmcbGvtrJeLhPhmOcNm4AAihH5n7fPstuWm9kllbK\nq95ZGDvqCNyGXxNbZYppKHCumscGDfc3LOlrdNIpLTdkA5LhwEeMcoaOfRkd3/CR\n4dp+EZwWeh3qD+P7GjSil5AEmP6lIdzes8rUVOGrh7u5TIYKRZuftxUaQgO0GnK9\nqbOVnUfMX2t/BYE2zWoVLrVcDsFvF+sjwfJn28AfsideTy5o3XdxMJ96RsjR6kJw\nklw88aYJAgMBAAECggEADwdU444LIrRZZygfT4JaUiWuwyG1ANg5lQLljFxb828B\nPnDleBSlJr0cM33Ey/gPOG/m8K2egcopVZdS7odKghEaKS1wJqTqn8Pdcjq0sVvK\nPXO4nvnX81kjzpfHgrcoh0AYkmTfHg+UQJFwaHHc68QtlBeoB6sK6QL0TkiR+Nyq\nE/ZjNo0EBIH+GgplVzjXeJLO9rLmcf457HMsZ2L0eY4brlK+Ex5qqk4PIA3/Zf90\nsPHnS3m3JtqAU7gwJomjkg95njwp30V2pFVrM+bNfQ4xTd2N152WVU0Uw2yLQOaT\nT7nxcyc2T1+dTsVRy+9Cc7Mxh99TyHyzGRa2txPRhwKBgQDYbQ57cdORbZEJeHew\nF3f3lAO9AdEuKveaQOostplq3IGyPEJ7Mk3nxHZxeZCivyn9NObv9O6fl4QHcLYt\nyExMWxkxGCEAl806sajCI2X5hlkDaozZ4kwk/NQUttDd/mxIoJ2asjOds2tAcOPP\n2NCOfocww4KBEF/iEvbm2ZGR2wKBgQDNz2AeYi154agZmpvmjU/pDHxuAtbWhFTY\n21AJBBzCjbi+VDwpx6imnSnzQQSTamU/psCaGoncn7WTcy271wmXBm57s/k4GkGC\ng1RHy84BpdHNwTFqkqoE5UJaU4j5mjiVjQxPxd8Pj4YEhKk974LsPfZhP2wYZ975\nKQiiQ7Lm6wKBgGzno8v2YTHi4oLTfda8WH/amW74hRwoPuP+GlhZoiWlxBW+QO3h\nSFaCA9/h/igG7cgeYL8KjzD7e1KLIwEys0IQ7UJJFAJKYNlSIMtgKKZBNnWDnlDd\nkNdj6gxqWfv7VN3PBL+dQF/wst2AcQJb5cZuYPTmzLrJVJZcWKWdgaTVAoGBAI51\noR7m7nuTS3yNnKR15H54ehjcNkG+z8xb4oabJh01ZE+6lvqEjaTm3QbYVoaD+xmY\nH3GMNSlWE6XA8EM5khXMCeXuqe+/nODubwRTeoGBejxmIgKXCsDgwJEtiX7c1ZYP\nUBpX6RMoUagG++83PvSv3z9pWzV5kMn/MU7AdbGJAoGAeapCSuzrrM0BzOWHh3l+\nym6nxvOQMZnBo8OtztLawV45RwwswMPiNJF12ob6b5lRprYXELSqslyWeVD6nC1v\nNQvtmTXDIkSPEh3o3Y1aIRh64R3kCyn75UPcCbVkN0/PSDa2sqwQDc9+sUX3MtPI\n54pshCUxy+wDnvTQ0vDP79k=\n-----END PRIVATE KEY-----\n',
+                clientEmail: configService.get('firebase.clientEmail'),
+                privateKey: configService.get('firebase.privateKey'),
             }),
         });
     }

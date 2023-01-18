@@ -71,4 +71,8 @@ export default (): ConfigurationType => ({
             allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png'],
         },
     },
+    firebase: {
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY,
+    },
 });

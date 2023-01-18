@@ -8,7 +8,8 @@ import {
     PostReactionSubsetDto,
     PostReactionDetailsDto,
     PostReactionInputDto,
-    PostDetailDto, sendSentryError,
+    PostDetailDto,
+    sendSentryError,
 } from '../../shared';
 import { PostAclService } from './post-acl.service';
 import {
@@ -166,6 +167,17 @@ export class PostReactionService {
                                                 }
                                             });
                                         }
+                                    })
+                                    .catch((err) => {
+                                        this.logger.error(
+                                            ctx,
+                                            `Error sending push notification: ${err.message}`,
+                                            err,
+                                        );
+                                        sendSentryError(ctx, err, {
+                                            postId: post.id,
+                                            reactionId: reaction.id,
+                                        });
                                     });
                             }
                         })

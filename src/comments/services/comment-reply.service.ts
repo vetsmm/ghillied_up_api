@@ -197,6 +197,17 @@ export class CommentReplyService {
                                             }
                                         });
                                     }
+                                })
+                                .catch((err) => {
+                                    this.logger.error(
+                                        ctx,
+                                        `Error sending push notification: ${err.message}`,
+                                        err,
+                                    );
+                                    sendSentryError(ctx, err, {
+                                        parentCommentId,
+                                        childCommentId: childComment.id,
+                                    });
                                 });
                         }
                     })

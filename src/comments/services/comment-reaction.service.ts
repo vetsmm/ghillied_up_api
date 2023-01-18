@@ -165,6 +165,17 @@ export class CommentReactionService {
                                                 }
                                             });
                                         }
+                                    })
+                                    .catch((err) => {
+                                        this.logger.error(
+                                            ctx,
+                                            `Error sending push notification: ${err.message}`,
+                                            err,
+                                        );
+                                        sendSentryError(ctx, err, {
+                                            commentId: cr.postComment.id,
+                                            commentReactionId: cr.id,
+                                        });
                                     });
                             }
                         })

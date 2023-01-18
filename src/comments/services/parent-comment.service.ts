@@ -494,7 +494,7 @@ export class ParentCommentService {
                                     imageUrl: ghillieImageUrl,
                                     data: {
                                         notificationType:
-                                            NotificationType.POST_COMMENT,
+                                        NotificationType.POST_COMMENT,
                                         activityId: comment.id,
                                         routingId: comment.postId,
                                     },
@@ -515,6 +515,17 @@ export class ParentCommentService {
                                             }
                                         });
                                     }
+                                })
+                                .catch((err) => {
+                                    this.logger.error(
+                                        ctx,
+                                        `Error sending push notification: ${err.message}`,
+                                        err,
+                                    );
+                                    sendSentryError(ctx, err, {
+                                        commentId: comment.id,
+                                        postId: comment.postId,
+                                    });
                                 });
                         }
                     })

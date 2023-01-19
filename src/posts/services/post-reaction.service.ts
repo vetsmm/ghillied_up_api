@@ -27,6 +27,7 @@ import { getMilitaryString } from '../../shared';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
 import { PushNotificationService } from '../../push-notifications/services/push-notification.service';
+import { PushNotificationType } from '../../push-notifications/dtos/push-notification-type';
 
 @Injectable()
 export class PostReactionService {
@@ -118,6 +119,15 @@ export class PostReactionService {
                     user.serviceStatus,
                 )} reacted to your post`;
 
+                const notification =
+                    await this.notificationService.createNotification(ctx, {
+                        type: NotificationType.POST_COMMENT,
+                        sourceId: reaction.id,
+                        fromUserId: ctx.user.id,
+                        toUserId: post.postedById,
+                        message: notificationMessage,
+                    });
+
                 if (post.postedById !== ctx.user.id) {
                     this.prisma.pushNotificationSettings
                         .findUnique({
@@ -137,11 +147,12 @@ export class PostReactionService {
                                             imageUrl: member.ghillie.imageUrl,
                                             data: {
                                                 notificationType:
-                                                    NotificationType.POST_REACTION,
+                                                    PushNotificationType.POST_REACTION,
                                                 activityId: reaction.id,
                                                 routingId: reaction.post.id,
                                                 reactionType:
                                                     reaction.reactionType,
+                                                notificationId: notification.id,
                                             },
                                         },
                                         false,
@@ -190,14 +201,6 @@ export class PostReactionService {
                         });
                 }
 
-                const notification =
-                    await this.notificationService.createNotification(ctx, {
-                        type: NotificationType.POST_COMMENT,
-                        sourceId: reaction.id,
-                        fromUserId: ctx.user.id,
-                        toUserId: post.postedById,
-                        message: notificationMessage,
-                    });
                 this.syncPostReaction(
                     ctx,
                     post,
@@ -298,7 +301,7 @@ export class PostReactionService {
                         id: reaction.id,
                     },
                     data: {
-                        activityId: res.id,
+                        activityId: res.activity_id,
                     },
                 });
             })

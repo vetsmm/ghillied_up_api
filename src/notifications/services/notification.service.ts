@@ -2,6 +2,7 @@ import {
     Inject,
     Injectable,
     InternalServerErrorException,
+    NotFoundException,
 } from '@nestjs/common';
 import { AppLogger, RequestContext } from '../../shared';
 import {
@@ -341,5 +342,48 @@ export class NotificationService {
             'SELECT "id" FROM "notification" WHERE "from_user_id" = $1 AND "to_user_id" = $2 AND "source_id" = $3 AND "type" = $4',
             [fromUserId, toUserId, sourceId, type],
         );
+    }
+
+    async markNotificationAsRead(ctx: RequestContext, id: string) {
+        this.logger.log(ctx, `${this.markNotificationAsRead.name} was called`);
+
+        const notification = await this.pg.oneOrNone(
+            'SELECT * FROM "notification" WHERE "id" = $1 AND "to_user_id" = $2',
+            [id, ctx.user.id],
+        );
+
+        if (!notification) {
+            throw new NotFoundException('Notification not found');
+        }
+
+        let offset = 0;
+        const limit = 100;
+        let found = false;
+        while (!found) {
+            const feed = await this.streamService.getNotificationFeed(
+                ctx.user.id,
+                { offset, limit },
+            );
+            for (const activity of feed.results) {
+                for (const innerActivity of activity['activities'] as any[]) {
+                    if (
+                        innerActivity[`notification:${ctx.user.id}`] &&
+                        innerActivity[`notification:${ctx.user.id}`][
+                            'notificationId'
+                        ] === id
+                    ) {
+                        this.markNotificationsAsRead(ctx, {
+                            ids: [{ id, activityId: activity.id }],
+                        });
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    break;
+                }
+            }
+            offset += limit;
+        }
     }
 }

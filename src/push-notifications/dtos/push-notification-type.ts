@@ -1,6 +1,7 @@
-export const NotificationType = {
+export const PushNotificationType = {
     POST_SUBSCRIBE: 'POST_SUBSCRIBE',
     POST_COMMENT: 'POST_COMMENT',
+    COMMENT_REPLY: 'COMMENT_REPLY',
     POST: 'POST',
     POST_REACTION: 'POST_REACTION',
     POST_COMMENT_REACTION: 'POST_COMMENT_REACTION',
@@ -8,5 +9,5 @@ export const NotificationType = {
     NEW_GHILLIE_ACTIVITY: 'NEW_GHILLIE_ACTIVITY',
 };
 
-export type NotificationType =
-    typeof NotificationType[keyof typeof NotificationType];
+export type PushNotificationType =
+    typeof PushNotificationType[keyof typeof PushNotificationType];

@@ -29,6 +29,7 @@ import { ChildCommentDto } from '../dtos/child-comment.dto';
 import Immutable from 'immutable';
 import { getMilitaryString } from '../../shared';
 import { PushNotificationService } from '../../push-notifications/services/push-notification.service';
+import { PushNotificationType } from '../../push-notifications/dtos/push-notification-type';
 
 @Injectable()
 export class CommentReplyService {
@@ -159,6 +160,15 @@ export class CommentReplyService {
                 user.serviceStatus,
             )} replied to your comment`;
 
+            const notification =
+                await this.notificationService.createNotification(ctx, {
+                    type: NotificationType.POST_COMMENT,
+                    sourceId: childComment.id,
+                    fromUserId: ctx.user.id,
+                    toUserId: parentComment.createdById,
+                    message: notificationMessage,
+                });
+
             if (ctx.user.id !== parentComment.createdById) {
                 this.prisma.pushNotificationSettings
                     .findUnique({
@@ -175,9 +185,10 @@ export class CommentReplyService {
                                     imageUrl: ghillieMember.ghillie.imageUrl,
                                     data: {
                                         notificationType:
-                                            NotificationType.POST_COMMENT_REACTION,
+                                            PushNotificationType.COMMENT_REPLY,
                                         activityId: childComment.id,
                                         routingId: parentComment.postId,
+                                        notificationId: notification.id,
                                     },
                                 })
                                 .then((res) => {
@@ -218,15 +229,6 @@ export class CommentReplyService {
                         );
                     });
             }
-
-            const notification =
-                await this.notificationService.createNotification(ctx, {
-                    type: NotificationType.POST_COMMENT,
-                    sourceId: childComment.id,
-                    fromUserId: ctx.user.id,
-                    toUserId: parentComment.createdById,
-                    message: notificationMessage,
-                });
 
             try {
                 await this.syncPostChildComment(

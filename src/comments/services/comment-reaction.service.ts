@@ -23,6 +23,7 @@ import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
 import { getMilitaryString } from '../../shared';
 import { PushNotificationService } from '../../push-notifications/services/push-notification.service';
+import { PushNotificationType } from '../../push-notifications/dtos/push-notification-type';
 
 @Injectable()
 export class CommentReactionService {
@@ -115,6 +116,15 @@ export class CommentReactionService {
                     user.serviceStatus,
                 )} reacted to your comment`;
 
+                const notification =
+                    await this.notificationService.createNotification(ctx, {
+                        type: NotificationType.POST_COMMENT,
+                        sourceId: cr.id,
+                        fromUserId: ctx.user.id,
+                        toUserId: comment.createdById,
+                        message: notificationMessage,
+                    });
+
                 if (ctx.user.id !== comment.createdById) {
                     this.prisma.pushNotificationSettings
                         .findUnique({
@@ -134,11 +144,14 @@ export class CommentReactionService {
                                             imageUrl: member.ghillie.imageUrl,
                                             data: {
                                                 notificationType:
-                                                    NotificationType.POST_COMMENT_REACTION,
+                                                    PushNotificationType.POST_COMMENT_REACTION,
                                                 activityId: cr.id,
+                                                // TODO: Route based on comment type
+                                                // ParentId or ChildId
                                                 routingId:
                                                     cr.postComment.post.id,
                                                 reactionType: cr.reactionType,
+                                                notificationId: notification.id,
                                             },
                                         },
                                     )
@@ -187,14 +200,6 @@ export class CommentReactionService {
                         });
                 }
 
-                const notification =
-                    await this.notificationService.createNotification(ctx, {
-                        type: NotificationType.POST_COMMENT,
-                        sourceId: cr.id,
-                        fromUserId: ctx.user.id,
-                        toUserId: comment.createdById,
-                        message: notificationMessage,
-                    });
                 try {
                     await this.syncPostCommentReaction(
                         ctx,

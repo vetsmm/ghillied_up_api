@@ -37,7 +37,7 @@ import { ChildCommentDto } from '../dtos/child-comment.dto';
 import Immutable from 'immutable';
 import { getMilitaryString } from '../../shared';
 import { PushNotificationService } from '../../push-notifications/services/push-notification.service';
-import stringUtils from '../../shared/utils/string-utils';
+import { PushNotificationType } from '../../push-notifications/dtos/push-notification-type';
 
 @Injectable()
 export class ParentCommentService {
@@ -478,6 +478,15 @@ export class ParentCommentService {
                 user.serviceStatus,
             )} commented on your post`;
 
+            const notification =
+                await this.notificationService.createNotification(ctx, {
+                    type: NotificationType.POST_COMMENT,
+                    sourceId: comment.id,
+                    fromUserId: ctx.user.id,
+                    toUserId: postOwnerId,
+                    message: notificationMessage,
+                });
+
             if (postOwnerId !== ctx.user.id) {
                 this.prisma.pushNotificationSettings
                     .findUnique({
@@ -494,9 +503,10 @@ export class ParentCommentService {
                                     imageUrl: ghillieImageUrl,
                                     data: {
                                         notificationType:
-                                        NotificationType.POST_COMMENT,
+                                            PushNotificationType.POST_COMMENT,
                                         activityId: comment.id,
                                         routingId: comment.postId,
+                                        notificationId: notification.id,
                                     },
                                 })
                                 .then((res) => {
@@ -538,14 +548,6 @@ export class ParentCommentService {
                     });
             }
 
-            const notification =
-                await this.notificationService.createNotification(ctx, {
-                    type: NotificationType.POST_COMMENT,
-                    sourceId: comment.id,
-                    fromUserId: ctx.user.id,
-                    toUserId: postOwnerId,
-                    message: notificationMessage,
-                });
             await this.syncPostParentComment(
                 ctx,
                 comment,

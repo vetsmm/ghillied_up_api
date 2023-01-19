@@ -1,8 +1,10 @@
-import { NotificationType } from './notification-type';
+import { PushNotificationType } from './push-notification-type';
 
 interface IFirebaseMessageDataDto {
     [key: string]: any;
-    notificationType: NotificationType;
+    notificationType: PushNotificationType;
+    notificationId?: string;
+    performSilent?: boolean;
 }
 export interface ISendFirebaseMessageDto {
     token: string;

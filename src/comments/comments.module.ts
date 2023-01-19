@@ -6,20 +6,19 @@ import { HttpModule } from '@nestjs/axios';
 import { CommentAclService } from './services/comment-acl.service';
 import { ParentCommentController } from './controllers/parent-comment.controller';
 import { ParentCommentService } from './services/parent-comment.service';
-import { QueueService } from '../queue/services/queue.service';
 import { NotificationService } from '../notifications/services/notification.service';
 import { CommentReplyService } from './services/comment-reply.service';
 import { CommentReplyController } from './controllers/comment-reply.controller';
 import { CommentReactionService } from './services/comment-reaction.service';
 import { CommentReactionController } from './controllers/comment-reaction.controller';
+import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
 
 @Module({
-    imports: [HttpModule],
+    imports: [HttpModule, PushNotificationsModule],
     providers: [
         JwtAuthStrategy,
         PrismaService,
         AppLogger,
-        QueueService,
         NotificationService,
         CommentAclService,
         ParentCommentService,

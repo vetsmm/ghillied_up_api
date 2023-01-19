@@ -10,8 +10,8 @@ import {
     Controller,
     Get,
     HttpCode,
-    HttpStatus,
-    Post,
+    HttpStatus, Param,
+    Post, Put,
     Query,
     UseGuards,
     UseInterceptors,
@@ -81,6 +81,31 @@ export class NotificationController {
     @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
+    @Put(':id/read')
+    @ApiOperation({
+        summary: 'Marks a notification as read',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        type: BaseApiErrorResponse,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Authorities(UserAuthority.ROLE_USER)
+    async markNotificationAsRead(
+        @ReqContext() ctx: RequestContext,
+        @Param('id') id: string,
+    ): Promise<void> {
+        this.logger.log(ctx, `${this.markNotificationAsRead.name} was called`);
+
+        await this.notificationService.markNotificationAsRead(ctx, id);
+    }
+
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
     @Post('mark-as-read')
     @ApiOperation({
         summary: 'Marks a list of notifications as read',
@@ -94,11 +119,11 @@ export class NotificationController {
     })
     @HttpCode(HttpStatus.OK)
     @Authorities(UserAuthority.ROLE_USER)
-    async markNotificationAsRead(
+    async markNotificationsAsRead(
         @ReqContext() ctx: RequestContext,
         @Body() body: ReadNotificationsInputDto,
     ): Promise<void> {
-        this.logger.log(ctx, `${this.markNotificationAsRead.name} was called`);
+        this.logger.log(ctx, `${this.markNotificationsAsRead.name} was called`);
 
         await this.notificationService.markNotificationsAsRead(ctx, body);
     }

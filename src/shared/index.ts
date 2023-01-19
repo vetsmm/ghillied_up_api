@@ -19,3 +19,5 @@ export * from './query';
 export * from './reactions';
 export * from './flags';
 export * from './decorators';
+export * from './utils';
+export * from './sentry/sentry-capture';

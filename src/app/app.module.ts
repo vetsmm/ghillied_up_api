@@ -21,6 +21,7 @@ import { NotificationModule } from '../notifications/notification.module';
 import { FilesModule } from '../files/files.module';
 import { OpenGraphModule } from '../open-graph/open-graph.module';
 import { CommentsModule } from '../comments/comments.module';
+import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
 
 @Module({
     imports: [
@@ -38,6 +39,7 @@ import { CommentsModule } from '../comments/comments.module';
         FilesModule,
         OpenGraphModule,
         CommentsModule,
+        PushNotificationsModule,
     ],
     controllers: [AppController],
     providers: [

@@ -24,5 +24,7 @@ export const configModuleOptions: ConfigModuleOptions = {
         STREAM_APP_ID: Joi.string().required(),
         STREAM_API_KEY: Joi.string().required(),
         STREAM_API_SECRET: Joi.string().required(),
+        FIREBASE_CLIENT_EMAIL: Joi.string().required(),
+        FIREBASE_PRIVATE_KEY: Joi.string().required(),
     }),
 };

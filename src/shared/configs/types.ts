@@ -53,4 +53,8 @@ export type ConfigurationType = {
             allowedMimeTypes: Array<string>;
         };
     };
+    firebase: {
+        clientEmail: string;
+        privateKey: string;
+    };
 };

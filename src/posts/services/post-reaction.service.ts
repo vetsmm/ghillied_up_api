@@ -9,6 +9,7 @@ import {
     PostReactionDetailsDto,
     PostReactionInputDto,
     PostDetailDto,
+    sendSentryError,
 } from '../../shared';
 import { PostAclService } from './post-acl.service';
 import {
@@ -20,12 +21,13 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { PostService } from './post.service';
 import { QueueService } from '../../queue/services/queue.service';
-import { ActivityType } from '../../shared/queue/activity-type';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NotificationService } from '../../notifications/services/notification.service';
-import { getMilitaryString } from '../../shared/utils/military-utils';
+import { getMilitaryString } from '../../shared';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
+import { PushNotificationService } from '../../push-notifications/services/push-notification.service';
+import { PushNotificationType } from '../../push-notifications/dtos/push-notification-type';
 
 @Injectable()
 export class PostReactionService {
@@ -37,6 +39,7 @@ export class PostReactionService {
         private readonly queueService: QueueService,
         private readonly streamService: GetStreamService,
         private readonly notificationService: NotificationService,
+        private readonly pushService: PushNotificationService,
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(PostReactionService.name);
@@ -67,6 +70,9 @@ export class PostReactionService {
                 ghillieId: post.ghillieId,
                 userId: ctx.user.id,
                 memberStatus: MemberStatus.ACTIVE,
+            },
+            include: {
+                ghillie: true,
             },
         });
 
@@ -99,21 +105,12 @@ export class PostReactionService {
                     },
                 },
             });
-            this.queueService.publishActivity(
-                ctx,
-                ActivityType.POST_REACTION,
-                {
-                    ...reaction,
-                    postId: post.id,
-                },
-                undefined,
-                reaction.post.postedBy.id,
-            );
+
             try {
                 const user: User = await this.pg.oneOrNone(
                     `SELECT *
-                    FROM "user"
-                    WHERE id = $1`,
+                     FROM "user"
+                     WHERE id = $1`,
                     [ctx.user.id],
                 );
 
@@ -130,6 +127,80 @@ export class PostReactionService {
                         toUserId: post.postedById,
                         message: notificationMessage,
                     });
+
+                if (post.postedById !== ctx.user.id) {
+                    this.prisma.pushNotificationSettings
+                        .findUnique({
+                            where: {
+                                userId: post.postedById,
+                            },
+                        })
+                        .then((settings) => {
+                            if (settings?.postReactions) {
+                                this.pushService
+                                    .pushToUser(
+                                        ctx,
+                                        post.postedById,
+                                        {
+                                            title: 'Someone reacted to your post',
+                                            message: notificationMessage,
+                                            imageUrl: member.ghillie.imageUrl,
+                                            data: {
+                                                notificationType:
+                                                    PushNotificationType.POST_REACTION,
+                                                activityId: reaction.id,
+                                                routingId: reaction.post.id,
+                                                reactionType:
+                                                    reaction.reactionType,
+                                                notificationId: notification.id,
+                                            },
+                                        },
+                                        false,
+                                    )
+                                    .then((res) => {
+                                        if (res.failureCount > 0) {
+                                            res.responses.forEach((r) => {
+                                                if (r.error) {
+                                                    this.logger.error(
+                                                        ctx,
+                                                        `Error sending push notification: ${r.error.message}`,
+                                                        r.error,
+                                                    );
+                                                    sendSentryError(
+                                                        ctx,
+                                                        r.error,
+                                                        {
+                                                            postId: post.id,
+                                                            reactionId:
+                                                                reaction.id,
+                                                        },
+                                                    );
+                                                }
+                                            });
+                                        }
+                                    })
+                                    .catch((err) => {
+                                        this.logger.error(
+                                            ctx,
+                                            `Error sending push notification: ${err.message}`,
+                                            err,
+                                        );
+                                        sendSentryError(ctx, err, {
+                                            postId: post.id,
+                                            reactionId: reaction.id,
+                                        });
+                                    });
+                            }
+                        })
+                        .catch((err) => {
+                            this.logger.error(
+                                ctx,
+                                `Error getting push notification settings for user ${post.postedById}`,
+                                err,
+                            );
+                        });
+                }
+
                 this.syncPostReaction(
                     ctx,
                     post,
@@ -230,7 +301,7 @@ export class PostReactionService {
                         id: reaction.id,
                     },
                     data: {
-                        activityId: res.id,
+                        activityId: res.activity_id,
                     },
                 });
             })

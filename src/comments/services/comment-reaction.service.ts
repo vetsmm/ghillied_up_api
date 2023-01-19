@@ -8,6 +8,7 @@ import {
     CommentReactionInputDto,
     CommentReactionDetailsDto,
     CommentReactionSubsetDto,
+    sendSentryError,
 } from '../../shared';
 import {
     CommentReaction,
@@ -16,22 +17,22 @@ import {
     User,
 } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
-import { QueueService } from '../../queue/services/queue.service';
-import { ActivityType } from '../../shared/queue/activity-type';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NotificationService } from '../../notifications/services/notification.service';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
-import { getMilitaryString } from '../../shared/utils/military-utils';
+import { getMilitaryString } from '../../shared';
+import { PushNotificationService } from '../../push-notifications/services/push-notification.service';
+import { PushNotificationType } from '../../push-notifications/dtos/push-notification-type';
 
 @Injectable()
 export class CommentReactionService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly logger: AppLogger,
-        private readonly queueService: QueueService,
         private readonly streamService: GetStreamService,
         private readonly notificationService: NotificationService,
+        private readonly pushNotificationService: PushNotificationService,
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(CommentReactionService.name);
@@ -63,6 +64,9 @@ export class CommentReactionService {
                 ghillieId: comment.ghillieId,
                 userId: ctx.user.id,
                 memberStatus: MemberStatus.ACTIVE,
+            },
+            include: {
+                ghillie: true,
             },
         });
 
@@ -98,21 +102,12 @@ export class CommentReactionService {
                     },
                 },
             });
-            this.queueService.publishActivity(
-                ctx,
-                ActivityType.POST_COMMENT_REACTION,
-                {
-                    ...cr,
-                    postId: comment.postId,
-                },
-                undefined,
-                cr.postComment.createdBy.id,
-            );
+
             try {
                 const user: User = await this.pg.oneOrNone(
                     `SELECT *
-                    FROM "user"
-                    WHERE id = $1`,
+                     FROM "user"
+                     WHERE id = $1`,
                     [ctx.user.id],
                 );
 
@@ -129,6 +124,82 @@ export class CommentReactionService {
                         toUserId: comment.createdById,
                         message: notificationMessage,
                     });
+
+                if (ctx.user.id !== comment.createdById) {
+                    this.prisma.pushNotificationSettings
+                        .findUnique({
+                            where: {
+                                userId: comment.createdById,
+                            },
+                        })
+                        .then((settings) => {
+                            if (settings?.commentReactions) {
+                                this.pushNotificationService
+                                    .pushToUser(
+                                        ctx,
+                                        cr.postComment.createdById,
+                                        {
+                                            title: 'Someone reacted to your comment',
+                                            message: notificationMessage,
+                                            imageUrl: member.ghillie.imageUrl,
+                                            data: {
+                                                notificationType:
+                                                    PushNotificationType.POST_COMMENT_REACTION,
+                                                activityId: cr.id,
+                                                // TODO: Route based on comment type
+                                                // ParentId or ChildId
+                                                routingId:
+                                                    cr.postComment.post.id,
+                                                reactionType: cr.reactionType,
+                                                notificationId: notification.id,
+                                            },
+                                        },
+                                    )
+                                    .then((res) => {
+                                        if (res.failureCount > 0) {
+                                            res.responses.forEach((r) => {
+                                                if (r.error) {
+                                                    this.logger.error(
+                                                        ctx,
+                                                        `Error sending push notification: ${r.error.message}`,
+                                                        r.error,
+                                                    );
+                                                    sendSentryError(
+                                                        ctx,
+                                                        r.error,
+                                                        {
+                                                            commentId:
+                                                                cr.postComment
+                                                                    .id,
+                                                            commentReactionId:
+                                                                cr.id,
+                                                        },
+                                                    );
+                                                }
+                                            });
+                                        }
+                                    })
+                                    .catch((err) => {
+                                        this.logger.error(
+                                            ctx,
+                                            `Error sending push notification: ${err.message}`,
+                                            err,
+                                        );
+                                        sendSentryError(ctx, err, {
+                                            commentId: cr.postComment.id,
+                                            commentReactionId: cr.id,
+                                        });
+                                    });
+                            }
+                        })
+                        .catch((err) => {
+                            this.logger.error(
+                                ctx,
+                                `Error sending push notification: ${err}`,
+                            );
+                        });
+                }
+
                 try {
                     await this.syncPostCommentReaction(
                         ctx,

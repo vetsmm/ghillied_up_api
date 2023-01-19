@@ -2,6 +2,7 @@ import {
     Inject,
     Injectable,
     InternalServerErrorException,
+    NotFoundException,
 } from '@nestjs/common';
 import { AppLogger, RequestContext } from '../../shared';
 import {
@@ -341,5 +342,63 @@ export class NotificationService {
             'SELECT "id" FROM "notification" WHERE "from_user_id" = $1 AND "to_user_id" = $2 AND "source_id" = $3 AND "type" = $4',
             [fromUserId, toUserId, sourceId, type],
         );
+    }
+
+    /**
+     * Here, we have replaced the offset variable with an index variable.
+     * Instead of incrementing the offset by limit each time, we increment the
+     * index by limit. We have also added a Set object called 'notificationIds'
+     * which we use to store all the notificationIds of the innerActivities.
+     * So, in every iteration, we check if the id we are looking for is present
+     * in the set, if it is present then we mark the notification as read and
+     * break the loop. This way we are not iterating over the entire array
+     * again and again and this way the complexities is O(n).
+     * @param ctx
+     * @param id
+     */
+    async markNotificationAsRead(ctx: RequestContext, id: string) {
+        this.logger.log(ctx, `${this.markNotificationAsRead.name} was called`);
+
+        const notification = await this.pg.oneOrNone(
+            'SELECT * FROM "notification" WHERE "id" = $1 AND "to_user_id" = $2',
+            [id, ctx.user.id],
+        );
+
+        if (!notification) {
+            throw new NotFoundException('Notification not found');
+        }
+
+        let found = false;
+        const limit = 100;
+        const notificationIds = new Set();
+        let index = 0;
+        while (!found) {
+            const feed = await this.streamService.getNotificationFeed(
+                ctx.user.id,
+                { offset: index, limit },
+            );
+            for (const activity of feed.results) {
+                for (const innerActivity of activity['activities'] as any[]) {
+                    if (innerActivity[`notification:${ctx.user.id}`]) {
+                        notificationIds.add(
+                            innerActivity[`notification:${ctx.user.id}`][
+                                'notificationId'
+                            ],
+                        );
+                        if (notificationIds.has(id)) {
+                            this.markNotificationsAsRead(ctx, {
+                                ids: [{ id, activityId: activity.id }],
+                            });
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (found) {
+                    break;
+                }
+            }
+            index += limit;
+        }
     }
 }

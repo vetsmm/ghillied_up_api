@@ -29,8 +29,6 @@ import { randomUUID } from 'crypto';
 import { plainToInstance } from 'class-transformer';
 import { UpdatePostInputDto } from '../dtos/update-post-input.dto';
 import { PostListingDto } from '../dtos/post-listing.dto';
-import { QueueService } from '../../queue/services/queue.service';
-import { ActivityType } from '../../shared/queue/activity-type';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { PostFeedVerb } from '../../shared/feed/feed.types';
 import { OpenGraphService } from '../../open-graph/open-graph.service';
@@ -42,7 +40,6 @@ export class PostService {
         private readonly prisma: PrismaService,
         private readonly logger: AppLogger,
         private readonly postAclService: PostAclService,
-        private readonly queueService: QueueService,
         private readonly streamService: GetStreamService,
         private readonly openGraphService: OpenGraphService,
     ) {
@@ -152,32 +149,7 @@ export class PostService {
             });
         });
 
-        this.queueService
-            .publishActivity(ctx, ActivityType.POST, {
-                actor: ctx.user.id,
-                verb: PostFeedVerb.POST,
-                object: PostFeedVerb.POST,
-                foreign_id: post.id,
-                time: new Date().toISOString(),
-                // This is the ghillie that the post was made in
-                targetId: post.ghillieId,
-                published: post.createdDate.toISOString(),
-                //This is the ID of the ghillie here the activity was made.
-                ghillieId: post.ghillieId,
-                tags: tags.map((tag) => ({
-                    name: tag.name,
-                    id: tag.id,
-                })),
-                commentCount: post._count.postComments,
-                reactionCount: post._count.postReaction,
-                aggregateReactionTypeCounts: {},
-            })
-            .then((res) => {
-                this.logger.log(ctx, `Activity published to queue: ${res}`);
-            })
-            .catch((err) => {
-                this.logger.error(ctx, err.message);
-            });
+        // TODO: Notify all members of the ghillie that a new post has been created
 
         const linkMeta = await this.openGraphService.getOpenGraphData(
             ctx,
@@ -691,13 +663,13 @@ export class PostService {
             throw new NotFoundException('Post not found');
         }
 
+        this.deletePostFromFeed(ctx, post);
+
         await this.prisma.post.delete({
             where: {
                 id,
             },
         });
-
-        this.deletePostFromFeed(ctx, post);
     }
 
     async getPostsForGhillie(
@@ -930,19 +902,42 @@ export class PostService {
             );
         }
 
-        await this.prisma.postSubscribedUser.upsert({
-            where: {
-                userId_postId: {
+        this.prisma.pushNotificationSettings
+            .findUnique({
+                where: {
                     userId: ctx.user.id,
-                    postId: id,
                 },
-            },
-            create: {
-                postId: id,
-                userId: ctx.user.id,
-            },
-            update: {},
-        });
+            })
+            .then((settings) => {
+                if (settings?.postActivity) {
+                    this.prisma.postSubscribedUser
+                        .upsert({
+                            where: {
+                                userId_postId: {
+                                    userId: ctx.user.id,
+                                    postId: id,
+                                },
+                            },
+                            create: {
+                                postId: id,
+                                userId: ctx.user.id,
+                            },
+                            update: {},
+                        })
+                        .catch((err) => {
+                            this.logger.error(
+                                ctx,
+                                `Failed to subscribe user to their post: ${err}`,
+                            );
+                        });
+                }
+            })
+            .catch((err) => {
+                this.logger.error(
+                    ctx,
+                    `Failed retrieve PushNotificationSettings for user: ${err}`,
+                );
+            });
     }
 
     async unsubscribe(ctx: RequestContext, id: string) {

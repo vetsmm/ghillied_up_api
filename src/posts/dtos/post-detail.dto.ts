@@ -116,7 +116,7 @@ export class PostDetailDto {
 
     @ApiProperty()
     @Expose()
-    @Transform((value) => value.obj?.postSubscribedUsers.length > 0, {
+    @Transform((value) => value.obj?.postSubscribedUsers?.length > 0, {
         toClassOnly: true,
     })
     isSubscribed: boolean;

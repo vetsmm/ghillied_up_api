@@ -91,4 +91,8 @@ export class GhillieDetailDto {
     @ApiProperty()
     @Expose()
     inviteCode?: string;
+
+    @ApiProperty()
+    @Expose()
+    isInternal?: boolean;
 }

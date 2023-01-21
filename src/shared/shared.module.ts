@@ -14,6 +14,7 @@ import {
     AWSSecretsService,
 } from './secrets-manager';
 import { SecretsManager } from 'aws-sdk';
+import { GeolocationModule } from './geolocation/geolocation.module';
 
 const getSecretSources = (configService: ConfigService) => {
     if (configService.get('appEnv') === 'DEV') {
@@ -97,6 +98,7 @@ const getStreamSecrets = async (
             inject: [ConfigService, AWSSecretsService],
             isGlobal: true,
         }),
+        GeolocationModule,
     ],
     controllers: [],
     providers: [],
@@ -105,6 +107,7 @@ const getStreamSecrets = async (
         ConfigModule,
         MailModule,
         AWSSecretsManagerModule,
+        GeolocationModule,
     ],
 })
 export class SharedModule {}

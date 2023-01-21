@@ -1,4 +1,5 @@
 import { ConfigurationType } from './types';
+import { int } from './config.utils';
 
 export default (): ConfigurationType => ({
     env: process.env.NODE_ENV || 'development',
@@ -6,6 +7,13 @@ export default (): ConfigurationType => ({
     databaseUrl: process.env.DATABASE_URL,
     app: {
         name: 'ghillied-up',
+    },
+    caching: {
+        geolocationLruSize: int(process.env.GEOLOCATION_LRU_SIZE, 100),
+        apiKeyLruSize: int(process.env.API_KEY_LRU_SIZE, 100),
+    },
+    security: {
+        saltRounds: int(process.env.SALT_ROUNDS, 10),
     },
     stream: {
         apiKey: process.env.STREAM_API_KEY,

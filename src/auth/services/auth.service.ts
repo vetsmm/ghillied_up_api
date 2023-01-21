@@ -13,7 +13,6 @@ import {
     AuthResendVerifyEmailInputDto,
     AuthPasswordResetVerifyKeyDto,
     AuthTokenOutput,
-    AuthVerifyEmailInputDto,
     MailService,
     RegisterInput,
     RegisterOutput,
@@ -21,6 +20,9 @@ import {
     UserAccessTokenClaims,
 } from '../../shared';
 import { UserAuthority, UserStatus } from '@prisma/client';
+import { GeolocationService } from '../../shared/geolocation/geolocation.service';
+import { ApprovedSubnetsService } from '../../approved-subnets/approved-subnets.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
@@ -29,6 +31,9 @@ export class AuthService {
         private jwtService: JwtService,
         private configService: ConfigService,
         private mailService: MailService,
+        private geolocationService: GeolocationService,
+        private approvedSubnetsService: ApprovedSubnetsService,
+        private prisma: PrismaService,
         private readonly logger: AppLogger,
     ) {
         this.logger.setContext(AuthService.name);
@@ -124,6 +129,11 @@ export class AuthService {
             response.output.username,
             response.output.email,
             response.activationCode,
+        );
+
+        await this.approvedSubnetsService.approveNewSubnet(
+            response.output.id,
+            ctx.ip,
         );
         return plainToClass(RegisterOutput, response.output, {
             excludeExtraneousValues: true,

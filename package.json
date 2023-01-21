@@ -22,7 +22,8 @@
     "prisma:migrate:deploy": "npx prisma migrate deploy",
     "deploy": "npm ci && npm install --ignore-scripts puppeteer && npm run prisma:migrate:deploy && npm run build && npm run start:prod",
     "csu:dev": "npx ts-node -r tsconfig-paths/register src/create-super-user.ts ",
-    "csu:prod": "node dist/src/create-super-user.js"
+    "csu:prod": "node dist/src/create-super-user.js",
+    "preload": "node -e \"import('geolite2-redist').then(geolite => geolite.downloadDbs())\""
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.170.0",
@@ -52,10 +53,13 @@
     "commander": "^9.4.0",
     "cuid": "^2.1.8",
     "firebase-admin": "^11.4.1",
+    "geolite2-redist": "^2.0.4",
     "getstream": "^8.1.0",
     "immutable": "^4.1.0",
     "ip": "^1.1.8",
+    "ip-anonymize": "^0.1.0",
     "jwt-decode": "^3.1.2",
+    "maxmind": "^4.3.8",
     "metascraper": "^5.31.1",
     "metascraper-author": "^5.31.1",
     "metascraper-clearbit": "^5.31.1",

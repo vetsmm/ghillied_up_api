@@ -42,6 +42,9 @@ export type ConfigurationType = {
         accessTokenExpiresInSec: number;
         refreshTokenExpiresInSec: number;
     };
+    security: {
+        saltRounds: number;
+    };
     defaultAdminUserPassword: string;
     mail: {
         port: number;
@@ -64,5 +67,9 @@ export type ConfigurationType = {
         clientEmail: string;
         privateKey: string;
         projectId: string;
+    };
+    caching: {
+        geolocationLruSize: number;
+        apiKeyLruSize: number;
     };
 };

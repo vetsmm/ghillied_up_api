@@ -6,7 +6,6 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { STRATEGY_JWT_REFRESH } from '../constants/strategy.constant';
 import { UserRefreshTokenClaims } from '../../shared';
 import { AuthService } from '../services/auth.service';
-import { Request } from 'express';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(

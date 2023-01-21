@@ -23,6 +23,7 @@ import { OpenGraphModule } from '../open-graph/open-graph.module';
 import { CommentsModule } from '../comments/comments.module';
 import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
 import { ApprovedSubnetsModule } from '../approved-subnets/approved-subnets.module';
+import { SessionsModule } from '../sessions/sessions.module';
 
 @Module({
     imports: [
@@ -42,6 +43,7 @@ import { ApprovedSubnetsModule } from '../approved-subnets/approved-subnets.modu
         CommentsModule,
         PushNotificationsModule,
         ApprovedSubnetsModule,
+        SessionsModule,
     ],
     controllers: [AppController],
     providers: [

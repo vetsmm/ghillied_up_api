@@ -3,16 +3,36 @@ import { ConfigService } from '@nestjs/config';
 import * as pgPromise from 'pg-promise';
 import { NestPgpromiseOptionsFactory } from 'nestjs-pgpromise/dist/interfaces/nest-pgpromise-options-factory.interface';
 import { NestPgpromiseOptions } from 'nestjs-pgpromise/dist/interfaces/nest-pgpromise-options.interface';
+import { AWSSecretsService } from '../secrets-manager';
 
 @Injectable()
 export class PgPromiseConfigService implements NestPgpromiseOptionsFactory {
-    constructor(private configService: ConfigService) {}
+    constructor(
+        private configService: ConfigService,
+        private secretsService: AWSSecretsService,
+    ) {}
 
-    createNestPgpromiseOptions(): NestPgpromiseOptions {
-        const DATABASE_URL = this.configService.get('databaseUrl');
+    private async getDatabaseUrl() {
+        if (this.configService.get('appEnv') === 'DEV') {
+            return this.configService.get('databaseUrl');
+        }
+        const databaseSecrets = await this.secretsService.getSecrets<{
+            username: string;
+            password: string;
+            host: string;
+            port: string;
+            dbname: string;
+            dbInstanceIdentifier: string;
+            engine: string;
+        }>(this.configService.get('secretsSources.database'));
+
+        return `postgres://${databaseSecrets.username}:${databaseSecrets.password}@${databaseSecrets.host}:${databaseSecrets.port}/${databaseSecrets.dbname}`;
+    }
+    async createNestPgpromiseOptions(): Promise<NestPgpromiseOptions> {
+        const databaseUrl = await this.getDatabaseUrl();
         return {
             connection: {
-                connectionString: DATABASE_URL,
+                connectionString: databaseUrl,
                 connectionTimeoutMillis: 5000,
                 idleTimeoutMillis: 10000,
             },

@@ -20,14 +20,6 @@ export class PushNotificationService {
         @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(PushNotificationService.name);
-
-        firebase.initializeApp({
-            credential: firebase.credential.cert({
-                projectId: 'ghillied-up',
-                clientEmail: configService.get('firebase.clientEmail'),
-                privateKey: configService.get('firebase.privateKey'),
-            }),
-        });
     }
 
     private async sendFirebaseMessages(

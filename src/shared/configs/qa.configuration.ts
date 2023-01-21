@@ -4,6 +4,13 @@ export default (): ConfigurationType => ({
     env: process.env.NODE_ENV || 'production',
     appEnv: 'QA',
     databaseUrl: process.env.DATABASE_URL,
+    secretsSources: {
+        database: 'ghilliedup/qa/api/db',
+        stream: 'ghilliedup/qa/stream',
+        firebase: 'ghilliedup/qa/firebase',
+        jwt: 'ghilliedup/qa/jwt',
+        mail: 'ghilliedup/qa/mail',
+    },
     app: {
         name: 'ghillied-up',
     },
@@ -74,5 +81,6 @@ export default (): ConfigurationType => ({
     firebase: {
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         privateKey: process.env.FIREBASE_PRIVATE_KEY,
+        projectId: process.env.FIREBASE_PROJECT_ID,
     },
 });

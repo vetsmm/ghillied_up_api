@@ -7,6 +7,13 @@ export default (): ConfigurationType => ({
     app: {
         name: 'ghillied-up',
     },
+    secretsSources: {
+        database: 'ghilliedup/prod/api/db',
+        stream: 'ghilliedup/prod/stream',
+        firebase: 'ghilliedup/prod/firebase',
+        jwt: 'ghilliedup/prod/jwt',
+        mail: 'ghilliedup/prod/mail',
+    },
     stream: {
         apiKey: process.env.STREAM_API_KEY,
         apiSecret: process.env.STREAM_API_SECRET,
@@ -71,5 +78,6 @@ export default (): ConfigurationType => ({
     firebase: {
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         privateKey: process.env.FIREBASE_PRIVATE_KEY,
+        projectId: process.env.FIREBASE_PROJECT_ID,
     },
 });

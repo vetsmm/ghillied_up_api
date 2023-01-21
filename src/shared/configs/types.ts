@@ -2,6 +2,13 @@ export type ConfigurationType = {
     env: string;
     appEnv: 'DEV' | 'QA' | 'PROD';
     databaseUrl: string;
+    secretsSources?: {
+        database: string;
+        stream: string;
+        firebase: string;
+        jwt: string;
+        mail: string;
+    };
     app: {
         name: string;
     };
@@ -56,5 +63,6 @@ export type ConfigurationType = {
     firebase: {
         clientEmail: string;
         privateKey: string;
+        projectId: string;
     };
 };

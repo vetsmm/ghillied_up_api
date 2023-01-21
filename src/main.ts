@@ -20,6 +20,30 @@ import {
 } from './shared';
 import { PrismaClient } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
+import * as firebase from 'firebase-admin';
+import { AWSSecretsService } from './shared/secrets-manager';
+
+function initFirebase(secretsService: AWSSecretsService) {
+    secretsService
+        .getSecrets<{
+            FIREBASE_PRIVATE_KEY: string;
+            FIREBASE_PROJECT_ID: string;
+            FIREBASE_CLIENT_EMAIL: string;
+        }>('ghilliedup/qa/firebase')
+        .then((firebaseConfig) => {
+            firebase.initializeApp({
+                credential: firebase.credential.cert({
+                    projectId: firebaseConfig.FIREBASE_PROJECT_ID,
+                    clientEmail: firebaseConfig.FIREBASE_CLIENT_EMAIL,
+                    privateKey: firebaseConfig.FIREBASE_PRIVATE_KEY,
+                }),
+            });
+            Logger.log('Firebase - Initialized');
+        })
+        .catch((err) => {
+            Logger.error('Firebase - Failed to initialize', err);
+        });
+}
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
@@ -29,6 +53,7 @@ async function bootstrap() {
     app.enableCors();
 
     const appConfig = app.get(ConfigService);
+    const secretsService = app.get(AWSSecretsService);
 
     if (environment.production) {
         const config = new DocumentBuilder()
@@ -65,9 +90,14 @@ async function bootstrap() {
             environment.production ? 'production' : 'development',
         ),
     );
+    initFirebase(secretsService);
     const port = process.env.PORT || 3333;
     await app.listen(port);
-    Logger.log(`🚀 Application - ENV:${appConfig.get('appEnv')} -  is running on: http://${ip.address()}:${port}`);
+    Logger.log(
+        `🚀 Application - ENV:${appConfig.get(
+            'appEnv',
+        )} -  is running on: http://${ip.address()}:${port}`,
+    );
 }
 
 bootstrap();

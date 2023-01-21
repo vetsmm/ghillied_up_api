@@ -278,6 +278,8 @@ model User {
   createdDate              DateTime                  @default(now()) @map("created_date")
   updatedDate              DateTime                  @updatedAt @map("updated_date")
   status                   UserStatus                @default(ACTIVE)
+  checkLocationOnLogin     Boolean                   @default(false) @map("check_location_on_login")
+  timezone                 String                    @default("America/New_York")
   joinedGhilliess          GhillieMembers[]
   commentReactions         CommentReaction[]
   flagComments             FlagComment[]
@@ -291,6 +293,7 @@ model User {
   notifications            Notification[]            @relation("notifications")
   fromNotifications        Notification[]            @relation("fromNotifications")
   approvedSubnets          ApprovedSubnet[]          @relation("approvedSubnets")
+  sessions                 Session[]                 @relation("userSessions")
   pushTokens               DevicePushToken[]
   PushNotificationSettings PushNotificationSettings?
   postBookmarks            PostBookmark[]
@@ -372,6 +375,26 @@ model ApprovedSubnet {
 
   @@index([userId], name: "userId")
   @@map("approved_subnet")
+}
+
+model Session {
+  createdDate     DateTime @default(now()) @map("created_date")
+  id              String   @id @default(cuid())
+  ipAddress       String   @map("ip_address")
+  token           String
+  updatedDate     DateTime @updatedAt @map("updated_date")
+  userAgent       String?  @map("user_agent")
+  city            String?
+  region          String?
+  timezone        String?
+  countryCode     String?  @map("country_code")
+  browser         String?  @map("browser")
+  operatingSystem String?  @map("operating_system")
+  user            User     @relation("userSessions", fields: [userId], references: [id], onDelete: Cascade)
+  userId          String   @map("user_id")
+
+  @@index([userId])
+  @@map("session")
 }
 
 enum Gender {

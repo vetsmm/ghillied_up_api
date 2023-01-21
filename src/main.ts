@@ -23,13 +23,16 @@ import { ConfigService } from '@nestjs/config';
 import * as firebase from 'firebase-admin';
 import { AWSSecretsService } from './shared/secrets-manager';
 
-function initFirebase(secretsService: AWSSecretsService) {
+function initFirebase(
+    secretsService: AWSSecretsService,
+    configServer: ConfigService,
+) {
     secretsService
         .getSecrets<{
             FIREBASE_PRIVATE_KEY: string;
             FIREBASE_PROJECT_ID: string;
             FIREBASE_CLIENT_EMAIL: string;
-        }>('ghilliedup/qa/firebase')
+        }>(configServer.get('secretsSources.firebase'))
         .then((firebaseConfig) => {
             firebase.initializeApp({
                 credential: firebase.credential.cert({
@@ -90,7 +93,7 @@ async function bootstrap() {
             environment.production ? 'production' : 'development',
         ),
     );
-    initFirebase(secretsService);
+    initFirebase(secretsService, appConfig);
     const port = process.env.PORT || 3333;
     await app.listen(port);
     Logger.log(

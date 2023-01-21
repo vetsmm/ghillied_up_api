@@ -14,6 +14,10 @@ import { SharedModule } from '../shared';
 import { HttpModule } from '@nestjs/axios';
 import { AuthIdMeController } from './controllers/id-me.controller';
 import { AuthIdMeService } from './services/id-me.service';
+import { ApprovedSubnetsModule } from '../approved-subnets/approved-subnets.module';
+import { GeolocationModule } from '../shared/geolocation/geolocation.module';
+import { ApprovedSubnetsService } from '../approved-subnets/approved-subnets.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Module({
     imports: [
@@ -33,6 +37,8 @@ import { AuthIdMeService } from './services/id-me.service';
         UserModule,
         AuthModule,
         HttpModule,
+        GeolocationModule,
+        ApprovedSubnetsModule,
     ],
     controllers: [AuthController, AuthIdMeController],
     providers: [
@@ -41,6 +47,8 @@ import { AuthIdMeService } from './services/id-me.service';
         JwtAuthStrategy,
         JwtRefreshStrategy,
         AuthIdMeService,
+        ApprovedSubnetsService,
+        PrismaService,
     ],
 })
 export class AuthModule {}

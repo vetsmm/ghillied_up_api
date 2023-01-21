@@ -1,9 +1,17 @@
 import { ConfigurationType } from './types';
+import { int } from './config.utils';
 
 export default (): ConfigurationType => ({
     env: process.env.NODE_ENV || 'production',
     appEnv: 'QA',
     databaseUrl: process.env.DATABASE_URL,
+    caching: {
+        geolocationLruSize: int(process.env.GEOLOCATION_LRU_SIZE, 100),
+        apiKeyLruSize: int(process.env.API_KEY_LRU_SIZE, 100),
+    },
+    security: {
+        saltRounds: int(process.env.SALT_ROUNDS, 10),
+    },
     secretsSources: {
         database: 'ghilliedup/qa/api/db',
         stream: 'ghilliedup/qa/stream',

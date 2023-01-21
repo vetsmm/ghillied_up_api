@@ -22,6 +22,7 @@ import { FilesModule } from '../files/files.module';
 import { OpenGraphModule } from '../open-graph/open-graph.module';
 import { CommentsModule } from '../comments/comments.module';
 import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
+import { ApprovedSubnetsModule } from '../approved-subnets/approved-subnets.module';
 
 @Module({
     imports: [
@@ -40,6 +41,7 @@ import { PushNotificationsModule } from '../push-notifications/push-notification
         OpenGraphModule,
         CommentsModule,
         PushNotificationsModule,
+        ApprovedSubnetsModule,
     ],
     controllers: [AppController],
     providers: [

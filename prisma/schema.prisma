@@ -119,25 +119,25 @@ model PostBookmark {
 }
 
 model Post {
-  id                 String               @id @default(cuid())
-  uid                String               @unique
-  title              String
-  content            String
-  status             PostStatus           @default(ACTIVE)
-  ghillie            Ghillie              @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
-  ghillieId          String               @map("ghillie_id")
-  tags               PostTag[]
-  postedBy           User                 @relation(fields: [postedById], references: [id], onDelete: Cascade)
-  postedById         String               @map("posted_by_id")
-  isPinned           Boolean              @default(false) @map("is_pinned")
-  postComments       PostComment[]
-  flagPosts          FlagPost[]
-  createdDate        DateTime             @default(now()) @map("created_date")
-  updatedDate        DateTime             @updatedAt @map("updated_date")
-  edited             Boolean              @default(false)
-  postReaction       PostReaction[]
-  activityId         String?              @unique @map("activity_id")
-  postBookmarks      PostBookmark[]
+  id                  String               @id @default(cuid())
+  uid                 String               @unique
+  title               String
+  content             String
+  status              PostStatus           @default(ACTIVE)
+  ghillie             Ghillie              @relation(fields: [ghillieId], references: [id], onDelete: Cascade)
+  ghillieId           String               @map("ghillie_id")
+  tags                PostTag[]
+  postedBy            User                 @relation(fields: [postedById], references: [id], onDelete: Cascade)
+  postedById          String               @map("posted_by_id")
+  isPinned            Boolean              @default(false) @map("is_pinned")
+  postComments        PostComment[]
+  flagPosts           FlagPost[]
+  createdDate         DateTime             @default(now()) @map("created_date")
+  updatedDate         DateTime             @updatedAt @map("updated_date")
+  edited              Boolean              @default(false)
+  postReaction        PostReaction[]
+  activityId          String?              @unique @map("activity_id")
+  postBookmarks       PostBookmark[]
   postSubscribedUsers PostSubscribedUser[]
 
   @@index([title, status, uid, isPinned])
@@ -290,10 +290,11 @@ model User {
   ghillies                 Ghillie[]
   notifications            Notification[]            @relation("notifications")
   fromNotifications        Notification[]            @relation("fromNotifications")
+  approvedSubnets          ApprovedSubnet[]          @relation("approvedSubnets")
   pushTokens               DevicePushToken[]
   PushNotificationSettings PushNotificationSettings?
   postBookmarks            PostBookmark[]
-  postSubscribedUsers       PostSubscribedUser[]
+  postSubscribedUsers      PostSubscribedUser[]
 
   @@index([email, username, slug])
   @@map("user")
@@ -355,6 +356,36 @@ model PublicFile {
   Ghillie     Ghillie?
 
   @@map("public_file")
+}
+
+model ApprovedSubnet {
+  createdDate DateTime @default(now()) @map("created_date")
+  id          String   @id @default(cuid())
+  subnet      String
+  city        String?
+  region      String?
+  timezone    String?
+  countryCode String?  @map("country_code")
+  updatedDate DateTime @updatedAt @map("updated_date")
+  user        User     @relation("approvedSubnets", fields: [userId], references: [id], onDelete: Cascade)
+  userId      String   @map("user_id")
+
+  @@index([userId], name: "userId")
+  @@map("approved_subnet")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  NONBINARY
+  UNKNOWN
+}
+
+enum MfaMethod {
+  NONE
+  SMS
+  //  TOTP
+  EMAIL
 }
 
 enum PhonePlatform {

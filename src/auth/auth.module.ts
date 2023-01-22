@@ -1,6 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 
 import { UserModule } from '../user/user.module';
@@ -23,17 +21,6 @@ import { PrismaService } from '../prisma/prisma.service';
     imports: [
         SharedModule,
         PassportModule.register({ defaultStrategy: STRATEGY_JWT_AUTH }),
-        JwtModule.registerAsync({
-            imports: [SharedModule],
-            useFactory: async (configService: ConfigService) => ({
-                publicKey: configService.get<string>('jwt.publicKey'),
-                privateKey: configService.get<string>('jwt.privateKey'),
-                signOptions: {
-                    algorithm: 'RS256',
-                },
-            }),
-            inject: [ConfigService],
-        }),
         UserModule,
         AuthModule,
         HttpModule,

@@ -43,4 +43,8 @@ export class UserOutput extends BaseUserOutputDto {
     @Expose()
     @ApiProperty()
     updatedDate: string;
+
+    @Expose()
+    @ApiProperty()
+    checkLocationOnLogin: boolean;
 }

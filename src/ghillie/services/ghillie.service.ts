@@ -36,7 +36,7 @@ import { IDatabase } from 'pg-promise';
 import { GhillieAssetsService } from '../../files/services/ghillie-assets.service';
 import { AssetTypes } from '../../files/dtos/asset.types';
 import { CombinedGhilliesDto } from '../dtos/ghillie/combined-ghillies.dto';
-import * as cuid from 'cuid';
+import cuid from 'cuid';
 import { GhillieMemberSettingsUpdateDto } from '../dtos/members/ghillie-member-settings-update.dto';
 import { GhillieMemberDto } from '../dtos/members/ghillie-member.dto';
 

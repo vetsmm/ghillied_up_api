@@ -24,7 +24,7 @@ export class JwtAuthStrategy extends PassportStrategy(
         // Passport automatically creates a users object, based on the value we return from the validate() method,
         // and assigns it to the Request object as req.users
         return {
-            id: payload.sub,
+            id: payload.userId,
             username: payload.username,
             authorities: payload.authorities,
         };

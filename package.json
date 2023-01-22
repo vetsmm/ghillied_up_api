@@ -41,6 +41,7 @@
     "@sentry/node": "^7.8.0",
     "@sentry/tracing": "^7.8.0",
     "@types/multer": "^1.4.7",
+    "@types/ua-parser-js": "^0.7.36",
     "@vetsmm/mailer": "^1.7.3",
     "@vetsmm/nestjs-sns": "^1.0.2",
     "async": "^3.2.4",
@@ -51,9 +52,11 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.13.2",
     "commander": "^9.4.0",
+    "crypto-random-string": "^3.3.1",
     "cuid": "^2.1.8",
+    "express-useragent": "^1.0.15",
     "firebase-admin": "^11.4.1",
-    "geolite2-redist": "^2.0.4",
+    "geolite2-redist": "^1.0.7",
     "getstream": "^8.1.0",
     "immutable": "^4.1.0",
     "ip": "^1.1.8",
@@ -90,6 +93,7 @@
     "slugify": "^1.6.5",
     "swagger-ui-express": "^4.4.0",
     "tslib": "^2.3.0",
+    "ua-parser-js": "^0.7.33",
     "winston": "^3.8.1"
   },
   "devDependencies": {

@@ -39,7 +39,6 @@ import {
     AuthVerifyCodeInputDto,
 } from '../../shared';
 import { JwtRefreshGuard } from '../guards/jwt-refresh.guard';
-import { LocalAuthGuard } from '../guards/local-auth.guard';
 import { AuthService } from '../services/auth.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
@@ -161,17 +160,14 @@ export class AuthController {
         type: BaseApiErrorResponse,
     })
     @HttpCode(HttpStatus.OK)
-    @UseGuards(LocalAuthGuard)
     @UseInterceptors(ClassSerializerInterceptor)
     async login(
         @ReqContext() ctx: RequestContext,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         @Body() credential: LoginInput,
-    ): Promise<BaseApiResponse<AuthTokenOutput>> {
+    ): Promise<AuthTokenOutput> {
         this.logger.log(ctx, `${this.login.name} was called`);
 
-        const authToken = await this.authService.login(ctx);
-        return { data: authToken, meta: {} };
+        return await this.authService.login(ctx, credential);
     }
 
     @Post('register')
@@ -204,17 +200,35 @@ export class AuthController {
         type: BaseApiErrorResponse,
     })
     @HttpCode(HttpStatus.OK)
-    @UseGuards(JwtRefreshGuard)
     @UseInterceptors(ClassSerializerInterceptor)
     async refreshToken(
         @ReqContext() ctx: RequestContext,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         @Body() credential: RefreshTokenInput,
-    ): Promise<BaseApiResponse<AuthTokenOutput>> {
+    ): Promise<AuthTokenOutput> {
         this.logger.log(ctx, `${this.refreshToken.name} was called`);
 
-        const authToken = await this.authService.refreshToken(ctx);
-        return { data: authToken, meta: {} };
+        return await this.authService.refreshToken(
+            ctx,
+            credential.refreshToken,
+        );
+    }
+
+    @Post('approve-subnet')
+    async approveSubnet(
+        @ReqContext() ctx: RequestContext,
+        @Body('token') token: string,
+    ): Promise<AuthTokenOutput> {
+        return await this.authService.approveSubnet(ctx, token);
+    }
+
+    /** Logout from a session */
+    @Post('logout')
+    async logout(
+        @ReqContext() ctx: RequestContext,
+        @Body('token') refreshToken: string,
+    ): Promise<{ success: true }> {
+        await this.authService.logout(ctx, refreshToken);
+        return { success: true };
     }
 
     @UseInterceptors(ClassSerializerInterceptor)

@@ -2,17 +2,20 @@ import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import geolite2 from 'geolite2-redist';
 import maxmind, { CityResponse, Reader } from 'maxmind';
-import * as QuickLRU from 'quick-lru';
+import QuickLRU from 'quick-lru';
 
 @Injectable()
 export class GeolocationService implements OnModuleDestroy {
-    constructor(private configService: ConfigService) {}
+    constructor(private configService: ConfigService) {
+        this.lru = new QuickLRU<string, Partial<CityResponse>>({
+            maxSize:
+                this.configService.get<number>('caching.geolocationLruSize') ??
+                100,
+        });
+    }
 
     private lookup: Reader<CityResponse> | null = null;
-    private lru = new QuickLRU<string, Partial<CityResponse>>({
-        maxSize:
-            this.configService.get<number>('caching.geolocationLruSize') ?? 100,
-    });
+    private lru;
 
     onModuleDestroy() {
         if (this.lookup) this.lookup = null;
@@ -39,13 +42,10 @@ export class GeolocationService implements OnModuleDestroy {
     private async getUnsafeLocation(
         ipAddress: string,
     ): Promise<Partial<CityResponse>> {
-        if (!this.lookup) {
-            this.lookup = await geolite2
-                .open<CityResponse>('GeoLite2-City', (path) =>
-                    maxmind.open<CityResponse>(path),
-                )
-                .then((reader) => reader);
-        }
+        if (!this.lookup)
+            this.lookup = await geolite2.open('GeoLite2-City', (path) =>
+                maxmind.open<CityResponse>(path),
+            );
         return this.lookup.get(ipAddress) ?? {};
     }
 }

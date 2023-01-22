@@ -39,6 +39,8 @@ export default (): ConfigurationType => ({
             900000,
         activationCodeExpiryInMs:
             parseInt(process.env.AUTH_ACTIVATION_CODE_EXPIRY_IN_MS) || 3600000,
+        subnetVerifyExpiryInMs:
+            parseInt(process.env.AUTH_SUBNET_VERIFY_EXPIRY_IN_MS) || 1.8e6,
         registrationsEnabled: process.env.AUTH_REGISTIONS_ENABLED !== 'false',
     },
     port: process.env.APP_PORT,

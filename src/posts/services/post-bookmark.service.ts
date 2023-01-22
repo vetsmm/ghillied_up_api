@@ -9,7 +9,7 @@ import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { PostAclService } from './post-acl.service';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
-import * as cuid from 'cuid';
+import cuid from 'cuid';
 import { PostFeedVerb } from '../../shared/feed/feed.types';
 import { PostBookmark } from '@prisma/client';
 

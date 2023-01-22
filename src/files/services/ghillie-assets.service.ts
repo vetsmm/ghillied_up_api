@@ -6,7 +6,7 @@ import { AppLogger, RequestContext } from '../../shared';
 import { AssetTypes } from '../dtos/asset.types';
 import { BaseS3Service } from './base-s3.service';
 import { ConfigService } from '@nestjs/config';
-import * as cuid from 'cuid';
+import cuid from 'cuid';
 
 @Injectable()
 export class GhillieAssetsService extends BaseS3Service {

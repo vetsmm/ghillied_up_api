@@ -7,5 +7,10 @@ export class RequestContext {
 
     public ip: string;
 
+    public userAgent: string;
+    public os: string;
+    public platform: string;
+    public isMobile: boolean;
+
     public user: UserAccessTokenClaims;
 }

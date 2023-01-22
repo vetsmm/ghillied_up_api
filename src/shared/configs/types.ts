@@ -34,6 +34,7 @@ export type ConfigurationType = {
         passwordResetTokenExpiryInMs: number | string;
         activationCodeExpiryInMs: number | string;
         registrationsEnabled: boolean;
+        subnetVerifyExpiryInMs: number | string;
     };
     port: number | string;
     jwt: {

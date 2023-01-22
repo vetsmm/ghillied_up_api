@@ -22,19 +22,21 @@ export const UNVERIFIED_EMAIL = '401004: Email is not verified';
 export const UNVERIFIED_LOCATION = '401005: Location is not verified';
 export const MFA_BACKUP_CODE_USED = '401007: Backup code is already used';
 
+export const USER_NOT_ACTIVATED = '401008: User is not activated';
+
 export const NO_TOKEN_PROVIDED = '400001: No token provided';
 export const DOMAIN_NOT_VERIFIED = '400002: Domain not verified';
 export const MFA_PHONE_NOT_FOUND = '400003: Phone number not found';
 export const MFA_PHONE_OR_TOKEN_REQUIRED =
-  '400004: Phone number or token is required';
+    '400004: Phone number or token is required';
 export const MFA_NOT_ENABLED =
-  '400005: Multi-factor authentication is not enabled';
+    '400005: Multi-factor authentication is not enabled';
 export const NO_EMAILS = '400006: User has no email attached to it';
 export const CURRENT_PASSWORD_REQUIRED = '400007: Current password is required';
 export const COMPROMISED_PASSWORD =
-  '400008: This password has been compromised in a data breach.';
+    '400008: This password has been compromised in a data breach.';
 export const CANNOT_DELETE_SOLE_MEMBER =
-  '400009: Cannot remove the only member';
+    '400009: Cannot remove the only member';
 export const CANNOT_DELETE_SOLE_OWNER = '400010: Cannot remove the only owner';
 export const ORDER_BY_ASC_DESC = '400011: Invalid sorting order';
 export const ORDER_BY_FORMAT = '400012: Invalid ordering format';
@@ -43,18 +45,18 @@ export const OPTIONAL_INT_PIPE_NUMBER = '400014: $key should be a number';
 export const CURSOR_PIPE_FORMAT = '400015: Invalid cursor format';
 export const EMAIL_DELETE_PRIMARY = '400016: Cannot delete primary email';
 export const CANNOT_UPDATE_ROLE_SOLE_OWNER =
-  '400017: Cannot change the role of the only owner';
+    '400017: Cannot change the role of the only owner';
 export const INVALID_DOMAIN = '400018: Invalid domain';
 export const SELECT_INCLUDE_PIPE_FORMAT = '400019: Invalid query format';
 export const FILE_TOO_LARGE = '400022: Uploaded file is too large';
 
 export const EMAIL_USER_CONFLICT =
-  '409001: User with this email already exists';
+    '409001: User with this email already exists';
 export const EMAIL_VERIFIED_CONFLICT = '409002: This email is already verified';
 export const BILLING_ACCOUNT_CREATED_CONFLICT =
-  '409003: Billing account is already created';
+    '409003: Billing account is already created';
 export const MFA_ENABLED_CONFLICT =
-  '409004: Multi-factor authentication is already enabled';
+    '409004: Multi-factor authentication is already enabled';
 export const MERGE_USER_CONFLICT = '409005: Cannot merge the same user';
 
 export const RATE_LIMIT_EXCEEDED = '429000: Rate limit exceeded';

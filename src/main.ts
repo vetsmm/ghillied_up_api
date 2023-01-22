@@ -8,6 +8,7 @@ import { NestFactory } from '@nestjs/core';
 import * as ip from 'ip';
 import * as Sentry from '@sentry/node';
 import * as Tracing from '@sentry/tracing';
+import * as userAgent from 'express-useragent';
 
 import { AppModule } from './app/app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -27,6 +28,18 @@ function initFirebase(
     secretsService: AWSSecretsService,
     configServer: ConfigService,
 ) {
+    if (configServer.get('appEnv') === 'DEV') {
+        const firebaseConfig = configServer.get('firebase');
+        firebase.initializeApp({
+            credential: firebase.credential.cert({
+                projectId: firebaseConfig.projectId,
+                clientEmail: firebaseConfig.clientEmail,
+                privateKey: firebaseConfig.privateKey,
+            }),
+        });
+        Logger.log('Firebase - Initialized');
+        return;
+    }
     secretsService
         .getSecrets<{
             FIREBASE_PRIVATE_KEY: string;
@@ -51,6 +64,7 @@ function initFirebase(
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
+    app.use(userAgent.express());
     app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
     app.use(RequestIdMiddleware);
     app.enableCors();

@@ -44,6 +44,16 @@ export default (): ConfigurationType => ({
         registrationsEnabled: process.env.AUTH_REGISTIONS_ENABLED !== 'false',
     },
     port: process.env.APP_PORT,
+    rateLimit: {
+        public: {
+            points: int(process.env.RATE_LIMIT_PUBLIC_POINTS, 250),
+            duration: int(process.env.RATE_LIMIT_PUBLIC_DURATION, 3600),
+        },
+        authenticated: {
+            points: int(process.env.RATE_LIMIT_AUTHENTICATED_POINTS, 5000),
+            duration: int(process.env.RATE_LIMIT_AUTHENTICATED_DURATION, 3600),
+        },
+    },
     jwt: {
         publicKey: Buffer.from(
             process.env.JWT_PUBLIC_KEY_BASE64,

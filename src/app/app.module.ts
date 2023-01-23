@@ -24,6 +24,7 @@ import { CommentsModule } from '../comments/comments.module';
 import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
 import { ApprovedSubnetsModule } from '../approved-subnets/approved-subnets.module';
 import { SessionsModule } from '../sessions/sessions.module';
+import { RateLimitInterceptor } from '../shared/interceptors/rate-limit.interceptor';
 
 @Module({
     imports: [
@@ -52,6 +53,10 @@ import { SessionsModule } from '../sessions/sessions.module';
         {
             provide: APP_FILTER,
             useClass: AllExceptionsFilter,
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: RateLimitInterceptor,
         },
     ],
 })

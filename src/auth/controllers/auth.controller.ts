@@ -36,7 +36,7 @@ import {
     ReqContext,
     AuthVerifyEmailInputDto,
     AuthPasswordResetVerifyKeyDto,
-    AuthVerifyCodeInputDto,
+    AuthVerifyCodeInputDto, RateLimit,
 } from '../../shared';
 import { AuthService } from '../services/auth.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -54,13 +54,6 @@ export class AuthController {
     @Post('/activate')
     @ApiOperation({
         summary: 'Activate users API',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(AuthTokenOutput),
-    })
-    @ApiResponse({
-        status: HttpStatus.NOT_FOUND,
     })
     @HttpCode(HttpStatus.OK)
     async activate(
@@ -88,16 +81,6 @@ export class AuthController {
     }
 
     @Post('/activate/code')
-    @ApiOperation({
-        summary: 'Activate users API',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(AuthTokenOutput),
-    })
-    @ApiResponse({
-        status: HttpStatus.NOT_FOUND,
-    })
     @HttpCode(HttpStatus.OK)
     async activateWithCodeOnly(
         @ReqContext() ctx: RequestContext,
@@ -116,12 +99,7 @@ export class AuthController {
     @ApiOperation({
         summary: 'Activate users resend activation email API',
     })
-    @ApiResponse({
-        status: HttpStatus.OK,
-    })
-    @ApiResponse({
-        status: HttpStatus.NOT_FOUND,
-    })
+    @RateLimit(10)
     @HttpCode(HttpStatus.OK)
     async resendActivationEmail(
         @ReqContext() ctx: RequestContext,
@@ -147,16 +125,9 @@ export class AuthController {
     }
 
     @Post('login')
+    @RateLimit(10)
     @ApiOperation({
         summary: 'User login API',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(AuthTokenOutput),
-    })
-    @ApiResponse({
-        status: HttpStatus.UNAUTHORIZED,
-        type: BaseApiErrorResponse,
     })
     @HttpCode(HttpStatus.OK)
     @UseInterceptors(ClassSerializerInterceptor)
@@ -170,6 +141,7 @@ export class AuthController {
     }
 
     @Post('register')
+    @RateLimit(10)
     @ApiOperation({
         summary: 'User registration API',
     })
@@ -186,17 +158,20 @@ export class AuthController {
         return { data: registeredUser, meta: {} };
     }
 
+    @Post('approve-subnet')
+    @RateLimit(5)
+    async approveSubnet(
+        @ReqContext() ctx: RequestContext,
+        @Body('token') token: string,
+    ): Promise<AuthTokenOutput> {
+        this.logger.log(ctx, `${this.approveSubnet.name} was called`);
+        return await this.authService.approveSubnet(ctx, token);
+    }
+
     @Post('refresh-token')
+    @RateLimit(5)
     @ApiOperation({
         summary: 'Refresh access token API',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(AuthTokenOutput),
-    })
-    @ApiResponse({
-        status: HttpStatus.UNAUTHORIZED,
-        type: BaseApiErrorResponse,
     })
     @HttpCode(HttpStatus.OK)
     @UseInterceptors(ClassSerializerInterceptor)
@@ -212,20 +187,14 @@ export class AuthController {
         );
     }
 
-    @Post('approve-subnet')
-    async approveSubnet(
-        @ReqContext() ctx: RequestContext,
-        @Body('token') token: string,
-    ): Promise<AuthTokenOutput> {
-        return await this.authService.approveSubnet(ctx, token);
-    }
-
     /** Logout from a session */
     @Post('logout')
+    @RateLimit(5)
     async logout(
         @ReqContext() ctx: RequestContext,
         @Body('token') refreshToken: string,
     ): Promise<{ success: true }> {
+        this.logger.log(ctx, `${this.logout.name} was called`);
         await this.authService.logout(ctx, refreshToken);
         return { success: true };
     }
@@ -234,15 +203,9 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @Post('change-password')
+    @RateLimit(10)
     @ApiOperation({
         summary: 'Change password API',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-    })
-    @ApiResponse({
-        status: HttpStatus.UNAUTHORIZED,
-        type: BaseApiErrorResponse,
     })
     async changePassword(
         @ReqContext() ctx: RequestContext,
@@ -263,15 +226,7 @@ export class AuthController {
     @ApiOperation({
         summary: 'Resend reset password email API',
     })
-    @ApiResponse({
-        status: HttpStatus.OK,
-    })
-    @ApiResponse({
-        status: HttpStatus.NOT_FOUND,
-    })
-    @ApiResponse({
-        status: HttpStatus.BAD_REQUEST,
-    })
+    @RateLimit(10)
     @HttpCode(HttpStatus.OK)
     async resendResetPasswordEmail(
         @ReqContext() ctx: RequestContext,
@@ -291,12 +246,9 @@ export class AuthController {
     }
 
     @Post('reset-password/init')
+    @RateLimit(10)
     @ApiOperation({
         summary: 'Reset password init API',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(BaseApiResponse<string>),
     })
     @HttpCode(HttpStatus.OK)
     async resetPasswordInit(
@@ -313,12 +265,9 @@ export class AuthController {
     }
 
     @Post('reset-password/finish')
+    @RateLimit(10)
     @ApiOperation({
         summary: 'Reset password finish API',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(BaseApiResponse<string>),
     })
     @HttpCode(HttpStatus.OK)
     async resetPasswordFinish(
@@ -335,12 +284,9 @@ export class AuthController {
     }
 
     @Post('reset-password/verify-key')
+    @RateLimit(10)
     @ApiOperation({
         summary: 'Reset password finish API',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(BaseApiResponse<string>),
     })
     @HttpCode(HttpStatus.OK)
     async resetPasswordVerifyKey(
@@ -360,10 +306,6 @@ export class AuthController {
     @Get('/check-username/:username')
     @ApiOperation({
         summary: 'Check username API',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(BaseApiResponse<{ available: boolean }>),
     })
     async checkUsername(
         @ReqContext() ctx: RequestContext,

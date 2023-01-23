@@ -18,7 +18,9 @@ import {
     AuthPasswordResetVerifyKeyDto,
     AuthResendVerifyEmailInputDto,
     AuthVerifyEmailInputDto,
+    INVALID_CREDENTIALS,
     RequestContext,
+    USER_NOT_ACTIVATED, USER_NOT_FOUND,
 } from '../../shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import slugify from 'slugify';
@@ -186,14 +188,12 @@ export class UserService {
         const user = await this.prisma.user.findFirst({
             where: { username: { equals: username, mode: 'insensitive' } },
         });
-        if (!user)
-            throw new UnauthorizedException('Invalid username or password');
+        if (!user) throw new UnauthorizedException(INVALID_CREDENTIALS);
         if (user.activated === false)
-            throw new ForbiddenException('User is not activated');
+            throw new UnauthorizedException(USER_NOT_ACTIVATED);
 
         const match = await compare(pass, user.password);
-        if (!match)
-            throw new UnauthorizedException('Invalid username or password');
+        if (!match) throw new UnauthorizedException(INVALID_CREDENTIALS);
 
         return plainToInstance(UserOutput, user, {
             excludeExtraneousValues: true,
@@ -515,7 +515,7 @@ export class UserService {
                     ctx,
                     `Error finding user with username: ${username}`,
                 );
-                throw new NotFoundException('User not found');
+                throw new NotFoundException(USER_NOT_FOUND);
             });
     }
 

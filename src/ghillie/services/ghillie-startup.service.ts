@@ -10,10 +10,10 @@ import {
     DEFAULT_GHILLIES,
     DefaultGhillieType,
 } from '../../assets/base-ghillies/default-ghillies';
-import * as cuid from 'cuid';
+import cuid from 'cuid';
 import * as path from 'path';
 import * as fs from 'fs';
-import { GhillieCategory, User, UserAuthority } from '@prisma/client';
+import { User, UserAuthority } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()

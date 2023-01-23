@@ -40,9 +40,12 @@ export default (): ConfigurationType => ({
         'https://324fb0002f5b4cde8686245e89346503@o228030.ingest.sentry.io/6615762',
     auth: {
         passwordResetTokenExpiryInMs:
-            process.env.AUTH_PASSWORD_RESET_TOKEN_EXPIRY_IN_MS || 900000,
+            parseInt(process.env.AUTH_PASSWORD_RESET_TOKEN_EXPIRY_IN_MS) ||
+            900000,
         activationCodeExpiryInMs:
-            process.env.AUTH_ACTIVATION_CODE_EXPIRY_IN_MS || 3600000,
+            parseInt(process.env.AUTH_ACTIVATION_CODE_EXPIRY_IN_MS) || 3600000,
+        subnetVerifyExpiryInMs:
+            parseInt(process.env.AUTH_SUBNET_VERIFY_EXPIRY_IN_MS) || 1.8e6,
         registrationsEnabled: process.env.AUTH_REGISTIONS_ENABLED !== 'false',
     },
     port: process.env.APP_PORT,

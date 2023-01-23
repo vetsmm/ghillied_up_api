@@ -1,58 +1,58 @@
-import {Expose} from "class-transformer";
-import {NotificationType, ReactionType} from "@prisma/client";
+import { Expose } from 'class-transformer';
+import { NotificationType, ReactionType } from '@prisma/client';
 
 export class NotificationDto {
     @Expose()
-    id: string
+    id: string;
 
     @Expose()
-    type: NotificationType
+    type: NotificationType;
 
     @Expose()
-    message: string | null
+    message: string | null;
 
     @Expose()
-    read: boolean
+    read: boolean;
 
     @Expose()
-    trash: boolean
+    trash: boolean;
 
     @Expose()
-    createdDate: Date
+    createdDate: Date;
 
     @Expose()
-    updatedDate: Date
+    updatedDate: Date;
 
     @Expose()
-    fromUserId: string | null
+    fromUserId: string | null;
 
     @Expose()
-    toUserId: string
+    toUserId: string;
 
     @Expose()
-    sourceId: string
+    sourceId: string;
 }
 
 export class BaseNotificationDto {
     @Expose()
-    id: string
+    id: string;
 
     @Expose()
-    read: boolean
+    read: boolean;
 
     @Expose()
-    trash: boolean
+    trash: boolean;
 
     @Expose()
-    createdDate: Date
+    createdDate: Date;
 
     @Expose()
-    type: NotificationType
+    type: NotificationType;
 }
 
 export class PostCommentNotificationDto extends NotificationDto {
     @Expose()
-    sourceId: string;
+    declare sourceId: string;
 
     @Expose()
     commentContent: string;
@@ -75,7 +75,7 @@ export class PostCommentNotificationDto extends NotificationDto {
 
 export class PostCommentReactionNotificationDto extends NotificationDto {
     @Expose()
-    sourceId: string;
+    declare sourceId: string;
 
     @Expose()
     reactionType: ReactionType;
@@ -97,9 +97,8 @@ export class PostCommentReactionNotificationDto extends NotificationDto {
 }
 
 export class PostReactionNotificationDto extends NotificationDto {
-
     @Expose()
-    sourceId: string;
+    declare sourceId: string;
 
     @Expose()
     reactionType: ReactionType;
@@ -119,4 +118,3 @@ export class PostReactionNotificationDto extends NotificationDto {
     @Expose()
     postId: string;
 }
-

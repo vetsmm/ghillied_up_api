@@ -28,6 +28,10 @@ import {
     NO_TOKEN_PROVIDED,
     SESSION_NOT_FOUND,
     USER_NOT_FOUND,
+    USER_NOT_ACTIVATED,
+    USER_BANNED,
+    USER_DELETED,
+    USER_SUSPENDED,
 } from '../../shared';
 import { User, UserAuthority, UserStatus } from '@prisma/client';
 import { GeolocationService } from '../../shared/geolocation/geolocation.service';
@@ -84,24 +88,16 @@ export class AuthService {
 
         // Prevent disabled users from logging in.
         if (!user.activated) {
-            throw new UnauthorizedException(
-                'This users account is not activated',
-            );
+            throw new UnauthorizedException(USER_NOT_ACTIVATED);
         }
 
         switch (user.status) {
             case UserStatus.BANNED:
-                throw new UnauthorizedException(
-                    'This users account has been banned',
-                );
+                throw new UnauthorizedException(USER_BANNED);
             case UserStatus.DELETED:
-                throw new UnauthorizedException(
-                    'This users account has been deleted',
-                );
+                throw new UnauthorizedException(USER_DELETED);
             case UserStatus.SUSPENDED:
-                throw new UnauthorizedException(
-                    'This users account has been suspended',
-                );
+                throw new UnauthorizedException(USER_SUSPENDED);
         }
     }
 

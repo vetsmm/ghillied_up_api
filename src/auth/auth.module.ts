@@ -6,8 +6,6 @@ import { STRATEGY_JWT_AUTH } from './constants/strategy.constant';
 import { AuthController } from './controllers/auth.controller';
 import { AuthService } from './services/auth.service';
 import { JwtAuthStrategy } from './strategies/jwt-auth.strategy';
-import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
-import { LocalStrategy } from './strategies/local.strategy';
 import { SharedModule } from '../shared';
 import { HttpModule } from '@nestjs/axios';
 import { AuthIdMeController } from './controllers/id-me.controller';
@@ -30,9 +28,7 @@ import { PrismaService } from '../prisma/prisma.service';
     controllers: [AuthController, AuthIdMeController],
     providers: [
         AuthService,
-        LocalStrategy,
         JwtAuthStrategy,
-        JwtRefreshStrategy,
         AuthIdMeService,
         ApprovedSubnetsService,
         PrismaService,

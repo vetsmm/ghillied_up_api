@@ -38,7 +38,6 @@ import {
     AuthPasswordResetVerifyKeyDto,
     AuthVerifyCodeInputDto,
 } from '../../shared';
-import { JwtRefreshGuard } from '../guards/jwt-refresh.guard';
 import { AuthService } from '../services/auth.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 

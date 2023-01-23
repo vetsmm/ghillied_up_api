@@ -24,6 +24,10 @@ export const MFA_BACKUP_CODE_USED = '401007: Backup code is already used';
 
 export const USER_NOT_ACTIVATED = '401008: User is not activated';
 
+export const USER_BANNED = '401009: This users account has been banned';
+export const USER_DELETED = '401010: This users account has been deleted';
+export const USER_SUSPENDED = '401011: This users account has been suspended';
+
 export const NO_TOKEN_PROVIDED = '400001: No token provided';
 export const DOMAIN_NOT_VERIFIED = '400002: Domain not verified';
 export const MFA_PHONE_NOT_FOUND = '400003: Phone number not found';

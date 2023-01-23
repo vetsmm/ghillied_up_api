@@ -20,7 +20,7 @@ import {
     AuthVerifyEmailInputDto,
     INVALID_CREDENTIALS,
     RequestContext,
-    USER_NOT_ACTIVATED,
+    USER_NOT_ACTIVATED, USER_NOT_FOUND,
 } from '../../shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import slugify from 'slugify';
@@ -515,7 +515,7 @@ export class UserService {
                     ctx,
                     `Error finding user with username: ${username}`,
                 );
-                throw new NotFoundException('User not found');
+                throw new NotFoundException(USER_NOT_FOUND);
             });
     }
 

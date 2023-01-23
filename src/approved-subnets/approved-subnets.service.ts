@@ -1,5 +1,6 @@
 import {
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
@@ -107,25 +108,32 @@ export class ApprovedSubnetsService {
         ipAddress: string,
     ): Promise<ApprovedSubnetDto> {
         this.logger.log(ctx, `${this.approveNewSubnet} was called`);
-        const subnet = await hash(
-            anonymize(ipAddress),
-            this.configService.get<number>('security.saltRounds') ?? 10,
-        );
-        const location = await this.geolocationService.getLocation(ipAddress);
-        const approved = await this.prisma.approvedSubnet.create({
-            data: {
-                user: { connect: { id: userId } },
-                subnet,
-                city: location?.city?.names?.en,
-                region: location?.subdivisions?.pop()?.names?.en,
-                timezone: location?.location?.time_zone,
-                countryCode: location?.country?.iso_code,
-            },
-        });
-        return plainToInstance(ApprovedSubnetDto, approved, {
-            excludeExtraneousValues: true,
-            enableImplicitConversion: true,
-        });
+
+        try {
+            const subnet = await hash(
+                anonymize(ipAddress),
+                this.configService.get<number>('security.saltRounds') ?? 10,
+            );
+            const location = await this.geolocationService.getLocation(
+                ipAddress,
+            );
+            const approved = await this.prisma.approvedSubnet.create({
+                data: {
+                    user: { connect: { id: userId } },
+                    subnet,
+                    city: location?.city?.names?.en,
+                    region: location?.subdivisions?.pop()?.names?.en,
+                    timezone: location?.location?.time_zone,
+                    countryCode: location?.country?.iso_code,
+                },
+            });
+            return plainToInstance(ApprovedSubnetDto, approved, {
+                excludeExtraneousValues: true,
+                enableImplicitConversion: true,
+            });
+        } catch (error) {
+            throw new InternalServerErrorException(error);
+        }
     }
 
     /**

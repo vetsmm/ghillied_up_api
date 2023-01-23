@@ -5,7 +5,7 @@ import {
     Get,
     HttpCode,
     HttpException,
-    HttpStatus,
+    HttpStatus, Ip,
     Param,
     Post,
     UseGuards,
@@ -162,10 +162,11 @@ export class AuthController {
     @RateLimit(5)
     async approveSubnet(
         @ReqContext() ctx: RequestContext,
+        @Ip() ip: string,
         @Body('token') token: string,
     ): Promise<AuthTokenOutput> {
         this.logger.log(ctx, `${this.approveSubnet.name} was called`);
-        return await this.authService.approveSubnet(ctx, token);
+        return await this.authService.approveSubnet(ctx, token, ip);
     }
 
     @Post('refresh-token')

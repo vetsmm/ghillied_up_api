@@ -408,7 +408,7 @@ export class AuthService {
         return this.userService.verifyPasswordResetKey(ctx, input);
     }
 
-    async approveSubnet(ctx: RequestContext, token: string) {
+    async approveSubnet(ctx: RequestContext, token: string, ip: string) {
         this.logger.log(ctx, `${this.approveSubnet.name} was called`);
         if (!token) throw new UnprocessableEntityException(NO_TOKEN_PROVIDED);
         const { id } = this.tokenService.verify<{ id: string }>(
@@ -417,7 +417,7 @@ export class AuthService {
         );
         const user = await this.prisma.user.findUnique({ where: { id: id } });
         if (!user) throw new NotFoundException(USER_NOT_FOUND);
-        await this.approvedSubnetsService.approveNewSubnet(ctx, id, ctx.ip);
+        await this.approvedSubnetsService.approveNewSubnet(ctx, id, ip);
         return this.getAuthToken(ctx, user);
     }
 }

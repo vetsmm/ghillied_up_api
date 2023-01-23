@@ -63,6 +63,7 @@ export class AuthService {
         ctx: RequestContext,
         username: string,
         pass: string,
+        ip: string,
     ): Promise<UserAccessTokenClaims> {
         this.logger.log(ctx, `${this.authenticateUser.name} was called`);
 
@@ -76,7 +77,7 @@ export class AuthService {
 
         await this.validateUser(ctx, user.username);
 
-        await this.checkLoginSubnet(ctx, user);
+        await this.checkLoginSubnet(ctx, user, ip);
 
         return user;
     }
@@ -104,6 +105,7 @@ export class AuthService {
     async login(
         ctx: RequestContext,
         credential: LoginInput,
+        ip: string,
     ): Promise<AuthTokenOutput> {
         this.logger.log(ctx, `${this.login.name} was called`);
 
@@ -112,14 +114,16 @@ export class AuthService {
             ctx,
             credential.username,
             credential.password,
+            ip,
         );
 
-        return this.getAuthToken(ctx, userClaims);
+        return this.getAuthToken(ctx, userClaims, ip);
     }
 
     async activateUser(
         ctx: RequestContext,
         activationCode: number,
+        ip: string,
     ): Promise<AuthTokenOutput> {
         this.logger.log(ctx, `${this.activateUser.name} was called`);
 
@@ -129,19 +133,20 @@ export class AuthService {
         }
 
         // generate a new token
-        return this.getAuthToken(ctx, user);
+        return this.getAuthToken(ctx, user, ip);
     }
 
     private async checkLoginSubnet(
         ctx: RequestContext,
         user: UserOutput,
+        ip: string,
         origin?: string,
     ) {
         this.logger.debug(ctx, `${this.checkLoginSubnet.name} was called`);
 
         if (!user.checkLocationOnLogin) return;
 
-        const subnet = anonymize(ctx.ip);
+        const subnet = anonymize(ip);
         const previousSubnets = await this.prisma.approvedSubnet.findMany({
             where: { user: { id: user.id } },
         });
@@ -154,7 +159,7 @@ export class AuthService {
         }
 
         if (!isApproved) {
-            const location = await this.geolocationService.getLocation(ctx.ip);
+            const location = await this.geolocationService.getLocation(ip);
             const locationName =
                 [
                     location?.city?.names?.en,
@@ -177,6 +182,7 @@ export class AuthService {
             // Send email to user to approve subnet
             await this.mailService.sendLoginSubnetApproval(
                 ctx,
+                ip,
                 user,
                 locationName,
                 jwtToken,
@@ -203,6 +209,7 @@ export class AuthService {
     async register(
         ctx: RequestContext,
         input: RegisterInput,
+        ip: string,
     ): Promise<RegisterOutput> {
         this.logger.log(ctx, `${this.register.name} was called`);
 
@@ -225,7 +232,7 @@ export class AuthService {
         await this.approvedSubnetsService.approveNewSubnet(
             ctx,
             response.output.id,
-            ctx.ip,
+            ip,
         );
         return plainToClass(RegisterOutput, response.output, {
             excludeExtraneousValues: true,
@@ -234,6 +241,7 @@ export class AuthService {
 
     async refreshToken(
         ctx: RequestContext,
+        ip: string,
         token: string,
     ): Promise<AuthTokenOutput> {
         this.logger.debug(ctx, `${this.refreshToken.name} was called`);
@@ -247,7 +255,7 @@ export class AuthService {
         if (!session) throw new NotFoundException(SESSION_NOT_FOUND);
         await this.prisma.session.updateMany({
             where: { token },
-            data: { ipAddress: ctx.ip, userAgent: ctx.userAgent },
+            data: { ipAddress: ip, userAgent: ctx.userAgent },
         });
 
         // async update the last login time
@@ -262,16 +270,17 @@ export class AuthService {
     async getAuthToken(
         ctx: RequestContext,
         user: UserAccessTokenClaims | UserOutput,
+        ip: string,
     ): Promise<AuthTokenOutput> {
         this.logger.log(ctx, `${this.getAuthToken.name} was called`);
 
         const token = await this.tokenService.generateRandomString(64);
         const ua = new UAParser(ctx.userAgent);
-        const location = await this.geolocationService.getLocation(ctx.ip);
+        const location = await this.geolocationService.getLocation(ip);
         const { id } = await this.prisma.session.create({
             data: {
                 token,
-                ipAddress: ctx.ip,
+                ipAddress: ip,
                 city: location?.city?.names?.en,
                 region: location?.subdivisions?.pop()?.names?.en,
                 timezone: location?.location?.time_zone,
@@ -418,6 +427,6 @@ export class AuthService {
         const user = await this.prisma.user.findUnique({ where: { id: id } });
         if (!user) throw new NotFoundException(USER_NOT_FOUND);
         await this.approvedSubnetsService.approveNewSubnet(ctx, id, ip);
-        return this.getAuthToken(ctx, user);
+        return this.getAuthToken(ctx, user, ip);
     }
 }

@@ -19,6 +19,7 @@ export class MailService {
 
     async sendLoginSubnetApproval(
         ctx: RequestContext,
+        ipAddress: string,
         user: UserOutput,
         locationName: string,
         jwtToken: string,
@@ -33,7 +34,7 @@ export class MailService {
                 context: {
                     username: user.username,
                     locationName: locationName,
-                    ipAddress: ctx.ip,
+                    ipAddress: ipAddress,
                     attemptTime: new Date().toLocaleString(),
                     confirmationLink: `https://ghilliedup.com/auth/confirm-subnet/${jwtToken}`,
                     expirationInMinutes: expirationInMinutes,

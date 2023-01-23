@@ -5,7 +5,8 @@ import {
     Get,
     HttpCode,
     HttpException,
-    HttpStatus, Ip,
+    HttpStatus,
+    Ip,
     Param,
     Post,
     UseGuards,
@@ -36,7 +37,8 @@ import {
     ReqContext,
     AuthVerifyEmailInputDto,
     AuthPasswordResetVerifyKeyDto,
-    AuthVerifyCodeInputDto, RateLimit,
+    AuthVerifyCodeInputDto,
+    RateLimit,
 } from '../../shared';
 import { AuthService } from '../services/auth.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -58,6 +60,7 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async activate(
         @ReqContext() ctx: RequestContext,
+        @Ip() ip: string,
         @Body() emailInputDto: AuthVerifyEmailInputDto,
     ): Promise<BaseApiResponse<AuthTokenOutput>> {
         this.logger.log(ctx, `${this.activate.name} was called`);
@@ -75,6 +78,7 @@ export class AuthController {
         const authTokenOutput = await this.authService.activateUser(
             ctx,
             emailInputDto.activationCode,
+            ip,
         );
 
         return { data: authTokenOutput, meta: {} };
@@ -84,6 +88,7 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async activateWithCodeOnly(
         @ReqContext() ctx: RequestContext,
+        @Ip() ip: string,
         @Body() codeInput: AuthVerifyCodeInputDto,
     ): Promise<AuthTokenOutput> {
         this.logger.log(ctx, `${this.activate.name} was called`);
@@ -91,6 +96,7 @@ export class AuthController {
         return await this.authService.activateUser(
             ctx,
             codeInput.activationCode,
+            ip,
         );
     }
 
@@ -133,11 +139,12 @@ export class AuthController {
     @UseInterceptors(ClassSerializerInterceptor)
     async login(
         @ReqContext() ctx: RequestContext,
+        @Ip() ip: string,
         @Body() credential: LoginInput,
     ): Promise<AuthTokenOutput> {
         this.logger.log(ctx, `${this.login.name} was called`);
 
-        return await this.authService.login(ctx, credential);
+        return await this.authService.login(ctx, credential, ip);
     }
 
     @Post('register')
@@ -151,10 +158,11 @@ export class AuthController {
     })
     async registerLocal(
         @ReqContext() ctx: RequestContext,
+        @Ip() ip: string,
         @Body() input: RegisterInput,
     ): Promise<BaseApiResponse<RegisterOutput>> {
         this.logger.log(ctx, `${this.registerLocal.name} was called`);
-        const registeredUser = await this.authService.register(ctx, input);
+        const registeredUser = await this.authService.register(ctx, input, ip);
         return { data: registeredUser, meta: {} };
     }
 
@@ -178,6 +186,7 @@ export class AuthController {
     @UseInterceptors(ClassSerializerInterceptor)
     async refreshToken(
         @ReqContext() ctx: RequestContext,
+        @Ip() ip: string,
         @Body() credential: RefreshTokenInput,
     ): Promise<AuthTokenOutput> {
         this.logger.log(ctx, `${this.refreshToken.name} was called`);
@@ -185,6 +194,7 @@ export class AuthController {
         return await this.authService.refreshToken(
             ctx,
             credential.refreshToken,
+            ip,
         );
     }
 

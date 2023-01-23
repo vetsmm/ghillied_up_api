@@ -109,6 +109,8 @@ export class ApprovedSubnetsService {
     ): Promise<ApprovedSubnetDto> {
         this.logger.log(ctx, `${this.approveNewSubnet} was called`);
 
+        console.log('ipAddress', ipAddress);
+        console.log('userId', userId);
         try {
             const subnet = await hash(
                 anonymize(ipAddress),

@@ -2,6 +2,10 @@ export type ConfigurationType = {
     env: string;
     appEnv: 'DEV' | 'QA' | 'PROD';
     databaseUrl: string;
+    rateLimit: {
+        public: { points: number; duration: number };
+        authenticated: { points: number; duration: number };
+    };
     secretsSources?: {
         database: string;
         stream: string;

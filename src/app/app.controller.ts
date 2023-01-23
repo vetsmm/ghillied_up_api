@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 
 import { AppService } from './app.service';
+import { RateLimit } from '../shared';
 
 @Controller()
 export class AppController {
@@ -8,6 +9,7 @@ export class AppController {
     }
 
     @Get()
+    @RateLimit(10)
     getData() {
         return this.appService.getData();
     }

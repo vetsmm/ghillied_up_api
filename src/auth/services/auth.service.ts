@@ -408,6 +408,7 @@ export class AuthService {
     }
 
     async approveSubnet(ctx: RequestContext, token: string) {
+        this.logger.log(ctx, `${this.approveSubnet.name} was called`);
         if (!token) throw new UnprocessableEntityException(NO_TOKEN_PROVIDED);
         const { id } = this.tokenService.verify<{ id: string }>(
             APPROVE_SUBNET_TOKEN,

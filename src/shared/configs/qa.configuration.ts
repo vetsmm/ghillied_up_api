@@ -12,6 +12,16 @@ export default (): ConfigurationType => ({
     security: {
         saltRounds: int(process.env.SALT_ROUNDS, 10),
     },
+    rateLimit: {
+        public: {
+            points: int(process.env.RATE_LIMIT_PUBLIC_POINTS, 250),
+            duration: int(process.env.RATE_LIMIT_PUBLIC_DURATION, 3600),
+        },
+        authenticated: {
+            points: int(process.env.RATE_LIMIT_AUTHENTICATED_POINTS, 5000),
+            duration: int(process.env.RATE_LIMIT_AUTHENTICATED_DURATION, 3600),
+        },
+    },
     secretsSources: {
         database: 'ghilliedup/qa/api/db',
         stream: 'ghilliedup/qa/stream',

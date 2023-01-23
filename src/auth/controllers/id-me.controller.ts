@@ -8,19 +8,13 @@ import {
     UseGuards,
     UseInterceptors,
 } from '@nestjs/common';
-import {
-    ApiBearerAuth,
-    ApiOperation,
-    ApiResponse,
-    ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthIdMeService } from '../services/id-me.service';
 import {
-    BaseApiErrorResponse,
     BaseApiResponse,
+    RateLimit,
     ReqContext,
     RequestContext,
-    SwaggerBaseApiResponse,
 } from '../../shared';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { AuthIdMeVerifyDto } from '../dtos/auth-id-me-verify.dto';
@@ -39,19 +33,12 @@ export class AuthIdMeController {
     ) {}
 
     @Post('verify')
+    @RateLimit(5)
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @ApiOperation({
         summary: 'Verify military status of a user',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        type: SwaggerBaseApiResponse(AuthIdMeVerifyResultDto),
-    })
-    @ApiResponse({
-        status: HttpStatus.UNAUTHORIZED,
-        type: BaseApiErrorResponse,
     })
     @HttpCode(HttpStatus.OK)
     async verifyMilitaryStatus(

@@ -8,6 +8,7 @@ import type { Prisma } from '@prisma/client';
 import { compare, hash } from 'bcrypt';
 import anonymize from 'ip-anonymize';
 import {
+    AppLogger,
     APPROVED_SUBNET_NOT_FOUND,
     RequestContext,
     UNAUTHORIZED_RESOURCE,
@@ -23,6 +24,7 @@ export class ApprovedSubnetsService {
         private prisma: PrismaService,
         private configService: ConfigService,
         private geolocationService: GeolocationService,
+        private logger: AppLogger,
     ) {}
 
     async getApprovedSubnets(
@@ -36,6 +38,7 @@ export class ApprovedSubnetsService {
             orderBy?: Prisma.ApprovedSubnetOrderByWithRelationAndSearchRelevanceInput;
         },
     ): Promise<ApprovedSubnetDto[]> {
+        this.logger.log(ctx, `${this.getApprovedSubnets} was called`);
         const { skip, take, cursor, where, orderBy } = params;
         try {
             const ApprovedSubnet = await this.prisma.approvedSubnet.findMany({
@@ -59,6 +62,7 @@ export class ApprovedSubnetsService {
         userId: string,
         id: string,
     ): Promise<ApprovedSubnetDto> {
+        this.logger.log(ctx, `${this.getApprovedSubnet} was called`);
         const approvedSubnet = await this.prisma.approvedSubnet.findUnique({
             where: { id },
         });
@@ -80,6 +84,7 @@ export class ApprovedSubnetsService {
         userId: string,
         id: string,
     ): Promise<ApprovedSubnetDto> {
+        this.logger.log(ctx, `${this.deleteApprovedSubnet} was called`);
         const testApprovedSubnet = await this.prisma.approvedSubnet.findUnique({
             where: { id },
         });
@@ -97,9 +102,11 @@ export class ApprovedSubnetsService {
     }
 
     async approveNewSubnet(
+        ctx: RequestContext,
         userId: string,
         ipAddress: string,
     ): Promise<ApprovedSubnetDto> {
+        this.logger.log(ctx, `${this.approveNewSubnet} was called`);
         const subnet = await hash(
             anonymize(ipAddress),
             this.configService.get<number>('security.saltRounds') ?? 10,
@@ -126,9 +133,11 @@ export class ApprovedSubnetsService {
      * If this subnet already exists, skip; otherwise add it
      */
     async upsertNewSubnet(
+        ctx: RequestContext,
         userId: string,
         ipAddress: string,
     ): Promise<ApprovedSubnetDto> {
+        this.logger.log(ctx, `${this.upsertNewSubnet} was called`);
         const subnet = anonymize(ipAddress);
         const previousSubnets = await this.prisma.approvedSubnet.findMany({
             where: { user: { id: userId } },
@@ -140,6 +149,6 @@ export class ApprovedSubnetsService {
                     enableImplicitConversion: true,
                 });
         }
-        return this.approveNewSubnet(userId, ipAddress);
+        return this.approveNewSubnet(ctx, userId, ipAddress);
     }
 }

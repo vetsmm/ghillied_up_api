@@ -4,9 +4,10 @@ import { ApprovedSubnetController } from './approved-subnets.controller';
 import { ApprovedSubnetsService } from './approved-subnets.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { GeolocationModule } from '../shared/geolocation/geolocation.module';
+import { AppLoggerModule } from '../shared/logger/logger.module';
 
 @Module({
-    imports: [PrismaModule, ConfigModule, GeolocationModule],
+    imports: [AppLoggerModule, PrismaModule, ConfigModule, GeolocationModule],
     controllers: [ApprovedSubnetController],
     providers: [ApprovedSubnetsService],
 })

@@ -223,6 +223,7 @@ export class AuthService {
         );
 
         await this.approvedSubnetsService.approveNewSubnet(
+            ctx,
             response.output.id,
             ctx.ip,
         );
@@ -416,7 +417,7 @@ export class AuthService {
         );
         const user = await this.prisma.user.findUnique({ where: { id: id } });
         if (!user) throw new NotFoundException(USER_NOT_FOUND);
-        await this.approvedSubnetsService.approveNewSubnet(id, ctx.ip);
+        await this.approvedSubnetsService.approveNewSubnet(ctx, id, ctx.ip);
         return this.getAuthToken(ctx, user);
     }
 }

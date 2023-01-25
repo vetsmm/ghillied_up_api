@@ -15,7 +15,7 @@ import {
     LoggingInterceptor,
     SharedModule,
 } from '../shared';
-import { QueueModule } from '../queue/queue.module';
+import { SnsModule } from '../sns/sns.module';
 import { SettingsModule } from '../settings/settings.module';
 import { NotificationModule } from '../notifications/notification.module';
 import { FilesModule } from '../files/files.module';
@@ -25,6 +25,7 @@ import { PushNotificationsModule } from '../push-notifications/push-notification
 import { ApprovedSubnetsModule } from '../approved-subnets/approved-subnets.module';
 import { SessionsModule } from '../sessions/sessions.module';
 import { RateLimitInterceptor } from '../shared/interceptors/rate-limit.interceptor';
+import { MultiFactorAuthenticationModule } from '../multi-factor-authentication/multi-factor-authentication.module';
 
 @Module({
     imports: [
@@ -36,7 +37,7 @@ import { RateLimitInterceptor } from '../shared/interceptors/rate-limit.intercep
         PostsModule,
         FeedsModule,
         FlagsModule,
-        QueueModule,
+        SnsModule,
         SettingsModule,
         NotificationModule,
         FilesModule,
@@ -45,6 +46,7 @@ import { RateLimitInterceptor } from '../shared/interceptors/rate-limit.intercep
         PushNotificationsModule,
         ApprovedSubnetsModule,
         SessionsModule,
+        MultiFactorAuthenticationModule,
     ],
     controllers: [AppController],
     providers: [

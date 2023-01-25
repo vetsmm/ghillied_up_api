@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { AppLogger } from '../shared';
 import { UserAclService } from './services/user-acl.service';
 import { AnonymousUserController } from './controllers/anonymous-user.controller';
-import { QueueService } from '../queue/services/queue.service';
+import { QueueService } from '../sns/services/queue.service';
 
 @Module({
     providers: [

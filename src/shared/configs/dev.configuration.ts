@@ -6,7 +6,7 @@ export default (): ConfigurationType => ({
     appEnv: 'DEV',
     databaseUrl: process.env.DATABASE_URL,
     app: {
-        name: 'ghillied-up',
+        name: 'Ghillied Up',
     },
     caching: {
         geolocationLruSize: int(process.env.GEOLOCATION_LRU_SIZE, 100),
@@ -14,6 +14,9 @@ export default (): ConfigurationType => ({
     },
     security: {
         saltRounds: int(process.env.SALT_ROUNDS, 10),
+        totpWindowPast: int(process.env.TOTP_WINDOW_PAST, 1),
+        totpWindowFuture: int(process.env.TOTP_WINDOW_FUTURE, 0),
+        mfaTokenExpiry: process.env.MFA_TOKEN_EXPIRY ?? '10m',
     },
     stream: {
         apiKey: process.env.STREAM_API_KEY,

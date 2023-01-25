@@ -20,7 +20,7 @@ import {
 } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { PostService } from './post.service';
-import { QueueService } from '../../queue/services/queue.service';
+import { QueueService } from '../../sns/services/queue.service';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { NotificationService } from '../../notifications/services/notification.service';
 import { getMilitaryString } from '../../shared';

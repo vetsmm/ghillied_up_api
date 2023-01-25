@@ -40,7 +40,7 @@ import { SocialInterface } from '../../auth/interfaces/social.interface';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
 import { getDefaultGhillieForBranch } from '../../assets/base-ghillies/default-ghillies';
-import { QueueService } from '../../queue/services/queue.service';
+import { QueueService } from '../../sns/services/queue.service';
 
 @Injectable()
 export class UserService {

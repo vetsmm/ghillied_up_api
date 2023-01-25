@@ -49,6 +49,10 @@ export type ConfigurationType = {
     };
     security: {
         saltRounds: number;
+        totpWindowPast: number;
+        totpWindowFuture: number;
+        mfaTokenExpiry: string;
+        passwordPwnedCheck?: boolean;
     };
     defaultAdminUserPassword: string;
     mail: {

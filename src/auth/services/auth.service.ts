@@ -1,11 +1,13 @@
 import {
+    BadRequestException,
+    ConflictException,
     Injectable,
     NotFoundException,
     UnauthorizedException,
     UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { plainToClass } from 'class-transformer';
+import { plainToClass, plainToInstance } from 'class-transformer';
 import { compare } from 'bcrypt';
 import { UserOutput } from '../../user/dtos/public/user-output.dto';
 import { UserService } from '../../user/services/user.service';
@@ -32,8 +34,17 @@ import {
     USER_BANNED,
     USER_DELETED,
     USER_SUSPENDED,
+    MFA_ENABLED_CONFLICT,
+    INVALID_MFA_CODE,
+    Authenticator,
+    keyDecoder,
+    keyEncoder,
+    createDigest,
+    createRandomBytes,
+    MFA_BACKUP_CODE_USED,
+    MFA_NOT_ENABLED,
 } from '../../shared';
-import { User, UserAuthority, UserStatus } from '@prisma/client';
+import { MfaMethod, User, UserAuthority, UserStatus } from '@prisma/client';
 import { GeolocationService } from '../../shared/geolocation/geolocation.service';
 import { ApprovedSubnetsService } from '../../approved-subnets/approved-subnets.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -41,11 +52,16 @@ import anonymize from 'ip-anonymize';
 import {
     APPROVE_SUBNET_TOKEN,
     LOGIN_ACCESS_TOKEN,
+    MULTI_FACTOR_TOKEN,
 } from '../../shared/tokens/tokens.constants';
 import { TokensService } from '../../shared/tokens/tokens.service';
+import qrcode from 'qrcode';
+import { MfaTokenPayload } from '../../multi-factor-authentication/dtos/mfa-token-payload.dto';
 
 @Injectable()
 export class AuthService {
+    authenticator: Authenticator;
+
     constructor(
         private userService: UserService,
         private configService: ConfigService,
@@ -57,6 +73,40 @@ export class AuthService {
         private readonly logger: AppLogger,
     ) {
         this.logger.setContext(AuthService.name);
+
+        this.authenticator = new Authenticator({
+            window: [
+                this.configService.get<number>('security.totpWindowPast') ?? 0,
+                this.configService.get<number>('security.totpWindowFuture') ??
+                    0,
+            ],
+            keyEncoder,
+            keyDecoder,
+            createDigest,
+            createRandomBytes,
+        });
+    }
+
+    /**
+     * Get the two-factor authentication QR code
+     * @returns Data URI string with QR code image
+     */
+    async getTotpQrCode(userId: string): Promise<string> {
+        const secret = this.authenticator.generateSecret();
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { twoFactorSecret: secret },
+        });
+        const otpauth = this.authenticator.keyuri(
+            userId.toString(),
+            this.configService.get<string>('meta.appName') ?? '',
+            secret,
+        );
+        return qrcode.toDataURL(otpauth);
+    }
+
+    getOneTimePassword(secret: string): string {
+        return this.authenticator.generate(secret);
     }
 
     async authenticateUser(
@@ -428,5 +478,108 @@ export class AuthService {
         if (!user) throw new NotFoundException(USER_NOT_FOUND);
         await this.approvedSubnetsService.approveNewSubnet(ctx, id, ip);
         return this.getAuthToken(ctx, user, ip);
+    }
+
+    async enableMfaMethod(
+        ctx: RequestContext,
+        method: MfaMethod,
+        code: string,
+    ): Promise<UserOutput> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: ctx.user.id },
+            select: { twoFactorSecret: true, twoFactorMethod: true },
+        });
+        if (!user) throw new NotFoundException(USER_NOT_FOUND);
+        if (user.twoFactorMethod !== 'NONE')
+            throw new ConflictException(MFA_ENABLED_CONFLICT);
+        if (!user.twoFactorSecret)
+            user.twoFactorSecret = this.authenticator.generateSecret();
+        if (!this.authenticator.check(code, user.twoFactorSecret))
+            throw new UnauthorizedException(INVALID_MFA_CODE);
+        const result = await this.prisma.user.update({
+            where: { id: ctx.user.id },
+            data: {
+                twoFactorMethod: method,
+                twoFactorSecret: user.twoFactorSecret,
+            },
+        });
+        return plainToInstance(UserOutput, result, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
+    }
+
+    loginWithTotp(
+        ctx: RequestContext,
+        ip: string,
+        token: string,
+        code: string,
+        origin?: string,
+    ) {
+        const { id } = this.tokenService.verify<MfaTokenPayload>(
+            MULTI_FACTOR_TOKEN,
+            token,
+        );
+
+        return this.loginUserWithTotpCode(ctx, ip, id, code, origin);
+    }
+
+    private async loginUserWithTotpCode(
+        ctx: RequestContext,
+        ipAddress: string,
+        id: string,
+        code: string,
+        origin?: string,
+    ): Promise<AuthTokenOutput> {
+        const user = await this.prisma.user.findUnique({
+            where: { id },
+        });
+        if (!user) throw new NotFoundException(USER_NOT_FOUND);
+
+        if (user.twoFactorMethod === 'NONE' || !user.twoFactorSecret)
+            throw new BadRequestException(MFA_NOT_ENABLED);
+
+        if (this.authenticator.check(code, user.twoFactorSecret))
+            return this.getAuthToken(ctx, user, ipAddress);
+
+        const backupCodes = await this.prisma.backupCode.findMany({
+            where: { user: { id } },
+        });
+
+        let usedBackupCode = false;
+        for await (const backupCode of backupCodes) {
+            if (await compare(code, backupCode.code)) {
+                if (!usedBackupCode) {
+                    if (backupCode.isUsed)
+                        throw new UnauthorizedException(MFA_BACKUP_CODE_USED);
+                    usedBackupCode = true;
+                    await this.prisma.backupCode.update({
+                        where: { id: backupCode.id },
+                        data: { isUsed: true },
+                    });
+                    const location = await this.geolocationService.getLocation(
+                        ipAddress,
+                    );
+                    const locationName =
+                        [
+                            location?.city?.names?.en,
+                            (location?.subdivisions ?? [])[0]?.names?.en,
+                            location?.country?.names?.en,
+                        ]
+                            .filter((i) => i)
+                            .join(', ') || 'Unknown location';
+                    this.mailService.sendUsedBackupCode(
+                        ctx,
+                        user,
+                        ipAddress,
+                        locationName,
+                    );
+                }
+            }
+        }
+
+        if (!usedBackupCode) throw new UnauthorizedException(INVALID_MFA_CODE);
+
+        return this.getAuthToken(ctx, user, ipAddress);
     }
 }

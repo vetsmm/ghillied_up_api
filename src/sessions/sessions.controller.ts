@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { SessionsService } from './sessions.service';
 import {
     CursorPipe,
@@ -9,13 +9,23 @@ import {
     WherePipe,
 } from '../shared';
 import { SessionDto } from './dtos/session.dto';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AuthoritiesGuard } from '../auth/guards/authorities.guard';
+import { ActiveUserGuard } from '../auth/guards/active-user.guard';
+import { Authorities } from '../auth/decorators/authority.decorator';
+import { UserAuthority } from '@prisma/client';
 
-@Controller('users/:userId/sessions')
+@ApiTags('Sessions')
+@Controller('sessions')
 export class SessionController {
     constructor(private sessionsService: SessionsService) {}
 
     /** Get sessions for a user */
     @Get()
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @Authorities(UserAuthority.ROLE_USER)
     async getAll(
         @ReqContext() ctx: RequestContext,
         @Query('skip', OptionalIntPipe) skip?: number,
@@ -35,6 +45,9 @@ export class SessionController {
 
     /** Get a session for a user */
     @Get(':id')
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @Authorities(UserAuthority.ROLE_USER)
     async get(
         @ReqContext() ctx: RequestContext,
         @Param('id') id: string,
@@ -44,6 +57,9 @@ export class SessionController {
 
     /** Delete a session for a user */
     @Delete(':id')
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @Authorities(UserAuthority.ROLE_USER)
     async remove(
         @ReqContext() ctx: RequestContext,
         @Param('id') id: string,

@@ -21,7 +21,6 @@ import {
 
 import {
     AuthChangePasswordInputDto,
-    BaseApiErrorResponse,
     BaseApiResponse,
     AuthPasswordResetInitDto,
     SwaggerBaseApiResponse,
@@ -42,6 +41,7 @@ import {
 } from '../../shared';
 import { AuthService } from '../services/auth.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { TotpLoginDto } from '../dtos/totp-login.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -334,5 +334,23 @@ export class AuthController {
             },
             meta: {},
         };
+    }
+
+    /** Login using TOTP */
+    @Post('login/totp')
+    @RateLimit(10)
+    async totpLogin(
+        @ReqContext() ctx: RequestContext,
+        @Body() data: TotpLoginDto,
+        @Ip() ip: string,
+        @Body('origin') origin?: string,
+    ): Promise<AuthTokenOutput> {
+        return this.authService.loginWithTotp(
+            ctx,
+            ip,
+            data.token,
+            data.code,
+            origin,
+        );
     }
 }

@@ -82,6 +82,7 @@
     "nestjs-pgpromise": "^2.0.1",
     "nodemailer": "^6.7.7",
     "otpauth": "^9.0.2",
+    "p-queue": "^6.6.2",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
@@ -97,6 +98,7 @@
     "slugify": "^1.6.5",
     "swagger-ui-express": "^4.4.0",
     "tslib": "^2.3.0",
+    "twilio": "^4.0.0",
     "ua-parser-js": "^0.7.33",
     "winston": "^3.8.1"
   },

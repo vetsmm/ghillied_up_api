@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     Body,
     ClassSerializerInterceptor,
     Controller,
@@ -35,8 +36,10 @@ import {
     AppLogger,
     ReqContext,
 } from '../../shared';
-import { UserAuthority } from '@prisma/client';
+import { User, UserAuthority } from '@prisma/client';
 import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
+import { TwilioService } from '../../shared/twilio/twilio.service';
+import { CheckVerificationCodeDto } from '../dtos/check-verification-code.dto';
 
 @ApiTags('users')
 @Controller('users')
@@ -44,6 +47,7 @@ export class UserController {
     constructor(
         private readonly userService: UserService,
         private readonly logger: AppLogger,
+        private readonly twilioService: TwilioService,
     ) {
         this.logger.setContext(UserController.name);
     }
@@ -173,5 +177,54 @@ export class UserController {
         );
 
         await this.userService.deactivateUser(ctx, ctx.user.id);
+    }
+
+    @Post('initiate-sns-verification')
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Authorities(UserAuthority.ROLE_USER)
+    async initiatePhoneNumberVerification(@ReqContext() ctx: RequestContext) {
+        const user = await this.userService.getUserById(ctx, ctx.user.id);
+        this.phoneNumberConfirmed(user);
+
+        await this.twilioService.initiatePhoneNumberVerification(
+            ctx,
+            user.phoneNumber,
+        );
+    }
+    @Post('check-verification-code')
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Authorities(UserAuthority.ROLE_USER)
+    async checkVerificationCode(
+        @ReqContext() ctx: RequestContext,
+        @Body() verificationData: CheckVerificationCodeDto,
+    ) {
+        const user = await this.userService.getUserById(ctx, ctx.user.id);
+        this.phoneNumberConfirmed(user);
+
+        const result = await this.twilioService.confirmPhoneNumber(
+            ctx,
+            user.phoneNumber,
+            verificationData.code,
+        );
+
+        if (!result.valid || result.status !== 'approved') {
+            throw new BadRequestException('Wrong code provided');
+        }
+
+        await this.userService.markPhoneNumberAsConfirmed(ctx, user.id);
+    }
+
+    private phoneNumberConfirmed(user: UserOutput | User): boolean {
+        if (user.phoneNumberConfirmed) {
+            throw new BadRequestException(
+                'Phone number is already confirmed. Cannot initiate verification.',
+            );
+        }
+
+        return user.phoneNumberConfirmed;
     }
 }

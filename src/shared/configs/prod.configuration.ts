@@ -28,12 +28,17 @@ export default (): ConfigurationType => ({
             duration: int(process.env.RATE_LIMIT_AUTHENTICATED_DURATION, 3600),
         },
     },
+    sms: {
+        senderPhoneNumber:
+            process.env.TWILIO_SENDER_PHONE_NUMBER || '(925) 578-3532',
+    },
     secretsSources: {
         database: 'ghilliedup/prod/api/db',
         stream: 'ghilliedup/prod/stream',
         firebase: 'ghilliedup/prod/firebase',
         jwt: 'ghilliedup/prod/jwt',
         mail: 'ghilliedup/prod/mail',
+        twilio: 'ghilliedup/prod/twilio',
     },
     stream: {
         apiKey: process.env.STREAM_API_KEY,

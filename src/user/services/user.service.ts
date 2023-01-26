@@ -17,10 +17,10 @@ import {
     AuthPasswordResetFinishDto,
     AuthPasswordResetVerifyKeyDto,
     AuthResendVerifyEmailInputDto,
-    AuthVerifyEmailInputDto,
     INVALID_CREDENTIALS,
     RequestContext,
-    USER_NOT_ACTIVATED, USER_NOT_FOUND,
+    USER_NOT_ACTIVATED,
+    USER_NOT_FOUND,
 } from '../../shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import slugify from 'slugify';
@@ -732,5 +732,19 @@ export class UserService {
                 'An error occurred while trying to deactivate your account. Please try again later.',
             );
         }
+    }
+
+    async markPhoneNumberAsConfirmed(ctx: RequestContext, id: string) {
+        this.logger.log(
+            ctx,
+            `${this.markPhoneNumberAsConfirmed.name} was called`,
+        );
+
+        await this.prisma.user.update({
+            where: { id: id },
+            data: {
+                phoneNumberConfirmed: true,
+            },
+        });
     }
 }

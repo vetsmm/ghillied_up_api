@@ -18,6 +18,14 @@ export default (): ConfigurationType => ({
         totpWindowFuture: int(process.env.TOTP_WINDOW_FUTURE, 0),
         mfaTokenExpiry: process.env.MFA_TOKEN_EXPIRY ?? '10m',
     },
+    sms: {
+        twilioAccountSid: process.env.TWILIO_ACCOUNT_SID,
+        twilioAuthToken: process.env.TWILIO_ACCOUNT_TOKEN,
+        twilioVerificationServiceSid:
+            process.env.TWILIO_VERIFICATION_SERVICE_SID,
+        senderPhoneNumber:
+            process.env.TWILIO_SENDER_PHONE_NUMBER || '(925) 578-3532',
+    },
     stream: {
         apiKey: process.env.STREAM_API_KEY,
         apiSecret: process.env.STREAM_API_SECRET,

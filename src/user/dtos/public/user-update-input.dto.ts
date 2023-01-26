@@ -4,8 +4,9 @@ import {
     IsEmail,
     IsEnum,
     IsOptional,
+    IsPhoneNumber,
     IsString,
-    Length,
+    Length, Matches,
     MaxLength,
 } from 'class-validator';
 import { ServiceBranch, ServiceStatus } from '@prisma/client';
@@ -57,4 +58,10 @@ export class UpdateUserInput {
     @IsEnum(ServiceStatus)
     @IsOptional()
     serviceStatus?: ServiceStatus;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    @Matches(/^\+[1-9]\d{1,14}$/, { message: 'Invalid phone number' })
+    phoneNumber?: string;
 }

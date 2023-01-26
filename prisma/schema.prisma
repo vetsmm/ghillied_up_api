@@ -281,6 +281,7 @@ model User {
   checkLocationOnLogin     Boolean                   @default(false) @map("check_location_on_login")
   timezone                 String                    @default("America/New_York")
   phoneNumber              String?                   @unique @map("phone_number")
+  phoneNumberConfirmed     Boolean                   @default(false) @map("phone_number_confirmed")
   twoFactorMethod          MfaMethod                 @default(NONE) @map("two_factor_method")
   twoFactorSecret          String?                   @map("two_factor_secret")
   joinedGhilliess          GhillieMembers[]

@@ -8,6 +8,7 @@ import { AppLogger } from '../shared';
 import { UserAclService } from './services/user-acl.service';
 import { AnonymousUserController } from './controllers/anonymous-user.controller';
 import { QueueService } from '../sns/services/queue.service';
+import { TwilioService } from '../shared/twilio/twilio.service';
 
 @Module({
     providers: [
@@ -18,6 +19,7 @@ import { QueueService } from '../sns/services/queue.service';
         ConfigService,
         UserAclService,
         QueueService,
+        TwilioService,
     ],
     controllers: [UserController, AnonymousUserController],
     exports: [UserService],

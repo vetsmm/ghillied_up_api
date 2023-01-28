@@ -178,7 +178,7 @@ export class AuthController {
     }
 
     @Post('refresh-token')
-    @RateLimit(5)
+    @RateLimit(10)
     @ApiOperation({
         summary: 'Refresh access token API',
     })

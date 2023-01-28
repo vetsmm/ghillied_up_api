@@ -21,6 +21,7 @@ import {
     RequestContext,
     USER_NOT_ACTIVATED,
     USER_NOT_FOUND,
+    USER_PHONE_NUMBER_IN_USE,
 } from '../../shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import slugify from 'slugify';
@@ -745,6 +746,57 @@ export class UserService {
             data: {
                 phoneNumberConfirmed: true,
             },
+        });
+    }
+
+    async updatedPhoneNumber(
+        ctx: RequestContext,
+        id: string,
+        phoneNumber: string,
+    ): Promise<User> {
+        this.logger.log(ctx, `${this.updatedPhoneNumber.name} was called`);
+
+        const phoneNumberInUse = await this.prisma.user
+            .findFirst({
+                where: {
+                    phoneNumber: phoneNumber,
+                },
+            })
+            .then((user) => {
+                return !!user;
+            });
+
+        if (phoneNumberInUse) {
+            throw new BadRequestException(USER_PHONE_NUMBER_IN_USE);
+        }
+
+        return await this.prisma.user.update({
+            where: { id: id },
+            data: {
+                phoneNumber: phoneNumber,
+                phoneNumberConfirmed: false,
+            },
+        });
+    }
+
+    async deletePhoneNumber(
+        ctx: RequestContext,
+        userId: string,
+    ): Promise<UserOutput> {
+        this.logger.log(ctx, `${this.deletePhoneNumber.name} was called`);
+
+        const user = await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                phoneNumber: null,
+                phoneNumberConfirmed: false,
+            },
+        });
+
+        // TODO: Clear up and 2FA settings they may have
+
+        return plainToInstance(UserOutput, user, {
+            excludeExtraneousValues: true,
         });
     }
 }

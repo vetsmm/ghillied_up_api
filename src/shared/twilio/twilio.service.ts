@@ -42,6 +42,7 @@ export class TwilioService {
                 twilioConfig.twilioAuthToken ||
                     'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
             );
+            this.serviceSid = twilioConfig.twilioVerificationServiceSid;
         } else {
             this.secretsService
                 .getSecrets<{
@@ -50,6 +51,14 @@ export class TwilioService {
                     TWILIO_VERIFICATION_SERVICE_SID: string;
                 }>(this.configService.get('secretsSources.twilio'))
                 .then((twilioConfig) => {
+                    if (
+                        !twilioConfig.TWILIO_ACCOUNT_SID ||
+                        !twilioConfig.TWILIO_ACCOUNT_TOKEN
+                    )
+                        this.logger.warn(
+                            null,
+                            'Twilio account SID/auth token not found in config',
+                        );
                     this.client = twilio(
                         twilioConfig.TWILIO_ACCOUNT_SID ||
                             'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',

@@ -1,13 +1,14 @@
-import { Controller, Delete, Get, Param, Query, UseGuards } from '@nestjs/common';
-import { SessionsService } from './sessions.service';
 import {
-    CursorPipe,
-    OptionalIntPipe,
-    OrderByPipe,
-    ReqContext,
-    RequestContext,
-    WherePipe,
-} from '../shared';
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Param,
+    Post,
+    UseGuards,
+} from '@nestjs/common';
+import { SessionsService } from './sessions.service';
+import { ReqContext, RequestContext } from '../shared';
 import { SessionDto } from './dtos/session.dto';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -15,6 +16,7 @@ import { AuthoritiesGuard } from '../auth/guards/authorities.guard';
 import { ActiveUserGuard } from '../auth/guards/active-user.guard';
 import { Authorities } from '../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
+import { SessionQueryInput } from './dtos/session-query-input';
 
 @ApiTags('Sessions')
 @Controller('sessions')
@@ -22,24 +24,20 @@ export class SessionController {
     constructor(private sessionsService: SessionsService) {}
 
     /** Get sessions for a user */
-    @Get()
+    @Post('all')
     @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
-    async getAll(
+    async getAllSessions(
         @ReqContext() ctx: RequestContext,
-        @Query('skip', OptionalIntPipe) skip?: number,
-        @Query('take', OptionalIntPipe) take?: number,
-        @Query('cursor', CursorPipe) cursor?: Record<string, number | string>,
-        @Query('where', WherePipe) where?: Record<string, number | string>,
-        @Query('orderBy', OrderByPipe) orderBy?: Record<string, 'asc' | 'desc'>,
+        @Body() query: SessionQueryInput,
     ): Promise<SessionDto[]> {
         return this.sessionsService.getSessions(ctx, {
-            skip,
-            take,
-            orderBy,
-            cursor,
-            where,
+            skip: query.skip,
+            take: query.take,
+            orderBy: query.orderBy,
+            cursor: query.cursor,
+            where: query.where,
         });
     }
 
@@ -48,7 +46,7 @@ export class SessionController {
     @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
-    async get(
+    async getSession(
         @ReqContext() ctx: RequestContext,
         @Param('id') id: string,
     ): Promise<SessionDto> {
@@ -60,10 +58,21 @@ export class SessionController {
     @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
-    async remove(
+    async removeSession(
         @ReqContext() ctx: RequestContext,
         @Param('id') id: string,
     ): Promise<SessionDto> {
         return this.sessionsService.deleteSession(ctx, id);
+    }
+
+    /** Delete a session for a user */
+    @Delete('delete/all')
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @Authorities(UserAuthority.ROLE_USER)
+    async removeAllPastSessions(
+        @ReqContext() ctx: RequestContext,
+    ): Promise<void> {
+        await this.sessionsService.deletePastSessions(ctx);
     }
 }

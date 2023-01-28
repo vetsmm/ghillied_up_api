@@ -16,7 +16,8 @@ import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class SessionsService {
-    constructor(private prisma: PrismaService) {}
+    constructor(private prisma: PrismaService) {
+    }
 
     async getSessions(
         ctx: RequestContext,
@@ -89,6 +90,18 @@ export class SessionsService {
         return plainToInstance(SessionDto, session, {
             excludeExtraneousValues: true,
             enableImplicitConversion: true,
+        });
+    }
+
+    async deletePastSessions(ctx: RequestContext) {
+        // Delete all sessions except the current one
+        await this.prisma.session.deleteMany({
+            where: {
+                userId: ctx.user.id,
+                id: {
+                    not: ctx.user.sessionId,
+                },
+            },
         });
     }
 }

@@ -61,6 +61,7 @@ export const CANNOT_UPDATE_ROLE_SOLE_OWNER =
 export const INVALID_DOMAIN = '400018: Invalid domain';
 export const SELECT_INCLUDE_PIPE_FORMAT = '400019: Invalid query format';
 export const FILE_TOO_LARGE = '400022: Uploaded file is too large';
+export const MFA_PHONE_REQUIRED = '400023: Phone number required';
 
 export const EMAIL_USER_CONFLICT =
     '409001: User with this email already exists';

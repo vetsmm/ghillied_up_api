@@ -13,6 +13,7 @@ import {
     MailService,
     MFA_ENABLED_CONFLICT,
     MFA_NOT_ENABLED,
+    MFA_PHONE_REQUIRED,
     RequestContext,
     USER_NOT_FOUND,
 } from '../shared';
@@ -20,8 +21,7 @@ import { TokensService } from '../shared/tokens/tokens.service';
 import { UserOutput } from '../user/dtos/public/user-output.dto';
 import { plainToInstance } from 'class-transformer';
 import { MfaMethod } from '@prisma/client';
-import { SmsService } from '../sns/services/sms.service';
-import { PublishResponse } from 'aws-sdk/clients/sns';
+import { TwilioService } from '../shared/twilio/twilio.service';
 
 @Injectable()
 export class MultiFactorAuthenticationService {
@@ -32,25 +32,16 @@ export class MultiFactorAuthenticationService {
         private configService: ConfigService,
         private emailService: MailService,
         private tokensService: TokensService,
-        private smsService: SmsService,
+        private twilioService: TwilioService,
     ) {}
 
-    async requestTotpMfa(userId: string): Promise<string> {
-        const enabled = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { twoFactorMethod: true },
-        });
-        if (!enabled) throw new NotFoundException(USER_NOT_FOUND);
-        if (enabled.twoFactorMethod !== 'NONE')
-            throw new ConflictException(MFA_ENABLED_CONFLICT);
-        return this.auth.getTotpQrCode(userId);
-    }
-
-    async requestSmsMfa(
+    async requestTotpMfa(
         ctx: RequestContext,
         userId: string,
-        phone: string,
-    ): Promise<PublishResponse> {
+    ): Promise<{
+        img: string;
+        secret: string;
+    }> {
         const enabled = await this.prisma.user.findUnique({
             where: { id: userId },
             select: { twoFactorMethod: true },
@@ -58,19 +49,32 @@ export class MultiFactorAuthenticationService {
         if (!enabled) throw new NotFoundException(USER_NOT_FOUND);
         if (enabled.twoFactorMethod !== 'NONE')
             throw new ConflictException(MFA_ENABLED_CONFLICT);
+        return this.auth.getTotpQrCode(ctx, userId);
+    }
+
+    async requestSmsMfa(ctx: RequestContext, userId: string): Promise<void> {
+        const enabled = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { twoFactorMethod: true, phoneNumber: true },
+        });
+        if (!enabled) throw new NotFoundException(USER_NOT_FOUND);
+        if (enabled.twoFactorMethod !== 'NONE')
+            throw new ConflictException(MFA_ENABLED_CONFLICT);
+        if (enabled.phoneNumber === null) {
+            throw new BadRequestException(MFA_PHONE_REQUIRED);
+        }
         const secret = this.auth.authenticator.generateSecret();
         await this.prisma.user.update({
             where: { id: userId },
-            data: { twoFactorSecret: secret, phoneNumber: phone },
+            data: { twoFactorSecret: secret, phoneNumber: enabled.phoneNumber },
         });
 
-        return this.smsService.sendSMS(
+        return this.twilioService.send(
             ctx,
-            phone,
-            '',
-            `${this.auth.getOneTimePassword(secret)} is your ${
-                this.configService.get<string>('meta.appName') ?? ''
-            } verification code.`,
+            `${this.auth.getOneTimePassword(
+                secret,
+            )} is your Ghillied Up verification code.`,
+            enabled.phoneNumber,
         );
     }
 

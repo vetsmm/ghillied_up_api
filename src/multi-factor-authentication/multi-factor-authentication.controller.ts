@@ -1,23 +1,11 @@
-import {
-    BadRequestException,
-    Body,
-    Controller,
-    Delete,
-    Post,
-    UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, UseGuards } from '@nestjs/common';
 import {
     EnableSmsMfaDto,
     EnableTotpMfaDto,
 } from './multi-factor-authentication.dto';
 import { MultiFactorAuthenticationService } from './multi-factor-authentication.service';
 import { UserOutput } from '../user/dtos/public/user-output.dto';
-import {
-    AppLogger,
-    MFA_PHONE_OR_TOKEN_REQUIRED,
-    ReqContext,
-    RequestContext,
-} from '../shared';
+import { AppLogger, ReqContext, RequestContext } from '../shared';
 import { MfaMethod, UserAuthority } from '@prisma/client';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -63,7 +51,7 @@ export class MultiFactorAuthenticationController {
     async enableTotp(
         @ReqContext() ctx: RequestContext,
         @Body() body: EnableTotpMfaDto,
-    ): Promise<string[] | { img: string }> {
+    ): Promise<string[] | { img: string; secret: string }> {
         this.logger.debug(ctx, `${this.enableTotp.name} was called`);
         if (body.token)
             return this.multiFactorAuthenticationService.enableMfa(
@@ -71,11 +59,10 @@ export class MultiFactorAuthenticationController {
                 MfaMethod.TOTP,
                 body.token,
             );
-        return {
-            img: await this.multiFactorAuthenticationService.requestTotpMfa(
-                ctx.user.id,
-            ),
-        };
+        return await this.multiFactorAuthenticationService.requestTotpMfa(
+            ctx,
+            ctx.user.id,
+        );
     }
 
     /** Enable SMS-based MFA for a user */
@@ -91,18 +78,14 @@ export class MultiFactorAuthenticationController {
         if (body.token)
             return this.multiFactorAuthenticationService.enableMfa(
                 ctx,
-                'SMS',
+                MfaMethod.SMS,
                 body.token,
             );
-        if (body.phone) {
-            await this.multiFactorAuthenticationService.requestSmsMfa(
-                ctx,
-                ctx.user.id,
-                body.phone,
-            );
-            return { success: true };
-        }
-        throw new BadRequestException(MFA_PHONE_OR_TOKEN_REQUIRED);
+        await this.multiFactorAuthenticationService.requestSmsMfa(
+            ctx,
+            ctx.user.id,
+        );
+        return { success: true };
     }
 
     /** Enable email-based MFA for a user */
@@ -118,7 +101,7 @@ export class MultiFactorAuthenticationController {
         if (body.token)
             return this.multiFactorAuthenticationService.enableMfa(
                 ctx,
-                'EMAIL',
+                MfaMethod.EMAIL,
                 body.token,
             );
         await this.multiFactorAuthenticationService.requestEmailMfa(ctx);

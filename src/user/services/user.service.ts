@@ -179,14 +179,15 @@ export class UserService {
         ctx: RequestContext,
         username: string,
         pass: string,
-    ): Promise<UserOutput> {
+        withFullUser?: boolean,
+    ): Promise<UserOutput | User> {
         this.logger.log(
             ctx,
             `${this.validateUsernamePassword.name} was called`,
         );
 
         this.logger.log(ctx, `calling findOne`);
-        const user = await this.prisma.user.findFirst({
+        const user: User = await this.prisma.user.findFirst({
             where: { username: { equals: username, mode: 'insensitive' } },
         });
         if (!user) throw new UnauthorizedException(INVALID_CREDENTIALS);
@@ -196,6 +197,9 @@ export class UserService {
         const match = await compare(pass, user.password);
         if (!match) throw new UnauthorizedException(INVALID_CREDENTIALS);
 
+        if (withFullUser) {
+            return user;
+        }
         return plainToInstance(UserOutput, user, {
             excludeExtraneousValues: true,
         });

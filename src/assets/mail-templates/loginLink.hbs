@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Ghillied Up - Email MFA</title>
+  <title>Ghillied Up - Login Link</title>
   <meta property="og:title" content="Ghillied Up - Email MFA"/>
   <meta name="twitter:title" content="Ghillied Up - Email MFA"/>
 
@@ -422,37 +422,32 @@
                           <p style="mso-line-height-rule: exactly; line-height: 175%">&nbsp;</p>
                           <p style="mso-line-height-rule: exactly; line-height: 175%; text-align: center"
                              align="center">
-                            Please click on the following link to enable email-based multi-factor authentication (MFA) for your account.
+                            Please click on the following link to log into your account.
                           </p>
-                            <div
-                                id="hs_cos_wrapper_module_16481348440542"
-                                class="hs_cos_wrapper hs_cos_wrapper_widget hs_cos_wrapper_type_module"
-                                style="color: inherit; font-size: inherit; line-height: inherit"
-                                data-hs-cos-general-type="widget"
-                                data-hs-cos-type="module"
-                            >
-                                <div
-                                    id="hs_cos_wrapper_module_16481348440542_"
-                                    class="hs_cos_wrapper hs_cos_wrapper_widget hs_cos_wrapper_type_rich_text"
-                                    style="color: inherit; font-size: inherit; line-height: inherit"
-                                    data-hs-cos-general-type="widget"
-                                    data-hs-cos-type="rich_text"
-                                >
-                                    <p
-                                        style="
-                                      mso-line-height-rule: exactly;
-                                      text-align: center;
-                                      font-size: 24px;
-                                      line-height: 175%;
-                                      font-weight: bold;
-                                    "
-                                        align="center"
-                                    >
-                            <span
-                                style="font-family: 'Courier New', Courier, monospace">{{ mfaCode }}</span>
-                                    </p>
-                                </div>
-                            </div>
+                            <p style="
+                              font: bold 11px;
+                              line-height: 175%;
+                              text-align: center;
+                              text-decoration: none !important;
+                              background-color: #36B185;
+                              color: white;
+                              padding: 2px 6px 2px 6px;
+                              border-radius: 20px;
+                              margin-right: 20%;
+                              margin-left: 20%;
+                              margin-top: 20px;
+                              margin-bottom: 20px;
+                              cursor: pointer;
+                            ">
+                                <a href="{{loginLink}}">
+                                    Log into your account
+                                </a>
+                            </p>
+
+                            <p style="mso-line-height-rule: exactly; line-height: 175%; text-align: center"
+                               align="center">
+                                Note that this link is valid for {{ expirationTime }} minutes only. If you didn't request this email, you can just ignore it; we won't give anyone else access to your account.
+                            </p>
 
                             <p style="mso-line-height-rule: exactly; line-height: 175%; text-align: center"
                                align="center">

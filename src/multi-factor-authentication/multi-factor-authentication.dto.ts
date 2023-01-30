@@ -1,4 +1,4 @@
-import { IsOptional, IsPhoneNumber, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class EnableTotpMfaDto {
     @IsString()
@@ -10,8 +10,4 @@ export class EnableSmsMfaDto {
     @IsString()
     @IsOptional()
     token?: string;
-
-    @IsPhoneNumber()
-    @IsOptional()
-    phone?: string;
 }

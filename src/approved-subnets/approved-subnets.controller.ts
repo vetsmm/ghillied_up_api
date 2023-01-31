@@ -17,7 +17,6 @@ import {
     RequestContext,
     WherePipe,
 } from '../shared';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthoritiesGuard } from '../auth/guards/authorities.guard';
 import { ActiveUserGuard } from '../auth/guards/active-user.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -31,7 +30,7 @@ export class ApprovedSubnetController {
 
     /** Get approved subnets for a user */
     @Get()
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async getAll(
@@ -57,7 +56,7 @@ export class ApprovedSubnetController {
 
     /** Get an approved subnet for a user */
     @Get(':id')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async get(
@@ -73,7 +72,7 @@ export class ApprovedSubnetController {
 
     /** Delete an approved subnet for a user */
     @Delete(':id')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async remove(

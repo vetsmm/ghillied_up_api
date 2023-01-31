@@ -5,7 +5,6 @@ import {
     HttpCode,
     HttpStatus,
     Post,
-    UseGuards,
     UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -16,7 +15,6 @@ import {
     ReqContext,
     RequestContext,
 } from '../../shared';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { AuthIdMeVerifyDto } from '../dtos/auth-id-me-verify.dto';
 import { AuthIdMeVerifyResultDto } from '../dtos/auth-id-me-verify-result.dto';
 import { UserService } from '../../user/services/user.service';
@@ -34,7 +32,6 @@ export class AuthIdMeController {
 
     @Post('verify')
     @RateLimit(5)
-    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @ApiOperation({

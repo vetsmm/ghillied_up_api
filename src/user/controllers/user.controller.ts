@@ -23,7 +23,6 @@ import {
 } from '@nestjs/swagger';
 
 import { Authorities } from '../../auth/decorators/authority.decorator';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AuthoritiesGuard } from '../../auth/guards/authorities.guard';
 
 import { UserOutput } from '../dtos/public/user-output.dto';
@@ -58,7 +57,7 @@ export class UserController {
         this.logger.setContext(UserController.name);
     }
 
-    @UseGuards(JwtAuthGuard, ActiveUserGuard)
+    @UseGuards(ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('me')
@@ -95,7 +94,7 @@ export class UserController {
         status: HttpStatus.UNAUTHORIZED,
         type: BaseApiErrorResponse,
     })
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_ADMIN)
     async getUsers(
         @ReqContext() ctx: RequestContext,
@@ -112,7 +111,7 @@ export class UserController {
         return { data: users, meta: { count } };
     }
 
-    @UseGuards(JwtAuthGuard, ActiveUserGuard)
+    @UseGuards(ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_ADMIN)
     @UseInterceptors(ClassSerializerInterceptor)
     @Get(':id')
@@ -137,7 +136,7 @@ export class UserController {
         return { data: user, meta: {} };
     }
 
-    @UseGuards(JwtAuthGuard, ActiveUserGuard)
+    @UseGuards(ActiveUserGuard)
     @ApiBearerAuth()
     @Patch('self')
     @ApiOperation({
@@ -163,7 +162,7 @@ export class UserController {
         return { data: user, meta: {} };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post('deactivate')
@@ -186,7 +185,7 @@ export class UserController {
     }
 
     @Put('change-phone-number')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Authorities(UserAuthority.ROLE_USER)
@@ -210,7 +209,7 @@ export class UserController {
     }
 
     @Post('resend-verification-code')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Authorities(UserAuthority.ROLE_USER)
@@ -228,7 +227,7 @@ export class UserController {
     }
 
     @Delete('phone-number')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Authorities(UserAuthority.ROLE_USER)
@@ -242,7 +241,7 @@ export class UserController {
     }
 
     @Post('check-verification-code')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Authorities(UserAuthority.ROLE_USER)

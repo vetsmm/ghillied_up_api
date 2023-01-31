@@ -31,7 +31,6 @@ import {
     SwaggerBaseApiResponse,
 } from '../../../shared';
 import { GhillieService } from '../../services/ghillie.service';
-import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { AuthoritiesGuard } from '../../../auth/guards/authorities.guard';
 import { CreateGhillieInputDto } from '../../dtos/ghillie/create-ghillie-input.dto';
 import { GhillieDetailDto } from '../../dtos/ghillie/ghillie-detail.dto';
@@ -56,7 +55,7 @@ export class GhillieController {
         this.logger.setContext(GhillieController.name);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post()
@@ -85,7 +84,7 @@ export class GhillieController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Put(':id')
     @UseInterceptors(ClassSerializerInterceptor)
@@ -116,7 +115,7 @@ export class GhillieController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(
         ImageFilesInterceptor({
@@ -125,7 +124,7 @@ export class GhillieController {
     )
     @Put(':id/logo')
     @ApiOperation({
-        summary: 'Update a Ghillie\'s logo',
+        summary: "Update a Ghillie's logo",
     })
     @HttpCode(HttpStatus.OK)
     @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_ADMIN)
@@ -139,11 +138,11 @@ export class GhillieController {
         return await this.ghillieService.updateGhillieLogo(ctx, id, image);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Patch(':id/member-settings')
     @ApiOperation({
-        summary: 'Update a Ghillie Member\'s Settings',
+        summary: "Update a Ghillie Member's Settings",
     })
     @HttpCode(HttpStatus.OK)
     @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_ADMIN)
@@ -161,11 +160,11 @@ export class GhillieController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Get(':id/member-settings')
     @ApiOperation({
-        summary: 'Get a Ghillie Member\'s Settings',
+        summary: "Get a Ghillie Member's Settings",
     })
     @HttpCode(HttpStatus.OK)
     @Authorities(UserAuthority.ROLE_VERIFIED_MILITARY, UserAuthority.ROLE_ADMIN)
@@ -178,7 +177,7 @@ export class GhillieController {
         return await this.ghillieService.getMemberSettings(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -204,7 +203,7 @@ export class GhillieController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -229,7 +228,7 @@ export class GhillieController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -263,7 +262,7 @@ export class GhillieController {
     }
 
     // Get ghillies for current user
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -295,7 +294,7 @@ export class GhillieController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -320,7 +319,7 @@ export class GhillieController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -348,7 +347,7 @@ export class GhillieController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -370,7 +369,7 @@ export class GhillieController {
         return await this.ghillieService.getNewestGhillies(ctx, limit);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -392,7 +391,7 @@ export class GhillieController {
         return await this.ghillieService.getCombinedGhillies(ctx, limit);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -421,7 +420,7 @@ export class GhillieController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_ADMIN, UserAuthority.ROLE_VERIFIED_MILITARY)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -446,7 +445,7 @@ export class GhillieController {
     }
 
     // Join a Ghillie
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER, UserAuthority.ROLE_VERIFIED_MILITARY)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -471,7 +470,7 @@ export class GhillieController {
         await this.ghillieService.joinGhillie(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER, UserAuthority.ROLE_VERIFIED_MILITARY)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -502,7 +501,7 @@ export class GhillieController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER, UserAuthority.ROLE_VERIFIED_MILITARY)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -528,7 +527,7 @@ export class GhillieController {
     }
 
     // Leave a Ghillie
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER, UserAuthority.ROLE_VERIFIED_MILITARY)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -553,7 +552,7 @@ export class GhillieController {
     }
 
     // Transfer ownership of a Ghillie
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -583,7 +582,7 @@ export class GhillieController {
     }
 
     // Add Moderator Role to user
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -608,7 +607,7 @@ export class GhillieController {
         await this.ghillieService.addModerator(ctx, id, addModeratorDto.userId);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -638,7 +637,7 @@ export class GhillieController {
     }
 
     // Ban a user from a Ghillie
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -664,7 +663,7 @@ export class GhillieController {
     }
 
     // Unban a user from a Ghillie
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -690,7 +689,7 @@ export class GhillieController {
     }
 
     // Add topics
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
@@ -717,7 +716,7 @@ export class GhillieController {
     }
 
     // Delete topics
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @Authorities(UserAuthority.ROLE_USER)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)

@@ -5,7 +5,7 @@ import { AppService } from './app.service';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
 import { PrismaModule } from '../prisma/prisma.module';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { GhillieModule } from '../ghillie/ghillies.module';
 import { PostsModule } from '../posts/posts.module';
 import { FeedsModule } from '../feeds/feeds.module';
@@ -26,6 +26,7 @@ import { ApprovedSubnetsModule } from '../approved-subnets/approved-subnets.modu
 import { SessionsModule } from '../sessions/sessions.module';
 import { RateLimitInterceptor } from '../shared/interceptors/rate-limit.interceptor';
 import { MultiFactorAuthenticationModule } from '../multi-factor-authentication/multi-factor-authentication.module';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Module({
     imports: [
@@ -59,6 +60,10 @@ import { MultiFactorAuthenticationModule } from '../multi-factor-authentication/
         {
             provide: APP_INTERCEPTOR,
             useClass: RateLimitInterceptor,
+        },
+        {
+            provide: APP_GUARD,
+            useClass: JwtAuthGuard,
         },
     ],
 })

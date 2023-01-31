@@ -11,7 +11,6 @@ import { SessionsService } from './sessions.service';
 import { ReqContext, RequestContext } from '../shared';
 import { SessionDto } from './dtos/session.dto';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthoritiesGuard } from '../auth/guards/authorities.guard';
 import { ActiveUserGuard } from '../auth/guards/active-user.guard';
 import { Authorities } from '../auth/decorators/authority.decorator';
@@ -25,7 +24,7 @@ export class SessionController {
 
     /** Get sessions for a user */
     @Post('all')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async getAllSessions(
@@ -43,7 +42,7 @@ export class SessionController {
 
     /** Get a session for a user */
     @Get(':id')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async getSession(
@@ -55,7 +54,7 @@ export class SessionController {
 
     /** Delete a session for a user */
     @Delete(':id')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async removeSession(
@@ -67,7 +66,7 @@ export class SessionController {
 
     /** Delete a session for a user */
     @Delete('delete/all')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async removeAllPastSessions(

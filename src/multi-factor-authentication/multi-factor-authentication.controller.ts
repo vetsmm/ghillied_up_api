@@ -8,7 +8,6 @@ import { UserOutput } from '../user/dtos/public/user-output.dto';
 import { AppLogger, ReqContext, RequestContext } from '../shared';
 import { MfaMethod, UserAuthority } from '@prisma/client';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthoritiesGuard } from '../auth/guards/authorities.guard';
 import { ActiveUserGuard } from '../auth/guards/active-user.guard';
 import { Authorities } from '../auth/decorators/authority.decorator';
@@ -23,7 +22,7 @@ export class MultiFactorAuthenticationController {
 
     /** Disable MFA for a user */
     @Delete()
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async disable2FA(@ReqContext() ctx: RequestContext): Promise<UserOutput> {
@@ -33,7 +32,7 @@ export class MultiFactorAuthenticationController {
 
     /** Regenerate backup codes for a user */
     @Post('regenerate')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async regenerateBackupCodes(
@@ -45,7 +44,7 @@ export class MultiFactorAuthenticationController {
 
     /** Enable TOTP-based MFA for a user */
     @Post('totp')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async enableTotp(
@@ -67,7 +66,7 @@ export class MultiFactorAuthenticationController {
 
     /** Enable SMS-based MFA for a user */
     @Post('sms')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async enableSms(
@@ -90,7 +89,7 @@ export class MultiFactorAuthenticationController {
 
     /** Enable email-based MFA for a user */
     @Post('email')
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @Authorities(UserAuthority.ROLE_USER)
     async enableEmail(

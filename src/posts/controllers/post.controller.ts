@@ -33,7 +33,6 @@ import {
     PostSearchCriteria,
 } from '../../shared';
 import { PostService } from '../services/post.service';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AuthoritiesGuard } from '../../auth/guards/authorities.guard';
 import { Authorities } from '../../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
@@ -57,7 +56,7 @@ export class PostController {
     }
 
     // create post
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post()
@@ -87,7 +86,7 @@ export class PostController {
     }
 
     // update post
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Patch(':id')
@@ -116,7 +115,7 @@ export class PostController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/subscribe')
@@ -136,7 +135,7 @@ export class PostController {
         await this.postService.subscribe(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/unsubscribe')
@@ -156,7 +155,7 @@ export class PostController {
         await this.postService.unsubscribe(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get(':id')
@@ -185,7 +184,7 @@ export class PostController {
     }
 
     // get all posts
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('for-ghillie/:ghillieId')
@@ -230,7 +229,7 @@ export class PostController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('pinned/:ghillieId')
@@ -255,7 +254,7 @@ export class PostController {
     }
 
     // get all posts
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('my/all')
@@ -292,7 +291,7 @@ export class PostController {
     }
 
     // get all posts
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post('all')
@@ -324,7 +323,7 @@ export class PostController {
     }
 
     // delete post only by an admin
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Delete(':id')
@@ -347,7 +346,7 @@ export class PostController {
         await this.postService.hardDeletePost(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/bookmark')
@@ -370,7 +369,7 @@ export class PostController {
         await this.bookmarkService.bookmarkPost(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/pin')
@@ -393,7 +392,7 @@ export class PostController {
         await this.postService.pinPost(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/unpin')
@@ -416,7 +415,7 @@ export class PostController {
         await this.postService.unpinPost(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/unbookmark')

@@ -9,7 +9,6 @@ import {
     Ip,
     Param,
     Post,
-    UseGuards,
     UseInterceptors,
 } from '@nestjs/common';
 import {
@@ -40,9 +39,9 @@ import {
     RateLimit,
 } from '../../shared';
 import { AuthService } from '../services/auth.service';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { TotpLoginDto } from '../dtos/totp-login.dto';
 import { TotpTokenResponse } from '../../multi-factor-authentication/dtos/totp-token-response.dto';
+import { Public } from '../decorators/public.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -55,6 +54,7 @@ export class AuthController {
     }
 
     @Post('/activate')
+    @Public()
     @ApiOperation({
         summary: 'Activate users API',
     })
@@ -86,6 +86,7 @@ export class AuthController {
     }
 
     @Post('/activate/code')
+    @Public()
     @HttpCode(HttpStatus.OK)
     async activateWithCodeOnly(
         @ReqContext() ctx: RequestContext,
@@ -103,6 +104,7 @@ export class AuthController {
 
     // resend activation email
     @Post('/activate/resend')
+    @Public()
     @ApiOperation({
         summary: 'Activate users resend activation email API',
     })
@@ -132,6 +134,7 @@ export class AuthController {
     }
 
     @Post('login')
+    @Public()
     @RateLimit(10)
     @ApiOperation({
         summary: 'User login API',
@@ -149,6 +152,7 @@ export class AuthController {
     }
 
     @Post('register')
+    @Public()
     @RateLimit(10)
     @ApiOperation({
         summary: 'User registration API',
@@ -168,6 +172,7 @@ export class AuthController {
     }
 
     @Post('approve-subnet')
+    @Public()
     @RateLimit(5)
     async approveSubnet(
         @ReqContext() ctx: RequestContext,
@@ -179,6 +184,7 @@ export class AuthController {
     }
 
     @Post('refresh-token')
+    @Public()
     @RateLimit(10)
     @ApiOperation({
         summary: 'Refresh access token API',
@@ -201,6 +207,7 @@ export class AuthController {
 
     /** Logout from a session */
     @Post('logout')
+    @Public()
     @RateLimit(5)
     async logout(
         @ReqContext() ctx: RequestContext,
@@ -213,7 +220,6 @@ export class AuthController {
 
     @UseInterceptors(ClassSerializerInterceptor)
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
     @Post('change-password')
     @RateLimit(10)
     @ApiOperation({
@@ -238,6 +244,7 @@ export class AuthController {
     @ApiOperation({
         summary: 'Resend reset password email API',
     })
+    @Public()
     @RateLimit(10)
     @HttpCode(HttpStatus.OK)
     async resendResetPasswordEmail(
@@ -258,6 +265,7 @@ export class AuthController {
     }
 
     @Post('reset-password/init')
+    @Public()
     @RateLimit(10)
     @ApiOperation({
         summary: 'Reset password init API',
@@ -277,6 +285,7 @@ export class AuthController {
     }
 
     @Post('reset-password/finish')
+    @Public()
     @RateLimit(10)
     @ApiOperation({
         summary: 'Reset password finish API',
@@ -296,6 +305,7 @@ export class AuthController {
     }
 
     @Post('reset-password/verify-key')
+    @Public()
     @RateLimit(10)
     @ApiOperation({
         summary: 'Reset password finish API',
@@ -316,6 +326,7 @@ export class AuthController {
 
     // Check if username is available
     @Get('/check-username/:username')
+    @Public()
     @ApiOperation({
         summary: 'Check username API',
     })
@@ -339,6 +350,7 @@ export class AuthController {
 
     /** Login using TOTP */
     @Post('login/totp')
+    @Public()
     @RateLimit(10)
     async totpLogin(
         @ReqContext() ctx: RequestContext,
@@ -356,6 +368,7 @@ export class AuthController {
     }
 
     @Post('login/token')
+    @Public()
     @RateLimit(10)
     async emailTokenLoginPost(
         @ReqContext() ctx: RequestContext,

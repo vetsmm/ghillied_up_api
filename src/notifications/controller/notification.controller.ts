@@ -26,7 +26,6 @@ import {
     RequestContext,
     SwaggerBaseApiResponse,
 } from '../../shared';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AuthoritiesGuard } from '../../auth/guards/authorities.guard';
 import { Authorities } from '../../auth/decorators/authority.decorator';
 import { UserAuthority } from '@prisma/client';
@@ -46,7 +45,7 @@ export class NotificationController {
         this.logger.setContext(NotificationController.name);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get()
@@ -80,7 +79,7 @@ export class NotificationController {
         };
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Put(':id/read')
@@ -105,7 +104,7 @@ export class NotificationController {
         await this.notificationService.markNotificationAsRead(ctx, id);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post('mark-as-read')
@@ -130,7 +129,7 @@ export class NotificationController {
         await this.notificationService.markNotificationsAsRead(ctx, body);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Post('mark-all-as-read')
@@ -157,7 +156,7 @@ export class NotificationController {
         await this.notificationService.markAllNotificationsAsRead(ctx);
     }
 
-    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @UseGuards(AuthoritiesGuard, ActiveUserGuard)
     @ApiBearerAuth()
     @UseInterceptors(ClassSerializerInterceptor)
     @Get('unread-count')

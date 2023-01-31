@@ -280,6 +280,10 @@ model User {
   status                   UserStatus                @default(ACTIVE)
   checkLocationOnLogin     Boolean                   @default(false) @map("check_location_on_login")
   timezone                 String                    @default("America/New_York")
+  phoneNumber              String?                   @unique @map("phone_number")
+  phoneNumberConfirmed     Boolean                   @default(false) @map("phone_number_confirmed")
+  twoFactorMethod          MfaMethod                 @default(NONE) @map("two_factor_method")
+  twoFactorSecret          String?                   @map("two_factor_secret")
   joinedGhilliess          GhillieMembers[]
   commentReactions         CommentReaction[]
   flagComments             FlagComment[]
@@ -290,6 +294,7 @@ model User {
   flagGhillies             FlagGhillie[]
   topics                   Topic[]
   ghillies                 Ghillie[]
+  backupCodes              BackupCode[]              @relation("userBackupCodes")
   notifications            Notification[]            @relation("notifications")
   fromNotifications        Notification[]            @relation("fromNotifications")
   approvedSubnets          ApprovedSubnet[]          @relation("approvedSubnets")
@@ -301,6 +306,19 @@ model User {
 
   @@index([email, username, slug])
   @@map("user")
+}
+
+model BackupCode {
+  id          String   @id @default(cuid())
+  code        String
+  createdDate DateTime @default(now()) @map("created_date")
+  updatedDate DateTime @updatedAt @map("updated_date")
+  isUsed      Boolean  @default(false) @map("is_used")
+  user        User     @relation("userBackupCodes", fields: [userId], references: [id], onDelete: Cascade)
+  userId      String   @map("user_id")
+
+  @@index([userId])
+  @@map("backup_code")
 }
 
 model Notification {
@@ -407,7 +425,7 @@ enum Gender {
 enum MfaMethod {
   NONE
   SMS
-  //  TOTP
+  TOTP
   EMAIL
 }
 

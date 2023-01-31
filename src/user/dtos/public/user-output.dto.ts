@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { UserAuthority, UserStatus } from '@prisma/client';
+import { MfaMethod, UserAuthority, UserStatus } from '@prisma/client';
 import { Expose } from 'class-transformer';
 import { BaseUserOutputDto } from '../base-user-output.dto';
 
@@ -47,4 +47,20 @@ export class UserOutput extends BaseUserOutputDto {
     @Expose()
     @ApiProperty()
     checkLocationOnLogin: boolean;
+
+    @Expose()
+    @ApiProperty()
+    timezone: string;
+
+    @Expose()
+    @ApiProperty()
+    phoneNumber: string;
+
+    @Expose()
+    @ApiProperty()
+    twoFactorMethod: MfaMethod;
+
+    @Expose()
+    @ApiProperty()
+    phoneNumberConfirmed: boolean;
 }

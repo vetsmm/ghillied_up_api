@@ -17,10 +17,11 @@ import {
     AuthPasswordResetFinishDto,
     AuthPasswordResetVerifyKeyDto,
     AuthResendVerifyEmailInputDto,
-    AuthVerifyEmailInputDto,
     INVALID_CREDENTIALS,
     RequestContext,
-    USER_NOT_ACTIVATED, USER_NOT_FOUND,
+    USER_NOT_ACTIVATED,
+    USER_NOT_FOUND,
+    USER_PHONE_NUMBER_IN_USE,
 } from '../../shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import slugify from 'slugify';
@@ -40,7 +41,7 @@ import { SocialInterface } from '../../auth/interfaces/social.interface';
 import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
 import { IDatabase } from 'pg-promise';
 import { getDefaultGhillieForBranch } from '../../assets/base-ghillies/default-ghillies';
-import { QueueService } from '../../queue/services/queue.service';
+import { QueueService } from '../../sns/services/queue.service';
 
 @Injectable()
 export class UserService {
@@ -178,14 +179,15 @@ export class UserService {
         ctx: RequestContext,
         username: string,
         pass: string,
-    ): Promise<UserOutput> {
+        withFullUser?: boolean,
+    ): Promise<UserOutput | User> {
         this.logger.log(
             ctx,
             `${this.validateUsernamePassword.name} was called`,
         );
 
         this.logger.log(ctx, `calling findOne`);
-        const user = await this.prisma.user.findFirst({
+        const user: User = await this.prisma.user.findFirst({
             where: { username: { equals: username, mode: 'insensitive' } },
         });
         if (!user) throw new UnauthorizedException(INVALID_CREDENTIALS);
@@ -195,6 +197,9 @@ export class UserService {
         const match = await compare(pass, user.password);
         if (!match) throw new UnauthorizedException(INVALID_CREDENTIALS);
 
+        if (withFullUser) {
+            return user;
+        }
         return plainToInstance(UserOutput, user, {
             excludeExtraneousValues: true,
         });
@@ -732,5 +737,70 @@ export class UserService {
                 'An error occurred while trying to deactivate your account. Please try again later.',
             );
         }
+    }
+
+    async markPhoneNumberAsConfirmed(ctx: RequestContext, id: string) {
+        this.logger.log(
+            ctx,
+            `${this.markPhoneNumberAsConfirmed.name} was called`,
+        );
+
+        await this.prisma.user.update({
+            where: { id: id },
+            data: {
+                phoneNumberConfirmed: true,
+            },
+        });
+    }
+
+    async updatedPhoneNumber(
+        ctx: RequestContext,
+        id: string,
+        phoneNumber: string,
+    ): Promise<User> {
+        this.logger.log(ctx, `${this.updatedPhoneNumber.name} was called`);
+
+        const phoneNumberInUse = await this.prisma.user
+            .findFirst({
+                where: {
+                    phoneNumber: phoneNumber,
+                },
+            })
+            .then((user) => {
+                return !!user;
+            });
+
+        if (phoneNumberInUse) {
+            throw new BadRequestException(USER_PHONE_NUMBER_IN_USE);
+        }
+
+        return await this.prisma.user.update({
+            where: { id: id },
+            data: {
+                phoneNumber: phoneNumber,
+                phoneNumberConfirmed: false,
+            },
+        });
+    }
+
+    async deletePhoneNumber(
+        ctx: RequestContext,
+        userId: string,
+    ): Promise<UserOutput> {
+        this.logger.log(ctx, `${this.deletePhoneNumber.name} was called`);
+
+        const user = await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                phoneNumber: null,
+                phoneNumberConfirmed: false,
+            },
+        });
+
+        // TODO: Clear up and 2FA settings they may have
+
+        return plainToInstance(UserOutput, user, {
+            excludeExtraneousValues: true,
+        });
     }
 }

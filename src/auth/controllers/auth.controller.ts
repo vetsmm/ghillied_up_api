@@ -21,7 +21,6 @@ import {
 
 import {
     AuthChangePasswordInputDto,
-    BaseApiErrorResponse,
     BaseApiResponse,
     AuthPasswordResetInitDto,
     SwaggerBaseApiResponse,
@@ -42,6 +41,8 @@ import {
 } from '../../shared';
 import { AuthService } from '../services/auth.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { TotpLoginDto } from '../dtos/totp-login.dto';
+import { TotpTokenResponse } from '../../multi-factor-authentication/dtos/totp-token-response.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -141,7 +142,7 @@ export class AuthController {
         @ReqContext() ctx: RequestContext,
         @Ip() ip: string,
         @Body() credential: LoginInput,
-    ): Promise<AuthTokenOutput> {
+    ): Promise<AuthTokenOutput | TotpTokenResponse> {
         this.logger.log(ctx, `${this.login.name} was called`);
 
         return await this.authService.login(ctx, credential, ip);
@@ -178,7 +179,7 @@ export class AuthController {
     }
 
     @Post('refresh-token')
-    @RateLimit(5)
+    @RateLimit(10)
     @ApiOperation({
         summary: 'Refresh access token API',
     })
@@ -193,8 +194,8 @@ export class AuthController {
 
         return await this.authService.refreshToken(
             ctx,
-            credential.refreshToken,
             ip,
+            credential.refreshToken,
         );
     }
 
@@ -334,5 +335,33 @@ export class AuthController {
             },
             meta: {},
         };
+    }
+
+    /** Login using TOTP */
+    @Post('login/totp')
+    @RateLimit(10)
+    async totpLogin(
+        @ReqContext() ctx: RequestContext,
+        @Body() data: TotpLoginDto,
+        @Ip() ip: string,
+        @Body('origin') origin?: string,
+    ): Promise<AuthTokenOutput> {
+        return await this.authService.loginWithTotp(
+            ctx,
+            ip,
+            data.token,
+            data.code,
+            origin,
+        );
+    }
+
+    @Post('login/token')
+    @RateLimit(10)
+    async emailTokenLoginPost(
+        @ReqContext() ctx: RequestContext,
+        @Body('token') token: string,
+        @Ip() ip: string,
+    ): Promise<AuthTokenOutput> {
+        return await this.authService.loginWithEmailToken(ctx, ip, token);
     }
 }

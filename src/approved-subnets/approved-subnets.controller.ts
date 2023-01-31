@@ -20,11 +20,12 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthoritiesGuard } from '../auth/guards/authorities.guard';
 import { ActiveUserGuard } from '../auth/guards/active-user.guard';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Authorities } from '../auth/decorators/authority.decorator';
 import { ApprovedSubnetDto } from './dtos/approved-subnet.dto';
 
-@Controller('users/:userId/approved-subnets')
+@ApiTags('Approved Subnets')
+@Controller('approved-subnets')
 export class ApprovedSubnetController {
     constructor(private approvedSubnetsService: ApprovedSubnetsService) {}
 

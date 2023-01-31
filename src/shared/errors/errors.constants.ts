@@ -27,6 +27,14 @@ export const USER_NOT_ACTIVATED = '401008: User is not activated';
 export const USER_BANNED = '401009: This users account has been banned';
 export const USER_DELETED = '401010: This users account has been deleted';
 export const USER_SUSPENDED = '401011: This users account has been suspended';
+export const USER_PHONE_NUMBER_IN_USE =
+    '401012: This phone number is already in use';
+export const USER_INVALID_PHONE_VERIFICATION_CODE =
+    '401013: Invalid phone verification code provided';
+export const USER_PHONE_NUMBER_ALREADY_CONFIRMED =
+    '401014: This phone number has already been confirmed';
+export const USER_INVALID_PHONE_NUMBER =
+    '401015: This phone number is not valid';
 
 export const NO_TOKEN_PROVIDED = '400001: No token provided';
 export const DOMAIN_NOT_VERIFIED = '400002: Domain not verified';
@@ -53,6 +61,7 @@ export const CANNOT_UPDATE_ROLE_SOLE_OWNER =
 export const INVALID_DOMAIN = '400018: Invalid domain';
 export const SELECT_INCLUDE_PIPE_FORMAT = '400019: Invalid query format';
 export const FILE_TOO_LARGE = '400022: Uploaded file is too large';
+export const MFA_PHONE_REQUIRED = '400023: Phone number required';
 
 export const EMAIL_USER_CONFLICT =
     '409001: User with this email already exists';

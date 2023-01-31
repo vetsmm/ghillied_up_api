@@ -4,8 +4,8 @@ import { QueueService } from './services/queue.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Module({
-  providers: [AppLogger, QueueService, PrismaService],
-  controllers: [],
-  exports: [QueueService],
+    providers: [AppLogger, QueueService, PrismaService],
+    controllers: [],
+    exports: [QueueService],
 })
-export class QueueModule {}
+export class SnsModule {}

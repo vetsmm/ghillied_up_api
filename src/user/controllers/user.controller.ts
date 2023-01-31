@@ -1,13 +1,16 @@
 import {
+    BadRequestException,
     Body,
     ClassSerializerInterceptor,
     Controller,
+    Delete,
     Get,
     HttpCode,
     HttpStatus,
     Param,
     Patch,
     Post,
+    Put,
     Query,
     UseGuards,
     UseInterceptors,
@@ -34,9 +37,15 @@ import {
     SwaggerBaseApiResponse,
     AppLogger,
     ReqContext,
+    RateLimit,
+    USER_INVALID_PHONE_VERIFICATION_CODE,
+    USER_PHONE_NUMBER_ALREADY_CONFIRMED,
 } from '../../shared';
-import { UserAuthority } from '@prisma/client';
+import { User, UserAuthority } from '@prisma/client';
 import { ActiveUserGuard } from '../../auth/guards/active-user.guard';
+import { TwilioService } from '../../shared/twilio/twilio.service';
+import { CheckVerificationCodeDto } from '../dtos/check-verification-code.dto';
+import { UpdatePhoneNumberDto } from '../dtos/update-phone-number.dto';
 
 @ApiTags('users')
 @Controller('users')
@@ -44,6 +53,7 @@ export class UserController {
     constructor(
         private readonly userService: UserService,
         private readonly logger: AppLogger,
+        private readonly twilioService: TwilioService,
     ) {
         this.logger.setContext(UserController.name);
     }
@@ -173,5 +183,97 @@ export class UserController {
         );
 
         await this.userService.deactivateUser(ctx, ctx.user.id);
+    }
+
+    @Put('change-phone-number')
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Authorities(UserAuthority.ROLE_USER)
+    @RateLimit(10)
+    async changePhoneNumber(
+        @ReqContext() ctx: RequestContext,
+        @Body() updatePhoneNumberDto: UpdatePhoneNumberDto,
+    ) {
+        this.logger.log(ctx, `${this.changePhoneNumber.name} was called`);
+
+        const user = await this.userService.updatedPhoneNumber(
+            ctx,
+            ctx.user.id,
+            updatePhoneNumberDto.phoneNumber,
+        );
+
+        await this.twilioService.initiatePhoneNumberVerification(
+            ctx,
+            user.phoneNumber,
+        );
+    }
+
+    @Post('resend-verification-code')
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Authorities(UserAuthority.ROLE_USER)
+    @RateLimit(10)
+    async resendVerificationCode(@ReqContext() ctx: RequestContext) {
+        this.logger.log(ctx, `${this.resendVerificationCode.name} was called`);
+
+        const user = await this.userService.getUserById(ctx, ctx.user.id);
+        this.phoneNumberConfirmed(user);
+
+        await this.twilioService.initiatePhoneNumberVerification(
+            ctx,
+            user.phoneNumber,
+        );
+    }
+
+    @Delete('phone-number')
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Authorities(UserAuthority.ROLE_USER)
+    @RateLimit(10)
+    async deletePhoneNumber(
+        @ReqContext() ctx: RequestContext,
+    ): Promise<UserOutput> {
+        this.logger.log(ctx, `${this.deletePhoneNumber.name} was called`);
+
+        return await this.userService.deletePhoneNumber(ctx, ctx.user.id);
+    }
+
+    @Post('check-verification-code')
+    @UseGuards(JwtAuthGuard, AuthoritiesGuard, ActiveUserGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Authorities(UserAuthority.ROLE_USER)
+    @RateLimit(20)
+    async checkVerificationCode(
+        @ReqContext() ctx: RequestContext,
+        @Body() verificationData: CheckVerificationCodeDto,
+    ) {
+        this.logger.log(ctx, `${this.checkVerificationCode.name} was called`);
+
+        const user = await this.userService.getUserById(ctx, ctx.user.id);
+        this.phoneNumberConfirmed(user);
+
+        const result = await this.twilioService.confirmPhoneNumber(
+            ctx,
+            user.phoneNumber,
+            verificationData.code,
+        );
+
+        if (!result.valid || result.status !== 'approved') {
+            throw new BadRequestException(USER_INVALID_PHONE_VERIFICATION_CODE);
+        }
+
+        await this.userService.markPhoneNumberAsConfirmed(ctx, user.id);
+    }
+
+    private phoneNumberConfirmed(user: UserOutput | User): boolean {
+        if (user.phoneNumberConfirmed) {
+            throw new BadRequestException(USER_PHONE_NUMBER_ALREADY_CONFIRMED);
+        }
+
+        return user.phoneNumberConfirmed;
     }
 }

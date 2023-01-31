@@ -16,6 +16,7 @@ import {
 import { SecretsManager } from 'aws-sdk';
 import { GeolocationModule } from './geolocation/geolocation.module';
 import { TokensModule } from './tokens/tokens.module';
+import { TwilioModule } from './twilio/twilio.module';
 
 const getSecretSources = (configService: ConfigService) => {
     if (configService.get('appEnv') === 'DEV') {
@@ -101,6 +102,7 @@ const getStreamSecrets = async (
         }),
         GeolocationModule,
         TokensModule,
+        TwilioModule,
     ],
     controllers: [],
     providers: [],
@@ -111,6 +113,7 @@ const getStreamSecrets = async (
         AWSSecretsManagerModule,
         GeolocationModule,
         TokensModule,
+        TwilioModule,
     ],
 })
 export class SharedModule {}

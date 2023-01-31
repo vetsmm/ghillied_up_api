@@ -17,10 +17,90 @@ export class MailService {
         this.logger.setContext(MailService.name);
     }
 
+    sendLoginLink(
+        ctx: RequestContext,
+        user: User | UserOutput,
+        jwtToken: string,
+    ) {
+        const expirationInMinutes = parseInt(
+            this.configService.get<string>('security.mfaTokenExpiry') ?? '',
+        );
+        this.mailerService
+            .sendMail({
+                to: `"${user.username}" <${user.email}>`,
+                from: '"Ghillied Up" <support@ghilliedup.com>', // override default from
+                subject: 'Ghillied Up Login Link',
+                template: './loginLink', // `.hbs` extension is appended automatically
+                context: {
+                    username: user.username,
+                    loginLink: `https://ghilliedup.com/auth/login-link/${jwtToken}`,
+                    expirationTime: expirationInMinutes,
+                },
+            })
+            .then(() => {
+                this.logger.log(
+                    ctx,
+                    `Successfully sent login link to email to ${this.maskEmail(
+                        user.email,
+                    )}`,
+                );
+            })
+            .catch((err) => {
+                Sentry.captureException(err);
+                this.logger.error(
+                    ctx,
+                    `Error sending login link email to '<${this.maskEmail(
+                        user.email,
+                    )}>': ${err}`,
+                );
+            });
+    }
+
+    sendUsedBackupCode(
+        ctx: RequestContext,
+        user: User,
+        ipAddress: string,
+        locationName: string,
+    ) {
+        this.mailerService
+            .sendMail({
+                to: `"${user.username}" <${user.email}>`,
+                from: '"Ghillied Up" <support@ghilliedup.com>', // override default from
+                subject: 'New sign in with backup code',
+                template: './usedBackupCode', // `.hbs` extension is appended automatically
+                context: {
+                    username: user.username,
+                    locationName: locationName,
+                    ipAddress: ipAddress,
+                    attemptTime: new Date().toLocaleString(),
+                    recentActivityLink: `https://ghilliedup.com/auth/sessions`,
+                    os: ctx.os,
+                    platform: ctx.platform,
+                },
+            })
+            .then(() => {
+                this.logger.log(
+                    ctx,
+                    `Successfully sent used backup code email to ${this.maskEmail(
+                        user.email,
+                    )}`,
+                );
+            })
+            .catch((err) => {
+                Sentry.captureException(err);
+                this.logger.error(
+                    ctx,
+                    `Error sending used backup code email to '<${this.maskEmail(
+                        user.email,
+                    )}>': ${err}`,
+                );
+            });
+    }
+
     async sendLoginSubnetApproval(
         ctx: RequestContext,
         ipAddress: string,
-        user: UserOutput,
+        user: UserOutput | User,
         locationName: string,
         jwtToken: string,
         expirationInMinutes: number,
@@ -43,25 +123,57 @@ export class MailService {
                 },
             })
             .then(() => {
-                const emailMask = user.email.replace(
-                    /^(.{3}).*@(.*)$/,
-                    '$1...@$2',
-                );
                 this.logger.log(
                     ctx,
-                    `Successfully sent activation email to ${emailMask}`,
+                    `Successfully sent location approval email to ${this.maskEmail(
+                        user.email,
+                    )}`,
+                );
+            })
+            .catch((err) => {
+                Sentry.captureException(err);
+                this.logger.error(
+                    ctx,
+                    `Error sending location approval email to '<${this.maskEmail(
+                        user.email,
+                    )}>': ${err}`,
+                );
+            });
+    }
+
+    async sendEnableEmailMfa(
+        ctx: RequestContext,
+        username: string,
+        email: string,
+        otpSecret: string,
+    ) {
+        this.mailerService
+            .sendMail({
+                to: `"${username}" <${email}>`,
+                from: '"Ghillied Up" <support@ghilliedup.com>', // override default from
+                subject: 'Ghillied Up - Enable Email MFA',
+                template: './enableEmailMfa', // `.hbs` extension is appended automatically
+                context: {
+                    username: username,
+                    mfaCode: otpSecret,
+                },
+            })
+            .then(() => {
+                this.logger.log(
+                    ctx,
+                    `Successfully sent mfa enable email to ${this.maskEmail(
+                        email,
+                    )}`,
                 );
             })
             .catch((err) => {
                 // Create a mask for the email address that only captures the first 3 characters of the email and captures the entire domain
-                const emailMask = user.email.replace(
-                    /^(.{3}).*@(.*)$/,
-                    '$1...@$2',
-                );
                 Sentry.captureException(err);
                 this.logger.error(
                     ctx,
-                    `Error sending activation email to '<${emailMask}>': ${err}`,
+                    `Error sending mfa enable email to '<${this.maskEmail(
+                        email,
+                    )}>': ${err}`,
                 );
             });
     }
@@ -91,18 +203,20 @@ export class MailService {
                 },
             })
             .then(() => {
-                const emailMask = email.replace(/^(.{3}).*@(.*)$/, '$1...@$2');
                 this.logger.log(
                     ctx,
-                    `Successfully sent activation email to ${emailMask}`,
+                    `Successfully sent activation email to ${this.maskEmail(
+                        email,
+                    )}`,
                 );
             })
             .catch((err) => {
                 // Create a mask for the email address that only captures the first 3 characters of the email and captures the entire domain
-                const emailMask = email.replace(/^(.{3}).*@(.*)$/, '$1...@$2');
                 this.logger.error(
                     ctx,
-                    `Error sending activation email to '<${emailMask}>': ${err}`,
+                    `Error sending activation email to '<${this.maskEmail(
+                        email,
+                    )}>': ${err}`,
                 );
             });
     }
@@ -123,14 +237,23 @@ export class MailService {
             .then(() => {
                 this.logger.debug(
                     ctx,
-                    `Successfully sent password reset email to ${user.username}`,
+                    `Successfully sent password reset email to ${this.maskEmail(
+                        user.email,
+                    )}`,
                 );
             })
             .catch((err) => {
                 this.logger.error(
                     ctx,
-                    `Error sending password reset email: ${err}`,
+                    `Error sending password reset email: ${this.maskEmail(
+                        user.email,
+                    )}`,
+                    err,
                 );
             });
+    }
+
+    private maskEmail(email: string) {
+        return email.replace(/^(.{3}).*@(.*)$/, '$1...@$2');
     }
 }

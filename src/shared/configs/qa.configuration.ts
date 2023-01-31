@@ -11,6 +11,9 @@ export default (): ConfigurationType => ({
     },
     security: {
         saltRounds: int(process.env.SALT_ROUNDS, 10),
+        totpWindowPast: int(process.env.TOTP_WINDOW_PAST, 1),
+        totpWindowFuture: int(process.env.TOTP_WINDOW_FUTURE, 0),
+        mfaTokenExpiry: process.env.MFA_TOKEN_EXPIRY ?? '10m',
     },
     rateLimit: {
         public: {
@@ -22,15 +25,20 @@ export default (): ConfigurationType => ({
             duration: int(process.env.RATE_LIMIT_AUTHENTICATED_DURATION, 3600),
         },
     },
+    sms: {
+        senderPhoneNumber:
+            process.env.TWILIO_SENDER_PHONE_NUMBER || '(925) 578-3532',
+    },
     secretsSources: {
         database: 'ghilliedup/qa/api/db',
         stream: 'ghilliedup/qa/stream',
         firebase: 'ghilliedup/qa/firebase',
         jwt: 'ghilliedup/qa/jwt',
         mail: 'ghilliedup/qa/mail',
+        twilio: 'ghilliedup/qa/twilio',
     },
     app: {
-        name: 'ghillied-up',
+        name: 'Ghillied Up',
     },
     stream: {
         apiKey: process.env.STREAM_API_KEY,

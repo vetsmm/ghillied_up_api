@@ -23,3 +23,5 @@ export * from './utils';
 export * from './sentry/sentry-capture';
 export * from './pipes';
 export * from './errors/errors.constants';
+export * from './otp';
+

@@ -12,6 +12,7 @@ export type ConfigurationType = {
         firebase: string;
         jwt: string;
         mail: string;
+        twilio: string;
     };
     app: {
         name: string;
@@ -49,6 +50,17 @@ export type ConfigurationType = {
     };
     security: {
         saltRounds: number;
+        totpWindowPast: number;
+        totpWindowFuture: number;
+        mfaTokenExpiry: string;
+        passwordPwnedCheck?: boolean;
+    };
+    sms: {
+        twilioAccountSid?: string;
+        twilioAuthToken?: string;
+        twilioVerificationServiceSid?: string;
+        senderPhoneNumber: string;
+        retries?: number;
     };
     defaultAdminUserPassword: string;
     mail: {

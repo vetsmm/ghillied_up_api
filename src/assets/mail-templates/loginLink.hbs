@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Ghillied Up - New Login</title>
-  <meta property="og:title" content="Ghillied Up - New Login"/>
-  <meta name="twitter:title" content="Ghillied Up - New Login"/>
+  <title>Ghillied Up - Login Link</title>
+  <meta property="og:title" content="Ghillied Up - Email MFA"/>
+  <meta name="twitter:title" content="Ghillied Up - Email MFA"/>
 
   <meta name="x-apple-disable-message-reformatting"/>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
@@ -422,36 +422,8 @@
                           <p style="mso-line-height-rule: exactly; line-height: 175%">&nbsp;</p>
                           <p style="mso-line-height-rule: exactly; line-height: 175%; text-align: center"
                              align="center">
-                              It looks like someone tried to log into your Ghillied Up account from a new location.
-                              If this is you, follow the link below to authorize logging in from this location on
-                              your account. If this isn't you, we suggest changing your password as soon as possible.
+                            Please click on the following link to log into your account.
                           </p>
-                          <p style="mso-line-height-rule: exactly; line-height: 175%">&nbsp;</p>
-                          <h5
-                              style="margin: 0; mso-line-height-rule: exactly; line-height: 175%; font-size: 16px;"
-                          >
-                            IP Address: {{ ipAddress }}
-                          </h5>
-                          <h5
-                              style="margin: 0; mso-line-height-rule: exactly; line-height: 175%; font-size: 16px;"
-                          >
-                            Location: {{ locationName }}
-                          </h5>
-                          <h5
-                              style="margin: 0; mso-line-height-rule: exactly; line-height: 175%; font-size: 16px;"
-                          >
-                            Time: {{ attemptTime }}
-                          </h5>
-                          <h5
-                              style="margin: 0; mso-line-height-rule: exactly; line-height: 175%; font-size: 16px;"
-                          >
-                            Operating System: {{ os }}
-                          </h5>
-                          <h5
-                              style="margin: 0; mso-line-height-rule: exactly; line-height: 175%; font-size: 16px;"
-                          >
-                            Platform: {{ platform }}
-                          </h5>
                             <p style="
                               font: bold 11px;
                               line-height: 175%;
@@ -467,22 +439,19 @@
                               margin-bottom: 20px;
                               cursor: pointer;
                             ">
-                                <a href="{{confirmationLink}}">
-                                    Confirm Login
+                                <a href="{{loginLink}}">
+                                    Log into your account
                                 </a>
                             </p>
 
                             <p style="mso-line-height-rule: exactly; line-height: 175%; text-align: center"
                                align="center">
-                                Note that this link is only valid for {{expirationInMinutes}} minutes. If you didn't
-                                request this email, you can just ignore it. We won't give anyone else access to your account.
+                                Note that this link is valid for {{ expirationTime }} minutes only. If you didn't request this email, you can just ignore it; we won't give anyone else access to your account.
                             </p>
 
-                            <p style="mso-line-height-rule: exactly; line-height: 175%">&nbsp;</p>
-                            <p style="mso-line-height-rule: exactly; line-height: 175%; text-align: center; font-size: 12px"
+                            <p style="mso-line-height-rule: exactly; line-height: 175%; text-align: center"
                                align="center">
-                                We also recommend that you enable two-factor authentication on your account. You can enable
-                                two-factor authentication by going to your account settings.
+                                If you did not request this, please ignore this email; we won't give anyone access to your account.
                             </p>
                         </div>
                       </div>

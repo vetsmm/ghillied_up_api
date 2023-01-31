@@ -1,11 +1,13 @@
 import {
+    BadRequestException,
+    ConflictException,
     Injectable,
     NotFoundException,
     UnauthorizedException,
     UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { plainToClass } from 'class-transformer';
+import { plainToClass, plainToInstance } from 'class-transformer';
 import { compare } from 'bcrypt';
 import { UserOutput } from '../../user/dtos/public/user-output.dto';
 import { UserService } from '../../user/services/user.service';
@@ -32,20 +34,38 @@ import {
     USER_BANNED,
     USER_DELETED,
     USER_SUSPENDED,
+    MFA_ENABLED_CONFLICT,
+    INVALID_MFA_CODE,
+    Authenticator,
+    keyDecoder,
+    keyEncoder,
+    createDigest,
+    createRandomBytes,
+    MFA_BACKUP_CODE_USED,
+    MFA_NOT_ENABLED,
+    MFA_PHONE_NOT_FOUND,
 } from '../../shared';
-import { User, UserAuthority, UserStatus } from '@prisma/client';
+import { MfaMethod, User, UserAuthority, UserStatus } from '@prisma/client';
 import { GeolocationService } from '../../shared/geolocation/geolocation.service';
 import { ApprovedSubnetsService } from '../../approved-subnets/approved-subnets.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import anonymize from 'ip-anonymize';
 import {
     APPROVE_SUBNET_TOKEN,
+    EMAIL_MFA_TOKEN,
     LOGIN_ACCESS_TOKEN,
+    MULTI_FACTOR_TOKEN,
 } from '../../shared/tokens/tokens.constants';
 import { TokensService } from '../../shared/tokens/tokens.service';
+import * as qrcode from 'qrcode';
+import { MfaTokenPayload } from '../../multi-factor-authentication/dtos/mfa-token-payload.dto';
+import { TotpTokenResponse } from '../../multi-factor-authentication/dtos/totp-token-response.dto';
+import { TwilioService } from '../../shared/twilio/twilio.service';
 
 @Injectable()
 export class AuthService {
+    authenticator: Authenticator;
+
     constructor(
         private userService: UserService,
         private configService: ConfigService,
@@ -54,9 +74,56 @@ export class AuthService {
         private approvedSubnetsService: ApprovedSubnetsService,
         private prisma: PrismaService,
         private tokenService: TokensService,
+        private twilioService: TwilioService,
         private readonly logger: AppLogger,
     ) {
         this.logger.setContext(AuthService.name);
+
+        this.authenticator = new Authenticator({
+            window: [
+                this.configService.get<number>('security.totpWindowPast') ?? 0,
+                this.configService.get<number>('security.totpWindowFuture') ??
+                    0,
+            ],
+            keyEncoder,
+            keyDecoder,
+            createDigest,
+            createRandomBytes,
+        });
+    }
+
+    /**
+     * Get the two-factor authentication QR code
+     * @returns Data URI string with QR code image
+     */
+    async getTotpQrCode(
+        ctx: RequestContext,
+        userId: string,
+    ): Promise<{
+        img: string;
+        secret: string;
+    }> {
+        const secret = this.authenticator.generateSecret();
+
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { twoFactorSecret: secret },
+        });
+        const otpauth = this.authenticator.keyuri(
+            ctx.user.username,
+            'Ghillied Up',
+            secret,
+        );
+        const img = await qrcode.toDataURL(otpauth);
+
+        return {
+            img: img,
+            secret: secret,
+        };
+    }
+
+    getOneTimePassword(secret: string): string {
+        return this.authenticator.generate(secret);
     }
 
     async authenticateUser(
@@ -64,22 +131,20 @@ export class AuthService {
         username: string,
         pass: string,
         ip: string,
-    ): Promise<UserAccessTokenClaims> {
+    ): Promise<User> {
         this.logger.log(ctx, `${this.authenticateUser.name} was called`);
 
         // The userService will throw Unauthorized in case of invalid username/password.
-        const user: UserOutput =
-            await this.userService.validateUsernamePassword(
-                ctx,
-                username,
-                pass,
-            );
+        const user = await this.userService.validateUsernamePassword(
+            ctx,
+            username,
+            pass,
+            true,
+        );
 
         await this.validateUser(ctx, user.username);
 
-        await this.checkLoginSubnet(ctx, user, ip);
-
-        return user;
+        return user as User;
     }
 
     async validateUser(ctx: RequestContext, username: string): Promise<void> {
@@ -106,18 +171,31 @@ export class AuthService {
         ctx: RequestContext,
         credential: LoginInput,
         ip: string,
-    ): Promise<AuthTokenOutput> {
+        origin?: string,
+    ): Promise<AuthTokenOutput | TotpTokenResponse> {
         this.logger.log(ctx, `${this.login.name} was called`);
 
         // An unauthorized error will bubble up if the user is not found or the password is incorrect.
-        const userClaims = await this.authenticateUser(
+        const user = await this.authenticateUser(
             ctx,
             credential.username,
             credential.password,
             ip,
         );
 
-        return this.getAuthToken(ctx, userClaims, ip);
+        if (credential.code)
+            return this.loginUserWithTotpCode(
+                ctx,
+                ip,
+                user.id,
+                credential.code,
+                origin,
+            );
+        if (user.twoFactorMethod !== 'NONE') return this.mfaResponse(ctx, user);
+
+        await this.checkLoginSubnet(ctx, user, ip);
+
+        return this.getAuthToken(ctx, user, ip);
     }
 
     async activateUser(
@@ -138,7 +216,7 @@ export class AuthService {
 
     private async checkLoginSubnet(
         ctx: RequestContext,
-        user: UserOutput,
+        user: UserOutput | User,
         ip: string,
         origin?: string,
     ) {
@@ -428,5 +506,165 @@ export class AuthService {
         if (!user) throw new NotFoundException(USER_NOT_FOUND);
         await this.approvedSubnetsService.approveNewSubnet(ctx, id, ip);
         return this.getAuthToken(ctx, user, ip);
+    }
+
+    async enableMfaMethod(
+        ctx: RequestContext,
+        method: MfaMethod,
+        code: string,
+    ): Promise<UserOutput> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: ctx.user.id },
+            select: { twoFactorSecret: true, twoFactorMethod: true },
+        });
+        if (!user) throw new NotFoundException(USER_NOT_FOUND);
+        if (user.twoFactorMethod !== 'NONE')
+            throw new ConflictException(MFA_ENABLED_CONFLICT);
+        if (!user.twoFactorSecret)
+            user.twoFactorSecret = this.authenticator.generateSecret();
+        if (!this.authenticator.check(code, user.twoFactorSecret))
+            throw new UnauthorizedException(INVALID_MFA_CODE);
+        const result = await this.prisma.user.update({
+            where: { id: ctx.user.id },
+            data: {
+                twoFactorMethod: method,
+                twoFactorSecret: user.twoFactorSecret,
+            },
+        });
+        return plainToInstance(UserOutput, result, {
+            excludeExtraneousValues: true,
+            enableImplicitConversion: true,
+        });
+    }
+
+    async loginWithTotp(
+        ctx: RequestContext,
+        ip: string,
+        token: string,
+        code: string,
+        origin?: string,
+    ): Promise<AuthTokenOutput> {
+        const { id } = this.tokenService.verify<MfaTokenPayload>(
+            MULTI_FACTOR_TOKEN,
+            token,
+        );
+
+        return this.loginUserWithTotpCode(ctx, ip, id, code, origin);
+    }
+
+    async loginWithEmailToken(
+        ctx: RequestContext,
+        ipAddress: string,
+        token: string,
+    ): Promise<AuthTokenOutput> {
+        const { id } = this.tokenService.verify<MfaTokenPayload>(
+            EMAIL_MFA_TOKEN,
+            token,
+        );
+        const user = await this.prisma.user.findUnique({ where: { id } });
+        if (!user) throw new NotFoundException(USER_NOT_FOUND);
+        await this.approvedSubnetsService.upsertNewSubnet(ctx, id, ipAddress);
+        return this.getAuthToken(ctx, user, ipAddress);
+    }
+
+    private async loginUserWithTotpCode(
+        ctx: RequestContext,
+        ipAddress: string,
+        id: string,
+        code: string,
+        origin?: string,
+    ): Promise<AuthTokenOutput> {
+        const user = await this.prisma.user.findUnique({
+            where: { id },
+        });
+        if (!user) throw new NotFoundException(USER_NOT_FOUND);
+
+        if (user.twoFactorMethod === 'NONE' || !user.twoFactorSecret)
+            throw new BadRequestException(MFA_NOT_ENABLED);
+
+        if (this.authenticator.check(code, user.twoFactorSecret))
+            return this.getAuthToken(ctx, user, ipAddress);
+
+        const backupCodes = await this.prisma.backupCode.findMany({
+            where: { user: { id } },
+        });
+
+        let usedBackupCode = false;
+        for await (const backupCode of backupCodes) {
+            if (await compare(code, backupCode.code)) {
+                if (!usedBackupCode) {
+                    if (backupCode.isUsed)
+                        throw new UnauthorizedException(MFA_BACKUP_CODE_USED);
+                    usedBackupCode = true;
+                    await this.prisma.backupCode.update({
+                        where: { id: backupCode.id },
+                        data: { isUsed: true },
+                    });
+                    const location = await this.geolocationService.getLocation(
+                        ipAddress,
+                    );
+                    const locationName =
+                        [
+                            location?.city?.names?.en,
+                            (location?.subdivisions ?? [])[0]?.names?.en,
+                            location?.country?.names?.en,
+                        ]
+                            .filter((i) => i)
+                            .join(', ') || 'Unknown location';
+                    this.mailService.sendUsedBackupCode(
+                        ctx,
+                        user,
+                        ipAddress,
+                        locationName,
+                    );
+                }
+            }
+        }
+
+        if (!usedBackupCode) throw new UnauthorizedException(INVALID_MFA_CODE);
+
+        return this.getAuthToken(ctx, user, ipAddress);
+    }
+
+    private async mfaResponse(
+        ctx: RequestContext,
+        user: User,
+        forceMethod?: MfaMethod,
+    ): Promise<TotpTokenResponse> {
+        const mfaTokenPayload: MfaTokenPayload = {
+            type: user.twoFactorMethod,
+            id: user.id,
+        };
+        const totpToken = this.tokenService.signJwt(
+            MULTI_FACTOR_TOKEN,
+            mfaTokenPayload,
+            this.configService.get<string>('security.mfaTokenExpiry'),
+        );
+        if (user.twoFactorMethod === 'EMAIL' || forceMethod === 'EMAIL') {
+            this.mailService.sendLoginLink(
+                ctx,
+                user,
+                this.tokenService.signJwt(
+                    EMAIL_MFA_TOKEN,
+                    { id: user.id },
+                    '30m',
+                ),
+            );
+        } else if (user.twoFactorMethod === 'SMS' || forceMethod === 'SMS') {
+            if (!user.phoneNumber)
+                throw new BadRequestException(MFA_PHONE_NOT_FOUND);
+            this.twilioService.send(
+                ctx,
+                `${this.getOneTimePassword(
+                    user.twoFactorSecret,
+                )} is your Ghillied Up verification code.`,
+                user.phoneNumber,
+            );
+        }
+        return {
+            totpToken,
+            type: forceMethod || user.twoFactorMethod,
+            multiFactorRequired: true,
+        };
     }
 }

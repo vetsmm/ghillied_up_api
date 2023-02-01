@@ -46,7 +46,7 @@ export type ConfigurationType = {
         publicKey: string;
         privateKey: string;
         accessTokenExpiresInSec: number;
-        refreshTokenExpiresInSec: number;
+        unusedRefreshTokenExpiryDays: number;
     };
     security: {
         saltRounds: number;
@@ -54,6 +54,7 @@ export type ConfigurationType = {
         totpWindowFuture: number;
         mfaTokenExpiry: string;
         passwordPwnedCheck?: boolean;
+        inactiveUserDeleteDays: number;
     };
     sms: {
         twilioAccountSid?: string;

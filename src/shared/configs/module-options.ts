@@ -12,7 +12,7 @@ export const configModuleOptions: ConfigModuleOptions = {
         JWT_PUBLIC_KEY_BASE64: Joi.string().required(),
         JWT_PRIVATE_KEY_BASE64: Joi.string().required(),
         JWT_ACCESS_TOKEN_EXP_IN_SEC: Joi.number().required(),
-        JWT_REFRESH_TOKEN_EXP_IN_SEC: Joi.number().required(),
+        JWT_UNUSED_REFRESH_TOKEN_EXP_IN_SEC: Joi.number(),
         DEFAULT_ADMIN_USER_PASSWORD: Joi.string().required(),
         MAIL_PORT: Joi.number().required(),
         MAIL_HOST: Joi.string(),
@@ -28,5 +28,6 @@ export const configModuleOptions: ConfigModuleOptions = {
         FIREBASE_CLIENT_EMAIL: Joi.string(),
         FIREBASE_PRIVATE_KEY: Joi.string(),
         FIREBASE_PROJECT_ID: Joi.string(),
+        INACTIVE_USER_DELETE_DAYS: Joi.number(),
     }),
 };

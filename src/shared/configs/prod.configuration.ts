@@ -17,6 +17,7 @@ export default (): ConfigurationType => ({
         totpWindowPast: int(process.env.TOTP_WINDOW_PAST, 1),
         totpWindowFuture: int(process.env.TOTP_WINDOW_FUTURE, 0),
         mfaTokenExpiry: process.env.MFA_TOKEN_EXPIRY ?? '10m',
+        inactiveUserDeleteDays: int(process.env.INACTIVE_USER_DELETE_DAYS, 30),
     },
     rateLimit: {
         public: {
@@ -78,11 +79,11 @@ export default (): ConfigurationType => ({
         ).toString('utf8'),
         accessTokenExpiresInSec: parseInt(
             process.env.JWT_ACCESS_TOKEN_EXP_IN_SEC,
-            10,
+            60,
         ),
-        refreshTokenExpiresInSec: parseInt(
-            process.env.JWT_REFRESH_TOKEN_EXP_IN_SEC,
-            10,
+        unusedRefreshTokenExpiryDays: parseInt(
+            process.env.JWT_UNUSED_REFRESH_TOKEN_EXP_IN_SEC,
+            30,
         ),
     },
     defaultAdminUserPassword: process.env.DEFAULT_ADMIN_USER_PASSWORD,

@@ -39,6 +39,7 @@ export class TokensService {
             {
                 ...options,
                 expiresIn,
+                secret: this.configService.get<string>('jwt.privateKey') ?? '',
             },
         );
     }

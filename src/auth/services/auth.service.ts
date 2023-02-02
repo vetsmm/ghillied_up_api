@@ -403,7 +403,7 @@ export class AuthService {
         return this.tokenService.signJwt(
             LOGIN_ACCESS_TOKEN,
             { ...payload },
-            this.configService.get<string>('jwt.accessTokenExpiresInSec'),
+            this.configService.get<string>('jwt.accessTokenExpiry'),
         );
     }
 

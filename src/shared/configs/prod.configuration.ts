@@ -77,11 +77,8 @@ export default (): ConfigurationType => ({
             process.env.JWT_PRIVATE_KEY_BASE64,
             'base64',
         ).toString('utf8'),
-        accessTokenExpiresInSec: parseInt(
-            process.env.JWT_ACCESS_TOKEN_EXP_IN_SEC,
-            60,
-        ),
-        unusedRefreshTokenExpiryDays: parseInt(
+        accessTokenExpiry: process.env.ACCESS_TOKEN_EXPIRY ?? '1h',
+        unusedRefreshTokenExpiryDays: int(
             process.env.JWT_UNUSED_REFRESH_TOKEN_EXP_IN_SEC,
             30,
         ),

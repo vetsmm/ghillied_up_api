@@ -45,7 +45,7 @@ export type ConfigurationType = {
     jwt: {
         publicKey: string;
         privateKey: string;
-        accessTokenExpiresInSec: number;
+        accessTokenExpiry: string;
         unusedRefreshTokenExpiryDays: number;
     };
     security: {

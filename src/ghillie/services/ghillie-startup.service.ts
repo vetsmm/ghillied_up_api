@@ -32,10 +32,6 @@ export class GhillieStartupService implements OnApplicationBootstrap {
         let ghillieCreated = false;
         // loop over the ServiceBranch enum
         for (const defaultGhillie of DEFAULT_GHILLIES) {
-            // const ghillie = await this.pg.oneOrNone(
-            //     'SELECT * FROM ghillie WHERE name = $1',
-            //     defaultGhillie.name,
-            // );
             const ghillie = await this.prisma.ghillie.findFirst({
                 where: {
                     name: defaultGhillie.name,

@@ -1,16 +1,13 @@
-import { Inject, Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { AppLogger } from '../../shared';
 import { GetStreamService } from '../../shared/getsream/getstream.service';
 import { GhillieAssetsService } from '../../files/services/ghillie-assets.service';
-import { NEST_PGPROMISE_CONNECTION } from 'nestjs-pgpromise';
-import { IDatabase } from 'pg-promise';
 import slugify from 'slugify';
 import { AssetTypes } from '../../files/dtos/asset.types';
 import {
     DEFAULT_GHILLIES,
     DefaultGhillieType,
 } from '../../assets/base-ghillies/default-ghillies';
-import cuid from 'cuid';
 import * as path from 'path';
 import * as fs from 'fs';
 import { User, UserAuthority } from '@prisma/client';
@@ -23,7 +20,6 @@ export class GhillieStartupService implements OnApplicationBootstrap {
         private readonly streamService: GetStreamService,
         private readonly ghillieAssetService: GhillieAssetsService,
         private readonly prisma: PrismaService,
-        @Inject(NEST_PGPROMISE_CONNECTION) private readonly pg: IDatabase<any>,
     ) {
         this.logger.setContext(GhillieStartupService.name);
     }
@@ -36,10 +32,15 @@ export class GhillieStartupService implements OnApplicationBootstrap {
         let ghillieCreated = false;
         // loop over the ServiceBranch enum
         for (const defaultGhillie of DEFAULT_GHILLIES) {
-            const ghillie = await this.pg.oneOrNone(
-                'SELECT * FROM ghillie WHERE name = $1',
-                defaultGhillie.name,
-            );
+            // const ghillie = await this.pg.oneOrNone(
+            //     'SELECT * FROM ghillie WHERE name = $1',
+            //     defaultGhillie.name,
+            // );
+            const ghillie = await this.prisma.ghillie.findFirst({
+                where: {
+                    name: defaultGhillie.name,
+                },
+            });
             if (!ghillie) {
                 // if not, create it
                 await this.createGhillie(defaultGhillie);
@@ -64,23 +65,21 @@ export class GhillieStartupService implements OnApplicationBootstrap {
 
         if (!maybeUser) {
             // Create a default admin user
-            return await this.pg.one(
-                `INSERT INTO "user" (id, username, slug, "password", email, authorities, created_date, updated_date,
-                                     activated)
-                 VALUES ($1, $2, $3, $4, $5, $6::json[], NOW(), NOW())
-                 RETURNING *`,
-                [
-                    cuid(),
-                    'admin',
-                    'admin',
-                    'admin',
-                    'admin@ghilliedup.com',
-                    [UserAuthority.ROLE_USER, UserAuthority.ROLE_ADMIN],
-                    new Date(),
-                    new Date(),
-                    false,
-                ],
-            );
+            return await this.prisma.user.create({
+                data: {
+                    username: 'admin',
+                    slug: 'admin',
+                    password: 'admin',
+                    email: 'admin@ghilliedup.com',
+                    authorities: [
+                        UserAuthority.ROLE_USER,
+                        UserAuthority.ROLE_ADMIN,
+                    ],
+                    createdDate: new Date(),
+                    updatedDate: new Date(),
+                    activated: false,
+                },
+            });
         }
 
         return maybeUser;
@@ -116,22 +115,18 @@ export class GhillieStartupService implements OnApplicationBootstrap {
                 isInternal: true,
             };
 
-            await this.pg.none(
-                `INSERT INTO ghillie (id, "name", slug, about, created_by_user_id, "read_only", created_date,
-                                      updated_date, public_image_id, image_url, is_internal)
-                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), $7, $8)`,
-                [
-                    cuid(),
-                    ghillieData.name,
-                    ghillieData.slug,
-                    ghillieData.about,
-                    ghillieData.createdByUserId,
-                    ghillieData.readOnly,
-                    ghillieData.publicImageId,
-                    ghillieData.imageUrl,
-                    ghillieData.isInternal,
-                ],
-            );
+            await this.prisma.ghillie.create({
+                data: {
+                    name: ghillieData.name,
+                    slug: ghillieData.slug,
+                    about: ghillieData.about,
+                    createdByUserId: ghillieData.createdByUserId,
+                    readOnly: ghillieData.readOnly,
+                    publicImageId: ghillieData.publicImageId,
+                    imageUrl: ghillieData.imageUrl,
+                    isInternal: ghillieData.isInternal,
+                },
+            });
 
             this.logger.log(null, `Created ghillie: ${ghillieData.name}`);
         } catch (error) {
